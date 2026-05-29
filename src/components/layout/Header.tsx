@@ -36,6 +36,7 @@ type CategoryMenuItem = {
   href: string;
   label: string;
   slug?: CategorySlug;
+  iconUrl?: string | null;
 };
 
 const ALL_CATEGORIES: CategoryMenuItem[] = [
@@ -95,9 +96,11 @@ const MOBILE_SECTIONS: MobileSection[] = [
 export function Header({
   contacts,
   categories,
+  topLinks,
 }: {
   contacts?: import("@/lib/content").ShopContacts | null;
-  categories?: { slug: string; title: string }[];
+  categories?: { slug: string; title: string; icon_url?: string | null }[];
+  topLinks?: { title: string; href: string }[];
 }) {
   const phone = contacts?.phone || "+7 (904) 098-88-77";
   const phoneTel = `tel:+${phone.replace(/\D/g, "")}`;
@@ -105,8 +108,9 @@ export function Header({
   // Реальные категории из БД (если переданы) — иначе встроенный дефолт.
   const catItems: CategoryMenuItem[] =
     categories && categories.length > 0
-      ? categories.map((c) => ({ href: `/category/${c.slug}`, label: c.title, slug: c.slug as CategorySlug }))
+      ? categories.map((c) => ({ href: `/category/${c.slug}`, label: c.title, slug: c.slug as CategorySlug, iconUrl: c.icon_url ?? null }))
       : ALL_CATEGORIES;
+  const topItems = topLinks && topLinks.length > 0 ? topLinks.map((t) => ({ href: t.href, label: t.title })) : TOP_LINKS;
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [contactOpen, setContactOpen] = React.useState(false);
@@ -141,7 +145,7 @@ export function Header({
         <div className="border-b border-white/8">
           <div className="container-page flex items-center justify-between h-9 text-[12px] text-onDark-muted">
             <ul className="flex items-center gap-6">
-              {TOP_LINKS.map((item) => (
+              {topItems.map((item) => (
                 <li key={item.href}>
                   <a
                     href={item.href}
@@ -270,9 +274,14 @@ export function Header({
                         <span className="flex items-center gap-3 w-full">
                           <span
                             aria-hidden
-                            className="inline-flex size-7 items-center justify-center rounded-md bg-surface text-[10px] text-ink-subtle"
+                            className="inline-flex size-7 items-center justify-center overflow-hidden rounded-md bg-surface text-[10px] text-ink-subtle"
                           >
-                            {item.label.slice(0, 2)}
+                            {item.iconUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={item.iconUrl} alt="" className="h-full w-full object-contain p-0.5" />
+                            ) : (
+                              item.label.slice(0, 2)
+                            )}
                           </span>
                           <span className="font-medium flex-1">
                             {item.label}

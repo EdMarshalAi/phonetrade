@@ -34,11 +34,31 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 export async function getFeaturedIphones(): Promise<Product[]> {
-  return FEATURED_IPHONES;
+  if (!supabase) return FEATURED_IPHONES;
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("category_slug", "iphone")
+    .eq("status", "published")
+    .is("deleted_at", null)
+    .order("sort", { ascending: true })
+    .limit(8);
+  if (error || !data || data.length === 0) return FEATURED_IPHONES;
+  return (data as ProductRow[]).map(rowToProduct);
 }
 
 export async function getFeaturedCatalog(): Promise<Product[]> {
-  return FEATURED_CATALOG;
+  if (!supabase) return FEATURED_CATALOG;
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .in("category_slug", ["ipad", "mac", "watch"])
+    .eq("status", "published")
+    .is("deleted_at", null)
+    .order("sort", { ascending: true })
+    .limit(8);
+  if (error || !data || data.length === 0) return FEATURED_CATALOG;
+  return (data as ProductRow[]).map(rowToProduct);
 }
 
 export async function getUsedProducts(): Promise<Product[]> {
@@ -55,7 +75,8 @@ export async function getUsedProducts(): Promise<Product[]> {
 }
 
 export async function getHeroProduct(): Promise<Product> {
-  return FEATURED_IPHONES[3];
+  const iphones = await getFeaturedIphones();
+  return iphones[0] ?? FEATURED_IPHONES[3];
 }
 
 export async function getProductsByCategory(

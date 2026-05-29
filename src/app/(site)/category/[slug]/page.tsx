@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import Image from "next/image";
 import { getCategoryConfig } from "@/lib/catalog/category-config";
 import { extractFacetOptions } from "@/lib/catalog/filters";
 import { getProductsByCategory } from "@/lib/products";
@@ -17,10 +16,7 @@ export async function generateMetadata({
   const { slug } = await params;
   const config = getCategoryConfig(slug);
   if (!config) return {};
-  return {
-    title: config.title,
-    description: config.description,
-  };
+  return { title: config.title, description: config.description };
 }
 
 export default async function CategoryPage({
@@ -39,27 +35,11 @@ export default async function CategoryPage({
   const facetOptions = extractFacetOptions(products, config.facets);
 
   return (
-    <>
-      {meta?.icon_url ? (
-        <div className="container-page pt-8">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-white">
-              <Image src={meta.icon_url} alt={meta.title} width={40} height={40} className="h-full w-full object-contain p-1" />
-            </span>
-            <span className="text-sm text-ink-muted">{meta.title}</span>
-          </div>
-        </div>
-      ) : null}
-
-      <CatalogShell config={config} products={products} facetOptions={facetOptions} />
-
-      {meta?.seo_text ? (
-        <section className="bg-surface">
-          <div className="container-page py-12 md:py-16">
-            <div className="prose prose-neutral max-w-3xl whitespace-pre-wrap text-ink-muted">{meta.seo_text}</div>
-          </div>
-        </section>
-      ) : null}
-    </>
+    <CatalogShell
+      config={config}
+      products={products}
+      facetOptions={facetOptions}
+      seoHtml={meta?.seo_text ?? null}
+    />
   );
 }

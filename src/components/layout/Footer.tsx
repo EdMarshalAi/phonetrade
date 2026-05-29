@@ -36,13 +36,15 @@ const MAP_SRC =
 const MAP_LINK =
   "https://yandex.ru/maps/?text=%D0%91%D0%B5%D0%BB%D0%B3%D0%BE%D1%80%D0%BE%D0%B4%2C%20%D1%83%D0%BB.%20%D0%9F%D0%BE%D0%BF%D0%BE%D0%B2%D0%B0%2C%2036";
 
-import type { ShopContacts } from "@/lib/content";
+import type { ShopContacts, MenuLink } from "@/lib/content";
 
-export function Footer({ contacts }: { contacts?: ShopContacts | null }) {
+export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | null; legalLinks?: MenuLink[] }) {
   const hours = contacts?.working_hours || "Ежедневно 10:00–20:00";
   const address = contacts?.address || "Белгород, ул. Попова, 36 (Ун-г Белгород, 1 этаж)";
   const phone = contacts?.phone || "+7 (904) 098-88-77";
   const phoneTel = `tel:+${phone.replace(/\D/g, "")}`;
+  // Юр. ссылки из меню админки (footer) с фолбэком на встроенные.
+  const legal = legalLinks && legalLinks.length > 0 ? legalLinks.map((l) => ({ href: l.href, label: l.title })) : LEGAL;
   return (
     <footer className="bg-ink text-onDark">
       <div className="container-page pt-14 md:pt-20 pb-10 md:pb-14">
@@ -142,7 +144,7 @@ export function Footer({ contacts }: { contacts?: ShopContacts | null }) {
         </p>
 
         <ul className="mt-8 flex flex-col md:flex-row md:flex-wrap items-start md:items-center justify-center gap-x-8 gap-y-3 text-sm">
-          {LEGAL.map((item) => (
+          {legal.map((item) => (
             <li key={item.href}>
               <a
                 href={item.href}

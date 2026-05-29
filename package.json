@@ -10,7 +10,8 @@
     "seed": "tsx scripts/seed-supabase.ts",
     "seed:admin": "tsx scripts/seed-admin.ts",
     "seed:content": "tsx scripts/seed-content.ts",
-    "upload:images": "tsx scripts/upload-public-images.ts"
+    "upload:images": "tsx scripts/upload-public-images.ts",
+    "seed:category-seo": "tsx scripts/seed-category-seo.ts"
   },
   "dependencies": {
     "@base-ui-components/react": "^1.0.0-rc.0",

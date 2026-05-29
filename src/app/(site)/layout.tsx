@@ -3,30 +3,31 @@ import { AuthProvider } from "@/components/providers/AuthProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
-import { getShopContacts } from "@/lib/content";
-import { getCategories } from "@/lib/products";
+import { getShopContacts, getNavCategories, getMenu } from "@/lib/content";
 
 /**
- * Публичный сайт: шапка, подвал и клиентские провайдеры (тултипы, авторизация).
- * Контакты и категории шапки/футера тянутся из БД (shop_settings/categories)
- * с фолбэком. URL-адреса не меняются — `(site)` это route group.
+ * Публичный сайт: шапка, подвал и клиентские провайдеры.
+ * Контакты, категории и меню (верхнее/футер) тянутся из БД с фолбэком.
+ * URL-адреса не меняются — `(site)` это route group.
  */
 export default async function SiteLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [contacts, categories] = await Promise.all([getShopContacts(), getCategories()]);
-  const catItems = categories
-    .filter((c) => c.slug !== "trade-in")
-    .map((c) => ({ slug: c.slug, title: c.title }));
+  const [contacts, navCategories, topMenu, footerMenu] = await Promise.all([
+    getShopContacts(),
+    getNavCategories(),
+    getMenu("top"),
+    getMenu("footer"),
+  ]);
   return (
     <AuthProvider>
       <TooltipProvider>
         <div className="flex min-h-dvh flex-col">
-          <Header contacts={contacts} categories={catItems} />
+          <Header contacts={contacts} categories={navCategories} topLinks={topMenu} />
           <main className="flex-1">{children}</main>
-          <Footer contacts={contacts} />
+          <Footer contacts={contacts} legalLinks={footerMenu} />
         </div>
         <PageViewTracker />
       </TooltipProvider>

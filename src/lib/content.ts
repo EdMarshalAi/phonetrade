@@ -39,6 +39,41 @@ export async function getHomeCategoryRails(): Promise<HomeCategoryRail[]> {
  * пустое — вызывающий код подставляет свои дефолты (сайт не ломается).
  */
 
+export interface MenuLink {
+  title: string;
+  href: string;
+}
+
+/** Пункты меню по расположению (top|main|footer) из menu_items. */
+export async function getMenu(location: "top" | "main" | "footer"): Promise<MenuLink[]> {
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("menu_items")
+    .select("title,link_url,sort_order")
+    .eq("menu_location", location)
+    .eq("is_visible", true)
+    .order("sort_order", { ascending: true });
+  return ((data ?? []) as { title: string; link_url: string | null }[]).map((m) => ({ title: m.title, href: m.link_url || "#" }));
+}
+
+export interface NavCategory {
+  slug: string;
+  title: string;
+  icon_url: string | null;
+}
+
+/** Категории для меню/шапки (с иконкой), без trade-in. */
+export async function getNavCategories(): Promise<NavCategory[]> {
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("categories")
+    .select("slug,title,icon_url,sort")
+    .eq("is_published", true)
+    .neq("slug", "trade-in")
+    .order("sort", { ascending: true });
+  return ((data ?? []) as NavCategory[]).map((c) => ({ slug: c.slug, title: c.title, icon_url: c.icon_url ?? null }));
+}
+
 export interface CategoryMeta {
   title: string;
   icon_url: string | null;

@@ -9,6 +9,7 @@ import { slugify } from "@/lib/admin/slug";
 import { Field, TextInput, Textarea, Select, Switch, FormError, AdminButton } from "@/components/admin/form";
 import { ImageField } from "@/components/admin/ImageField";
 import { Panel, PanelTitle } from "@/components/admin/ui";
+import { RichEditor } from "@/components/admin/RichEditor";
 import { cn } from "@/lib/utils/cn";
 import { createCategory, updateCategory } from "./actions";
 
@@ -192,18 +193,27 @@ export function CategoryForm({
       </div>
 
       <div hidden={tab !== "home"}>
-      <Panel className="space-y-4 p-5">
+      <Panel className="p-5">
         <PanelTitle>Вывод на главной</PanelTitle>
-        <div className="flex flex-wrap items-end gap-6">
+        <p className="mt-1 text-[13px] text-ink-muted">
+          Отдельный ряд товаров этой категории на главной странице.
+        </p>
+        <div className="mt-4 space-y-4">
           <Controller
             control={control}
             name="show_on_home"
             render={({ field }) => (
-              <Switch checked={!!field.value} onChange={field.onChange} label="Показывать блок этой категории на главной" />
+              <label className="flex cursor-pointer items-center justify-between gap-4 rounded-md border border-border/60 bg-surface/40 px-4 py-3">
+                <span>
+                  <span className="block text-[14px] font-medium text-ink">Показывать на главной</span>
+                  <span className="mt-0.5 block text-[12px] text-ink-subtle">Ряд товаров появится на главной странице</span>
+                </span>
+                <Switch checked={!!field.value} onChange={field.onChange} />
+              </label>
             )}
           />
-          <Field label="Сколько товаров на главной" hint="Лимит карточек в ряду (1–24)">
-            <TextInput type="number" min={1} max={24} className="w-40" {...register("home_limit")} />
+          <Field label="Сколько товаров в ряду" hint="От 1 до 24">
+            <TextInput type="number" min={1} max={24} className="w-28" {...register("home_limit")} />
           </Field>
         </div>
       </Panel>
@@ -218,14 +228,22 @@ export function CategoryForm({
         <Field label="Meta description">
           <Textarea {...register("meta_description")} />
         </Field>
-        <Field label="SEO-текст (внизу страницы категории)" hint="Развёрнутый текст для поисковиков — показывается под списком товаров">
-          <Textarea className="min-h-[120px]" {...register("seo_text")} />
+        <Field label="SEO-текст (внизу страницы категории)" hint="Тот самый блок «Купить … в Белгороде» под списком товаров — с форматированием и режимом «Источник» (HTML)">
+          <Controller
+            control={control}
+            name="seo_text"
+            render={({ field }) => (
+              <RichEditor value={field.value || ""} onChange={field.onChange} bucket="general" />
+            )}
+          />
         </Field>
-        <Controller
-          control={control}
-          name="is_published"
-          render={({ field }) => <Switch checked={!!field.value} onChange={field.onChange} label="Опубликована" />}
-        />
+        <div className="border-t border-border/60 pt-4">
+          <Controller
+            control={control}
+            name="is_published"
+            render={({ field }) => <Switch checked={!!field.value} onChange={field.onChange} label="Категория опубликована" />}
+          />
+        </div>
       </Panel>
       </div>
 

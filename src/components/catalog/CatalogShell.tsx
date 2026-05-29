@@ -22,11 +22,13 @@ type Props = {
   config: CategoryConfig;
   products: Product[];
   facetOptions: FacetOptions;
+  /** SEO-блок (HTML) из админки. Если задан — заменяет config.seo. */
+  seoHtml?: string | null;
 };
 
 const PAGE_SIZE = 12;
 
-export function CatalogShell({ config, products, facetOptions }: Props) {
+export function CatalogShell({ config, products, facetOptions, seoHtml }: Props) {
   const { filters, sort, setSort, toggleValue, reset, setFilters } =
     useCatalogFilters();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -103,9 +105,11 @@ export function CatalogShell({ config, products, facetOptions }: Props) {
             }
           />
 
-          {config.seo && config.seo.length > 0 && (
+          {seoHtml ? (
+            <CatalogSeo blocks={[{ html: seoHtml }]} />
+          ) : config.seo && config.seo.length > 0 ? (
             <CatalogSeo blocks={config.seo} />
-          )}
+          ) : null}
         </div>
       </section>
 
