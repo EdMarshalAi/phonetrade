@@ -1,0 +1,133 @@
+import {
+  LayoutDashboard,
+  BarChart3,
+  ShoppingCart,
+  Inbox,
+  Package,
+  FolderTree,
+  Tag,
+  Repeat,
+  Images,
+  LayoutGrid,
+  RefreshCw,
+  Award,
+  Newspaper,
+  FileText,
+  Ticket,
+  Percent,
+  Users,
+  Store,
+  Menu,
+  Truck,
+  CreditCard,
+  Search,
+  Bell,
+  Plug,
+  UserCog,
+  ScrollText,
+  Image as ImageIcon,
+  type LucideIcon,
+} from "lucide-react";
+import type { AdminRole } from "@/lib/admin/auth";
+
+export interface NavItem {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  /** Если не указано — доступно всем ролям. */
+  roles?: AdminRole[];
+}
+
+export interface NavGroup {
+  /** Заголовок группы (необязательно для верхнего блока). */
+  label?: string;
+  items: NavItem[];
+}
+
+const ALL: AdminRole[] = ["admin", "manager", "content"];
+const STAFF: AdminRole[] = ["admin", "manager"];
+const ADMIN_ONLY: AdminRole[] = ["admin"];
+const CONTENT: AdminRole[] = ["admin", "content"];
+
+/** Структура сайдбара админки (спека §2). */
+export const ADMIN_NAV: NavGroup[] = [
+  {
+    items: [
+      { label: "Обзор", href: "/admin", icon: LayoutDashboard, roles: ALL },
+      { label: "Аналитика", href: "/admin/analytics", icon: BarChart3, roles: STAFF },
+      { label: "Заказы", href: "/admin/orders", icon: ShoppingCart, roles: STAFF },
+      { label: "Заявки", href: "/admin/leads", icon: Inbox, roles: STAFF },
+    ],
+  },
+  {
+    label: "Каталог",
+    items: [
+      { label: "Товары", href: "/admin/catalog/products", icon: Package, roles: ALL },
+      { label: "Категории", href: "/admin/catalog/categories", icon: FolderTree, roles: ALL },
+      { label: "Бренды", href: "/admin/catalog/brands", icon: Tag, roles: ALL },
+      { label: "Цены выкупа", href: "/admin/catalog/trade-in-prices", icon: Repeat, roles: STAFF },
+    ],
+  },
+  {
+    label: "Контент",
+    items: [
+      { label: "Hero-баннер", href: "/admin/content/hero", icon: Images, roles: CONTENT },
+      { label: "Bento-плитки", href: "/admin/content/bento", icon: LayoutGrid, roles: CONTENT },
+      { label: "Trade-in блок", href: "/admin/content/trade-in-block", icon: RefreshCw, roles: CONTENT },
+      { label: "Преимущества", href: "/admin/content/advantages", icon: Award, roles: CONTENT },
+      { label: "Блог", href: "/admin/content/blog", icon: Newspaper, roles: CONTENT },
+      { label: "Страницы", href: "/admin/content/pages", icon: FileText, roles: CONTENT },
+    ],
+  },
+  {
+    label: "Промо",
+    items: [
+      { label: "Промокоды", href: "/admin/promotions/promo-codes", icon: Ticket, roles: STAFF },
+      { label: "Скидки и акции", href: "/admin/promotions/discounts", icon: Percent, roles: STAFF },
+    ],
+  },
+  {
+    label: "Клиенты",
+    items: [
+      { label: "Клиенты", href: "/admin/customers", icon: Users, roles: STAFF },
+    ],
+  },
+  {
+    label: "Настройки",
+    items: [
+      { label: "Магазин", href: "/admin/settings/shop", icon: Store, roles: ADMIN_ONLY },
+      { label: "Навигация", href: "/admin/settings/navigation", icon: Menu, roles: ADMIN_ONLY },
+      { label: "Доставка", href: "/admin/settings/delivery", icon: Truck, roles: ADMIN_ONLY },
+      { label: "Оплата", href: "/admin/settings/payment", icon: CreditCard, roles: ADMIN_ONLY },
+      { label: "SEO", href: "/admin/settings/seo", icon: Search, roles: ADMIN_ONLY },
+      { label: "Уведомления", href: "/admin/settings/notifications", icon: Bell, roles: ADMIN_ONLY },
+      { label: "Интеграции", href: "/admin/settings/integrations", icon: Plug, roles: ADMIN_ONLY },
+      { label: "Пользователи", href: "/admin/settings/users", icon: UserCog, roles: ADMIN_ONLY },
+      { label: "Журнал аудита", href: "/admin/settings/audit-log", icon: ScrollText, roles: ADMIN_ONLY },
+    ],
+  },
+  {
+    label: "Медиа",
+    items: [
+      { label: "Медиа-библиотека", href: "/admin/media", icon: ImageIcon, roles: ALL },
+    ],
+  },
+];
+
+/** Плоский список доступных пользователю пунктов (для фильтрации по роли). */
+export function navForRole(role: AdminRole): NavGroup[] {
+  return ADMIN_NAV.map((group) => ({
+    ...group,
+    items: group.items.filter((i) => !i.roles || i.roles.includes(role)),
+  })).filter((group) => group.items.length > 0);
+}
+
+/** Человеческое имя раздела по href (для хлебных крошек/заголовков). */
+export function labelForHref(href: string): string | undefined {
+  for (const group of ADMIN_NAV) {
+    for (const item of group.items) {
+      if (item.href === href) return item.label;
+    }
+  }
+  return undefined;
+}

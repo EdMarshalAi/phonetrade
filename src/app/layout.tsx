@@ -1,10 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { TooltipProvider } from "@/components/providers/TooltipProvider";
-import { AuthProvider } from "@/components/providers/AuthProvider";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 
 const inter = Inter({
   subsets: ["latin", "cyrillic"],
@@ -41,6 +37,11 @@ export const viewport: Viewport = {
   themeColor: "#1d1d1f",
 };
 
+/**
+ * Корневой layout — только <html>/<body>, шрифт и глобальные метаданные.
+ * Публичная обвязка (Header/Footer, провайдеры) живёт в route group `(site)`,
+ * админка — в `(admin)` со своим шеллом без публичной шапки.
+ */
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -48,15 +49,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" className={`h-full ${inter.variable}`}>
-      <body className="min-h-full flex flex-col bg-bg text-ink">
-        <AuthProvider>
-          <TooltipProvider>
-            <Header />
-            <main className="flex-1">{children}</main>
-            <Footer />
-          </TooltipProvider>
-        </AuthProvider>
-      </body>
+      <body className="min-h-full bg-bg text-ink">{children}</body>
     </html>
   );
 }

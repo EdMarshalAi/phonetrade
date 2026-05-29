@@ -47,6 +47,8 @@ export async function getUsedProducts(): Promise<Product[]> {
     .from("products")
     .select("*")
     .eq("is_used", true)
+    .eq("status", "published")
+    .is("deleted_at", null)
     .order("sort", { ascending: true });
   if (error || !data || data.length === 0) return USED_IPHONES;
   return (data as ProductRow[]).map(rowToProduct);
@@ -60,11 +62,14 @@ export async function getProductsByCategory(
   slug: CategorySlug
 ): Promise<Product[]> {
   if (!supabase) return mockByCategory(slug);
-  const query =
+  const base =
     slug === "used"
       ? supabase.from("products").select("*").eq("is_used", true)
       : supabase.from("products").select("*").eq("category_slug", slug);
-  const { data, error } = await query.order("sort", { ascending: true });
+  const { data, error } = await base
+    .eq("status", "published")
+    .is("deleted_at", null)
+    .order("sort", { ascending: true });
   if (error || !data) return mockByCategory(slug);
   return (data as ProductRow[]).map(rowToProduct);
 }
@@ -75,6 +80,7 @@ export async function getProductById(id: string): Promise<Product | undefined> {
     .from("products")
     .select("*")
     .eq("id", id)
+    .is("deleted_at", null)
     .maybeSingle();
   if (error) return ALL_PRODUCTS.find((p) => p.id === id);
   return data ? rowToProduct(data as ProductRow) : undefined;
@@ -90,6 +96,8 @@ export async function getRelatedProducts(
     .select("*")
     .eq("category_slug", product.categorySlug)
     .neq("id", product.id)
+    .eq("status", "published")
+    .is("deleted_at", null)
     .order("sort", { ascending: true })
     .limit(limit);
   if (error || !data) return mockRelated(product, limit);

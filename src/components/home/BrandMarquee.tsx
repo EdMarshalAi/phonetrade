@@ -1,10 +1,15 @@
 import * as React from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
 
 type Brand = {
   name: string;
   className?: string;
+  logoUrl?: string | null;
 };
+
+/** Бренд из админки (если заведены строки в таблице brands). */
+export type BrandItem = { title: string; logoUrl: string | null };
 
 const BRANDS: Brand[] = [
   { name: "Apple", className: "font-sans text-2xl font-medium tracking-tight" },
@@ -42,13 +47,13 @@ const BRANDS: Brand[] = [
   { name: "Sony", className: "font-sans text-2xl font-bold tracking-tight" },
 ];
 
-function BrandList({ ariaHidden }: { ariaHidden?: boolean }) {
+function BrandList({ brands, ariaHidden }: { brands: Brand[]; ariaHidden?: boolean }) {
   return (
     <ul
       aria-hidden={ariaHidden}
       className="flex shrink-0 items-center gap-16 md:gap-24 px-8 md:px-12"
     >
-      {BRANDS.map((b, i) => (
+      {brands.map((b, i) => (
         <li
           key={`${b.name}-${i}`}
           className={cn(
@@ -56,14 +61,37 @@ function BrandList({ ariaHidden }: { ariaHidden?: boolean }) {
             b.className
           )}
         >
-          {b.name}
+          {b.logoUrl ? (
+            <Image
+              src={b.logoUrl}
+              alt={b.name}
+              width={96}
+              height={32}
+              className="h-7 w-auto object-contain opacity-60 transition-opacity hover:opacity-100"
+            />
+          ) : (
+            b.name
+          )}
         </li>
       ))}
     </ul>
   );
 }
 
-export function BrandMarquee() {
+/**
+ * Полоса брендов. Если переданы `items` из админки — рендерим их (лого/текст),
+ * иначе — встроенный дефолтный набор (сайт работает без БД).
+ */
+export function BrandMarquee({ items }: { items?: BrandItem[] }) {
+  const brands: Brand[] =
+    items && items.length > 0
+      ? items.map((b) => ({
+          name: b.title,
+          logoUrl: b.logoUrl,
+          className: "font-sans text-2xl font-medium tracking-tight",
+        }))
+      : BRANDS;
+
   return (
     <section
       aria-label="Бренды, представленные в PhoneTrade"
@@ -80,8 +108,8 @@ export function BrandMarquee() {
         />
 
         <div className="marquee-track flex w-max items-center motion-reduce:animate-none hover:[animation-play-state:paused]">
-          <BrandList />
-          <BrandList ariaHidden />
+          <BrandList brands={brands} />
+          <BrandList brands={brands} ariaHidden />
         </div>
       </div>
     </section>

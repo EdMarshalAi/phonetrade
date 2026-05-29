@@ -12,6 +12,14 @@ import {
   getFeaturedIphones,
   getUsedProducts,
 } from "@/lib/products";
+import {
+  getHeroSlides,
+  getAdvantages,
+  getBrands,
+  getTradeInBlock,
+  getTradeInSteps,
+  getBlogPosts,
+} from "@/lib/content";
 
 /**
  * Слайды баннера. Когда сделаем админку — этот массив будет тянуться из БД,
@@ -65,16 +73,70 @@ const HERO_SLIDES: HeroSlide[] = [
 ];
 
 export default async function HomePage() {
-  const [categories, iphones, catalog, used] = await Promise.all([
-    getCategories(),
-    getFeaturedIphones(),
-    getFeaturedCatalog(),
-    getUsedProducts(),
-  ]);
+  const [categories, iphones, catalog, used, heroRows, advantageRows, brandRows, tiBlock, tiSteps, blogRows] =
+    await Promise.all([
+      getCategories(),
+      getFeaturedIphones(),
+      getFeaturedCatalog(),
+      getUsedProducts(),
+      getHeroSlides(),
+      getAdvantages(),
+      getBrands(),
+      getTradeInBlock(),
+      getTradeInSteps(),
+      getBlogPosts(6),
+    ]);
+
+  const features =
+    advantageRows.length > 0
+      ? advantageRows.map((a) => ({ icon: a.icon, title: a.title, text: a.description ?? "" }))
+      : undefined;
+  const brandItems =
+    brandRows.length > 0 ? brandRows.map((b) => ({ title: b.title, logoUrl: b.logo_url })) : undefined;
+  const tradeInBlock = tiBlock
+    ? {
+        title: tiBlock.block_title,
+        description: tiBlock.block_description ?? "",
+        buttonText: tiBlock.button_text ?? "Узнать вашу скидку",
+        buttonLink: tiBlock.button_link ?? "/trade-in",
+        imageUrl: tiBlock.image_url,
+      }
+    : undefined;
+  const tradeInSteps =
+    tiSteps.length > 0
+      ? tiSteps.map((s) => ({ n: s.step_number, title: s.title, description: s.description ?? "" }))
+      : undefined;
+  const blogPosts =
+    blogRows.length > 0
+      ? blogRows.map((p) => ({
+          id: p.id,
+          title: p.title,
+          date: p.published_at ? new Date(p.published_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) : "",
+          views: 0,
+          category: p.category ?? "Гаджеты",
+          image: p.cover_url ?? `https://picsum.photos/seed/${p.slug}/1200/800`,
+          href: `/blog/${p.slug}`,
+        }))
+      : undefined;
+
+  // Слайды из админки (если заведены) → формат Hero; иначе дефолтные.
+  const heroSlides: HeroSlide[] =
+    heroRows.length > 0
+      ? heroRows.map((r) => ({
+          id: r.id,
+          background: r.theme === "light" ? "white" : "ink",
+          textTone: r.theme === "light" ? "dark" : "light",
+          eyebrow: r.overline ?? undefined,
+          title: r.title,
+          subtitle: r.description ?? undefined,
+          cta: r.button_text && r.button_link ? { label: r.button_text, href: r.button_link } : undefined,
+          image: r.image_url ?? undefined,
+        }))
+      : HERO_SLIDES;
 
   return (
     <>
-      <Hero slides={HERO_SLIDES} />
+      <Hero slides={heroSlides} />
       <BentoCategories categories={categories} />
       <ProductRail
         eyebrow="Свежее в магазине"
@@ -95,11 +157,11 @@ export default async function HomePage() {
         href="/used"
         products={used}
       />
-      <TradeInPromo />
-      <TradeInSteps />
-      <BrandMarquee />
-      <BlogTeaser />
-      <WhyAndFaq />
+      <TradeInPromo block={tradeInBlock} />
+      <TradeInSteps steps={tradeInSteps} />
+      <BrandMarquee items={brandItems} />
+      <BlogTeaser posts={blogPosts} />
+      <WhyAndFaq features={features} />
     </>
   );
 }

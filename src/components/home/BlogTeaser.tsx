@@ -19,10 +19,13 @@ type Post = {
   title: string;
   date: string;
   views: number;
-  category: Exclude<Filter, "Все">;
+  category: string;
   image: string;
   href: string;
 };
+
+/** Пост блога из БД (передаётся с главной как проп). */
+export type BlogTeaserPost = Post;
 
 const FILTERS: Filter[] = [
   "Все",
@@ -129,12 +132,13 @@ function MetaRow({
   );
 }
 
-export function BlogTeaser() {
+export function BlogTeaser({ posts }: { posts?: BlogTeaserPost[] }) {
   const [filter, setFilter] = React.useState<Filter>("Все");
+  const source = posts && posts.length > 0 ? posts : POSTS;
 
   const filtered = React.useMemo(
-    () => (filter === "Все" ? POSTS : POSTS.filter((p) => p.category === filter)),
-    [filter]
+    () => (filter === "Все" ? source : source.filter((p) => p.category === filter)),
+    [filter, source]
   );
 
   const [featured, ...rest] = filtered;

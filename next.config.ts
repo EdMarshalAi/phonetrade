@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "picsum.photos" },
       { protocol: "https", hostname: "fastly.picsum.photos" },
       { protocol: "https", hostname: "images.unsplash.com" },
+      // Supabase Storage (изображения товаров, баннеров, блога и т.д.)
+      { protocol: "https", hostname: "giwehapapi.beget.app" },
     ],
   },
 };

@@ -8,6 +8,14 @@ import {
   MessagesSquare,
   ShieldCheck,
   Wrench,
+  Award,
+  Truck,
+  BadgePercent,
+  Star,
+  Package,
+  Headphones,
+  Sparkles,
+  type LucideIcon,
 } from "lucide-react";
 import { motion, type Variants } from "motion/react";
 import { cn } from "@/lib/utils/cn";
@@ -17,6 +25,29 @@ type Feature = {
   title: string;
   text: string;
 };
+
+/** Преимущество из админки (icon — имя lucide-строкой). */
+export type AdvantageFeature = { icon: string | null; title: string; text: string };
+
+/** Резолвер имени lucide-иконки → компонент (с фолбэком). */
+const ICONS: Record<string, LucideIcon> = {
+  "shield-check": ShieldCheck,
+  wrench: Wrench,
+  "arrow-right-left": ArrowRightLeft,
+  "messages-square": MessagesSquare,
+  "map-pin": MapPin,
+  "heart-handshake": HeartHandshake,
+  award: Award,
+  truck: Truck,
+  "badge-percent": BadgePercent,
+  star: Star,
+  package: Package,
+  headphones: Headphones,
+};
+function resolveIcon(name: string | null): LucideIcon {
+  if (!name) return Sparkles;
+  return ICONS[name.trim().toLowerCase()] ?? Sparkles;
+}
 
 const FEATURES: Feature[] = [
   {
@@ -64,7 +95,11 @@ const tileVariants: Variants = {
   }),
 };
 
-export function WhyAndFaq() {
+export function WhyAndFaq({ features }: { features?: AdvantageFeature[] }) {
+  const tiles: Feature[] =
+    features && features.length > 0
+      ? features.map((f) => ({ icon: resolveIcon(f.icon), title: f.title, text: f.text }))
+      : FEATURES;
   return (
     <section className="relative bg-surface">
       <div className="container-page py-20 md:py-28">
@@ -87,7 +122,7 @@ export function WhyAndFaq() {
         </motion.header>
 
         <div className="grid gap-4 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f, i) => (
+          {tiles.map((f, i) => (
             <motion.article
               key={f.title}
               custom={i}

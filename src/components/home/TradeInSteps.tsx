@@ -8,8 +8,11 @@ type Step = {
   n: number;
   title: string;
   description: string;
-  bullets: string[];
+  bullets?: string[];
 };
+
+/** Шаг trade-in из БД (передаётся с главной). */
+export type TradeInStepItem = Step;
 
 const STEPS: Step[] = [
   {
@@ -60,7 +63,8 @@ const cardVariants: Variants = {
   }),
 };
 
-export function TradeInSteps() {
+export function TradeInSteps({ steps }: { steps?: TradeInStepItem[] }) {
+  const data = steps && steps.length > 0 ? steps : STEPS;
   return (
     <section className="bg-bg">
       <div className="container-page pt-2 md:pt-4 pb-20 md:pb-28">
@@ -87,7 +91,7 @@ export function TradeInSteps() {
           />
 
           <div className="hidden lg:grid grid-cols-3 mb-10 relative">
-            {STEPS.map((s) => (
+            {data.map((s) => (
               <div
                 key={s.n}
                 className="justify-self-center inline-flex size-8 items-center justify-center rounded-full bg-ink text-white text-[13px] font-semibold ring-8 ring-bg"
@@ -98,7 +102,7 @@ export function TradeInSteps() {
           </div>
 
           <ol className="grid gap-5 md:gap-6 lg:grid-cols-3">
-            {STEPS.map((step, i) => (
+            {data.map((step, i) => (
               <motion.li
                 key={step.n}
                 custom={i}
@@ -130,7 +134,7 @@ export function TradeInSteps() {
                   </p>
 
                   <ul className="mt-6 space-y-2.5">
-                    {step.bullets.map((b) => (
+                    {(step.bullets ?? []).map((b) => (
                       <li
                         key={b}
                         className="flex items-start gap-3 text-sm text-ink"

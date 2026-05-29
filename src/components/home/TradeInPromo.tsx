@@ -1,9 +1,30 @@
 import * as React from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { ImagePlaceholder } from "@/components/ui/ImagePlaceholder";
 import { MotionReveal } from "@/components/ui/MotionReveal";
 
-export function TradeInPromo() {
+/** Trade-in блок из БД (передаётся с главной). */
+export type TradeInPromoBlock = {
+  title: string;
+  description: string;
+  buttonText: string;
+  buttonLink: string;
+  imageUrl: string | null;
+};
+
+const DEFAULT_BLOCK: TradeInPromoBlock = {
+  title: "Trade-in и выкуп старых устройств",
+  description:
+    "Сдайте старое устройство и получите выгоду при покупке новых моделей Apple. Принимаем iPhone, iPad, Mac, Watch и AirPods.",
+  buttonText: "Узнать вашу скидку",
+  buttonLink: "/trade-in",
+  imageUrl: null,
+};
+
+export function TradeInPromo({ block }: { block?: TradeInPromoBlock | null }) {
+  const b = block ?? DEFAULT_BLOCK;
   return (
     <section className="bg-bg">
       <div className="container-page pt-10 md:pt-16 pb-6 md:pb-10">
@@ -15,27 +36,32 @@ export function TradeInPromo() {
                   Trade-in
                 </p>
                 <h2 className="text-3xl md:text-5xl lg:text-6xl font-semibold tracking-[-0.03em] leading-[1.02]">
-                  Trade-in и выкуп
-                  <br />
-                  старых устройств
+                  {b.title}
                 </h2>
                 <p className="mt-5 text-base md:text-lg text-onDark-muted max-w-xl">
-                  Сдайте старое устройство и получите выгоду при покупке новых
-                  моделей Apple. Принимаем iPhone, iPad, Mac, Watch и AirPods.
+                  {b.description}
                 </p>
                 <div className="mt-7">
-                  <Button variant="invert" size="lg">
-                    Узнать вашу скидку
-                  </Button>
+                  <Link href={b.buttonLink || "/trade-in"}>
+                    <Button variant="invert" size="lg">
+                      {b.buttonText || "Узнать вашу скидку"}
+                    </Button>
+                  </Link>
                 </div>
               </div>
               <div className="md:col-span-5">
-                <ImagePlaceholder
-                  label="Apple Trade-in устройства"
-                  tone="dark"
-                  ratio="square"
-                  className="bg-white/5"
-                />
+                {b.imageUrl ? (
+                  <div className="relative aspect-square overflow-hidden rounded-2xl bg-white/5">
+                    <Image src={b.imageUrl} alt={b.title} fill className="object-cover" sizes="(max-width:768px) 100vw, 40vw" />
+                  </div>
+                ) : (
+                  <ImagePlaceholder
+                    label="Apple Trade-in устройства"
+                    tone="dark"
+                    ratio="square"
+                    className="bg-white/5"
+                  />
+                )}
               </div>
             </div>
           </div>
