@@ -52,30 +52,41 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (user && isLogin) {
-    return NextResponse.redirect(new URL("/admin", request.url));
-  }
-
-  // Гейт по правам роли: ограниченные роли не открывают чужие разделы по URL.
-  if (user && !isLogin && pathname !== "/admin") {
+  // Есть сессия Supabase — но это может быть покупатель (storefront), а не админ.
+  // Сессия общая, поэтому проверяем принадлежность к admin_users.
+  let adminRole: string | null = null;
+  if (user) {
     const { data: au } = await supabase
       .from("admin_users")
       .select("role")
       .eq("id", user.id)
       .eq("is_active", true)
       .maybeSingle();
-    if (au) {
-      const { data: role } = await supabase
-        .from("admin_roles")
-        .select("full_access, permissions")
-        .eq("key", au.role)
-        .maybeSingle();
-      const fullAccess = !!role?.full_access;
-      const perms: string[] = Array.isArray(role?.permissions) ? (role!.permissions as string[]) : [];
-      const allowed =
-        fullAccess || perms.some((p) => pathname === p || pathname.startsWith(p + "/"));
-      if (!allowed) return NextResponse.redirect(new URL("/admin", request.url));
-    }
+    adminRole = (au?.role as string | undefined) ?? null;
+  }
+
+  if (isLogin) {
+    // Админа уводим в дашборд; покупателя/гостя оставляем на странице логина (без петли).
+    if (adminRole) return NextResponse.redirect(new URL("/admin", request.url));
+    return response;
+  }
+
+  // Защищённые /admin/* — нужен активный админ.
+  if (!adminRole) {
+    return NextResponse.redirect(new URL(LOGIN_PATH, request.url));
+  }
+
+  // Гейт по правам роли: ограниченные роли не открывают чужие разделы по URL.
+  if (pathname !== "/admin") {
+    const { data: role } = await supabase
+      .from("admin_roles")
+      .select("full_access, permissions")
+      .eq("key", adminRole)
+      .maybeSingle();
+    const fullAccess = !!role?.full_access;
+    const perms: string[] = Array.isArray(role?.permissions) ? (role!.permissions as string[]) : [];
+    const allowed = fullAccess || perms.some((p) => pathname === p || pathname.startsWith(p + "/"));
+    if (!allowed) return NextResponse.redirect(new URL("/admin", request.url));
   }
 
   return response;
