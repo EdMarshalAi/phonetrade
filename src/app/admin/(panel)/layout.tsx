@@ -20,7 +20,13 @@ export default async function PanelLayout({
 }) {
   const admin = await requireAdmin();
   return (
-    <AdminShell role={admin.role} userName={admin.fullName} userEmail={admin.email}>
+    <AdminShell
+      role={admin.role}
+      fullAccess={admin.fullAccess}
+      permissions={admin.permissions}
+      userName={admin.fullName}
+      userEmail={admin.email}
+    >
       {children}
     </AdminShell>
   );

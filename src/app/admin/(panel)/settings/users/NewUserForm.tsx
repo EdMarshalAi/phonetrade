@@ -7,10 +7,10 @@ import { Field, TextInput, Select, FormError, AdminButton } from "@/components/a
 import { Panel } from "@/components/admin/ui";
 import { createAdminUser, type NewUserInput } from "./actions";
 
-export function NewUserForm() {
+export function NewUserForm({ roles }: { roles: { key: string; label: string }[] }) {
   const [formError, setFormError] = React.useState<string | null>(null);
   const { register, handleSubmit, control, formState: { isSubmitting } } = useForm<NewUserInput>({
-    defaultValues: { email: "", full_name: "", role: "manager", password: "" },
+    defaultValues: { email: "", full_name: "", role: roles[0]?.key ?? "manager", password: "" },
   });
 
   const onSubmit = async (values: NewUserInput) => {
@@ -31,9 +31,11 @@ export function NewUserForm() {
           <Field label="Роль">
             <Controller control={control} name="role" render={({ field }) => (
               <Select value={field.value} onChange={field.onChange}>
-                <option value="manager">Менеджер</option>
-                <option value="content">Контент</option>
-                <option value="admin">Администратор</option>
+                {roles.map((r) => (
+                  <option key={r.key} value={r.key}>
+                    {r.label}
+                  </option>
+                ))}
               </Select>
             )} />
           </Field>

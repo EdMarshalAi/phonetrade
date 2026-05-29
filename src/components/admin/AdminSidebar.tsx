@@ -4,8 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { navForRole } from "@/lib/admin/nav";
-import type { AdminRole } from "@/lib/admin/auth";
+import { navForAccess } from "@/lib/admin/nav";
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/admin") return pathname === "/admin";
@@ -18,16 +17,18 @@ function isActive(pathname: string, href: string): boolean {
  * акцент. На мобильных работает как drawer (управляется AdminShell).
  */
 export function AdminSidebar({
-  role,
+  fullAccess,
+  permissions,
   open,
   onClose,
 }: {
-  role: AdminRole;
+  fullAccess: boolean;
+  permissions: string[];
   open: boolean;
   onClose: () => void;
 }) {
   const pathname = usePathname();
-  const groups = navForRole(role);
+  const groups = navForAccess(fullAccess, permissions);
 
   return (
     <>

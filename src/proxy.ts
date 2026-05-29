@@ -56,6 +56,28 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/admin", request.url));
   }
 
+  // Гейт по правам роли: ограниченные роли не открывают чужие разделы по URL.
+  if (user && !isLogin && pathname !== "/admin") {
+    const { data: au } = await supabase
+      .from("admin_users")
+      .select("role")
+      .eq("id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (au) {
+      const { data: role } = await supabase
+        .from("admin_roles")
+        .select("full_access, permissions")
+        .eq("key", au.role)
+        .maybeSingle();
+      const fullAccess = !!role?.full_access;
+      const perms: string[] = Array.isArray(role?.permissions) ? (role!.permissions as string[]) : [];
+      const allowed =
+        fullAccess || perms.some((p) => pathname === p || pathname.startsWith(p + "/"));
+      if (!allowed) return NextResponse.redirect(new URL("/admin", request.url));
+    }
+  }
+
   return response;
 }
 

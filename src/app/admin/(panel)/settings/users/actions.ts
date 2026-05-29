@@ -9,11 +9,17 @@ import { writeAudit } from "@/lib/admin/audit";
 const newUserSchema = z.object({
   email: z.string().trim().email("Некорректный email").transform((s) => s.toLowerCase()),
   full_name: z.string().trim().min(1, "Укажите имя"),
-  role: z.enum(["admin", "manager", "content"]),
+  role: z.string().trim().min(1, "Выберите роль"),
   password: z.string().min(8, "Минимум 8 символов"),
 });
 
 export type NewUserInput = z.input<typeof newUserSchema>;
+
+/** Существует ли роль в admin_roles. */
+async function roleExists(db: ReturnType<typeof createSupabaseAdminClient>, key: string): Promise<boolean> {
+  const { data } = await db.from("admin_roles").select("key").eq("key", key).maybeSingle();
+  return !!data;
+}
 
 export async function createAdminUser(input: NewUserInput): Promise<{ error?: string }> {
   const me = await requireAdmin(["admin"]);
@@ -21,6 +27,7 @@ export async function createAdminUser(input: NewUserInput): Promise<{ error?: st
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Проверьте поля" };
 
   const db = createSupabaseAdminClient();
+  if (!(await roleExists(db, parsed.data.role))) return { error: "Неизвестная роль" };
   try {
     const created = await db.auth.admin.createUser({
       email: parsed.data.email,
@@ -51,8 +58,8 @@ export async function createAdminUser(input: NewUserInput): Promise<{ error?: st
 
 export async function setUserRole(id: string, role: string): Promise<{ error?: string }> {
   const me = await requireAdmin(["admin"]);
-  if (!["admin", "manager", "content"].includes(role)) return { error: "Неизвестная роль" };
   const db = createSupabaseAdminClient();
+  if (!(await roleExists(db, role))) return { error: "Неизвестная роль" };
   const { error } = await db.from("admin_users").update({ role }).eq("id", id);
   if (error) return { error: error.message };
   await writeAudit({ userId: me.id, action: "update", entityType: "admin_user", entityId: id, changes: { role } });

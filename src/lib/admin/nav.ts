@@ -20,7 +20,6 @@ import {
   Bell,
   Plug,
   UserCog,
-  Image as ImageIcon,
   type LucideIcon,
 } from "lucide-react";
 import type { AdminRole } from "@/lib/admin/auth";
@@ -96,26 +95,29 @@ export const ADMIN_NAV: NavGroup[] = [
       { label: "SEO", href: "/admin/settings/seo", icon: Search, roles: ADMIN_ONLY },
       { label: "Уведомления", href: "/admin/settings/notifications", icon: Bell, roles: ADMIN_ONLY },
       { label: "Интеграции", href: "/admin/settings/integrations", icon: Plug, roles: ADMIN_ONLY },
-      { label: "Пользователи", href: "/admin/settings/users", icon: UserCog, roles: ADMIN_ONLY },
-    ],
-  },
-  {
-    label: "Медиа",
-    items: [
-      { label: "Медиа-библиотека", href: "/admin/media", icon: ImageIcon, roles: ALL },
+      { label: "Администраторы", href: "/admin/settings/users", icon: UserCog, roles: ADMIN_ONLY },
     ],
   },
 ];
 
-/** Плоский список доступных пользователю пунктов (для фильтрации по роли). */
-export function navForRole(role: AdminRole): NavGroup[] {
-  // Owner — суперадмин: видит всё.
-  if (role === "owner") return ADMIN_NAV;
+/** Сайдбар по правам роли: full_access — всё; иначе фильтр по permissions (href). */
+export function navForAccess(fullAccess: boolean, permissions: string[]): NavGroup[] {
+  if (fullAccess) return ADMIN_NAV.filter((g) => g.items.length > 0);
   return ADMIN_NAV.map((group) => ({
     ...group,
-    items: group.items.filter((i) => !i.roles || i.roles.includes(role)),
+    items: group.items.filter(
+      (i) => i.href === "/admin" || permissions.some((p) => i.href === p || i.href.startsWith(p + "/"))
+    ),
   })).filter((group) => group.items.length > 0);
 }
+
+/** Плоский список разделов для настройки прав роли (без дашборда). */
+export const NAV_PERMISSION_ITEMS: { href: string; label: string; group: string }[] =
+  ADMIN_NAV.flatMap((g) =>
+    g.items
+      .filter((i) => i.href !== "/admin")
+      .map((i) => ({ href: i.href, label: i.label, group: g.label ?? "Основное" }))
+  );
 
 /** Человеческое имя раздела по href (для хлебных крошек/заголовков). */
 export function labelForHref(href: string): string | undefined {

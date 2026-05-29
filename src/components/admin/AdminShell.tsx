@@ -13,11 +13,15 @@ import type { AdminRole } from "@/lib/admin/auth";
  */
 export function AdminShell({
   role,
+  fullAccess,
+  permissions,
   userName,
   userEmail,
   children,
 }: {
   role: AdminRole;
+  fullAccess: boolean;
+  permissions: string[];
   userName: string;
   userEmail: string;
   children: React.ReactNode;
@@ -26,7 +30,7 @@ export function AdminShell({
 
   return (
     <div className="flex min-h-dvh bg-surface text-ink">
-      <AdminSidebar role={role} open={open} onClose={() => setOpen(false)} />
+      <AdminSidebar fullAccess={fullAccess} permissions={permissions} open={open} onClose={() => setOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminTopbar
           role={role}

@@ -6,7 +6,15 @@ import { toast } from "sonner";
 import { Select, Switch } from "@/components/admin/form";
 import { setUserRole, setUserActive } from "./actions";
 
-export function RoleSelect({ id, role }: { id: string; role: string }) {
+export function RoleSelect({
+  id,
+  role,
+  roles,
+}: {
+  id: string;
+  role: string;
+  roles: { key: string; label: string }[];
+}) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
   return (
@@ -21,11 +29,13 @@ export function RoleSelect({ id, role }: { id: string; role: string }) {
           else { toast.success("Роль обновлена"); router.refresh(); }
         });
       }}
-      className="h-8 w-40"
+      className="w-44"
     >
-      <option value="admin">Администратор</option>
-      <option value="manager">Менеджер</option>
-      <option value="content">Контент</option>
+      {roles.map((r) => (
+        <option key={r.key} value={r.key}>
+          {r.label}
+        </option>
+      ))}
     </Select>
   );
 }

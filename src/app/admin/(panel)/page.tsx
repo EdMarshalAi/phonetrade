@@ -11,7 +11,7 @@ import {
 import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { PageHeader, Panel, PanelHeader, PanelTitle } from "@/components/admin/ui";
-import { navForRole } from "@/lib/admin/nav";
+import { navForAccess } from "@/lib/admin/nav";
 import { TimeSeriesChart, type SeriesPoint } from "@/components/admin/Charts";
 
 export const metadata: Metadata = { title: "Обзор" };
@@ -76,7 +76,7 @@ export default async function AdminDashboardPage() {
     { label: "Заявок", value: leads, icon: Inbox, href: "/admin/leads" },
   ];
 
-  const groups = navForRole(admin.role).filter((g) => g.label);
+  const groups = navForAccess(admin.fullAccess, admin.permissions).filter((g) => g.label);
 
   return (
     <>

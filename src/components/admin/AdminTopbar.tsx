@@ -14,6 +14,7 @@ interface Crumb {
 }
 
 const ROLE_LABEL: Record<string, string> = {
+  developer: "Разработчик",
   owner: "Владелец",
   admin: "Администратор",
   manager: "Менеджер",

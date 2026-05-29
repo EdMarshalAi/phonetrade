@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { cn } from "@/lib/utils/cn";
@@ -10,10 +10,10 @@ import { AdminButton } from "@/components/admin/form";
 import { AuditLogView } from "@/components/admin/AuditLogView";
 import { RoleSelect, ActiveToggle } from "./UserControls";
 
-export const metadata: Metadata = { title: "Пользователи админки" };
+export const metadata: Metadata = { title: "Администраторы" };
 
 const TABS = [
-  { key: "users", label: "Пользователи" },
+  { key: "users", label: "Сотрудники" },
   { key: "audit", label: "Журнал действий" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
@@ -39,15 +39,22 @@ export default async function UsersPage({
   return (
     <>
       <PageHeader
-        title="Пользователи админки"
-        description="Сотрудники, роли, доступ и журнал действий."
+        title="Администраторы"
+        description="Сотрудники, роли и права доступа к разделам, журнал действий."
         actions={
           tab === "users" ? (
-            <Link href="/admin/settings/users/new">
-              <AdminButton>
-                <Plus className="h-4 w-4" strokeWidth={2} /> Добавить
-              </AdminButton>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/admin/settings/users/roles">
+                <AdminButton variant="outline">
+                  <Settings className="h-4 w-4" strokeWidth={1.75} /> Роли и права
+                </AdminButton>
+              </Link>
+              <Link href="/admin/settings/users/new">
+                <AdminButton>
+                  <Plus className="h-4 w-4" strokeWidth={2} /> Добавить
+                </AdminButton>
+              </Link>
+            </div>
           ) : undefined
         }
       />
@@ -75,8 +82,12 @@ export default async function UsersPage({
 
 async function UsersTab() {
   const db = createSupabaseAdminClient();
-  const { data } = await db.from("admin_users").select("id,email,full_name,role,is_active,last_login_at").order("created_at");
+  const [{ data }, { data: roleData }] = await Promise.all([
+    db.from("admin_users").select("id,email,full_name,role,is_active,last_login_at").order("created_at"),
+    db.from("admin_roles").select("key,label").order("sort"),
+  ]);
   const rows = (data ?? []) as Row[];
+  const roles = (roleData ?? []) as { key: string; label: string }[];
   if (rows.length === 0) return <EmptyState title="Нет пользователей" />;
   return (
     <Table>
@@ -92,7 +103,7 @@ async function UsersTab() {
           <TR key={u.id}>
             <TD className="font-medium">{u.full_name || "—"}</TD>
             <TD className="text-ink-muted">{u.email}</TD>
-            <TD><RoleSelect id={u.id} role={u.role} /></TD>
+            <TD><RoleSelect id={u.id} role={u.role} roles={roles} /></TD>
             <TD className="whitespace-nowrap text-ink-muted">{u.last_login_at ? new Date(u.last_login_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" }) : "—"}</TD>
             <TD><ActiveToggle id={u.id} active={u.is_active} /></TD>
           </TR>
