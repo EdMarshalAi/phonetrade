@@ -11,12 +11,14 @@ import { ImageField } from "@/components/admin/ImageField";
 import { Panel, PanelTitle } from "@/components/admin/ui";
 import { RichEditor } from "@/components/admin/RichEditor";
 import { cn } from "@/lib/utils/cn";
+import type { ProductOption } from "@/lib/content";
 import { createCategory, updateCategory } from "./actions";
 
 const CAT_TABS = [
   { key: "main", label: "Основное" },
   { key: "media", label: "Изображения" },
   { key: "home", label: "На главной" },
+  { key: "filters", label: "Фильтры" },
   { key: "seo", label: "SEO" },
 ] as const;
 type CatTab = (typeof CAT_TABS)[number]["key"];
@@ -35,15 +37,18 @@ export interface CategoryValue {
   sort: number;
   show_on_home: boolean;
   home_limit: number;
+  available_filters: string[] | null;
   is_published: boolean;
 }
 
 export function CategoryForm({
   category,
   parents,
+  optionDefs = [],
 }: {
   category?: CategoryValue;
   parents: { slug: string; title: string }[];
+  optionDefs?: ProductOption[];
 }) {
   const isEdit = !!category;
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -73,6 +78,7 @@ export function CategoryForm({
       sort: category?.sort ?? 0,
       show_on_home: category?.show_on_home ?? false,
       home_limit: category?.home_limit ?? 8,
+      available_filters: category?.available_filters ?? [],
       is_published: category?.is_published ?? true,
     },
   });
@@ -216,6 +222,55 @@ export function CategoryForm({
             <TextInput type="number" min={1} max={24} className="w-28" {...register("home_limit")} />
           </Field>
         </div>
+      </Panel>
+      </div>
+
+      <div hidden={tab !== "filters"}>
+      <Panel className="space-y-4 p-5">
+        <PanelTitle>Фильтры в этой категории</PanelTitle>
+        <p className="text-[13px] text-ink-muted">
+          Какие фильтры показывать покупателю на странице категории. Значения берутся из «Товары → Настройки → Опции».
+          Фильтр по цене показывается всегда.
+        </p>
+        <Controller
+          control={control}
+          name="available_filters"
+          render={({ field }) => {
+            const current = new Set<string>((field.value as string[]) ?? []);
+            const items = [
+              { key: "model", label: "Модель" },
+              ...optionDefs.map((o) => ({ key: o.key, label: o.label })),
+            ];
+            const toggle = (key: string) => {
+              const next = new Set(current);
+              if (next.has(key)) next.delete(key);
+              else next.add(key);
+              field.onChange([...next]);
+            };
+            return (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {items.map((it) => {
+                  const on = current.has(it.key);
+                  return (
+                    <label
+                      key={it.key}
+                      className={cn(
+                        "flex cursor-pointer items-center justify-between gap-4 rounded-md border px-4 py-3 transition-colors",
+                        on ? "border-ink/40 bg-ink/[0.03]" : "border-border/60 bg-surface/40 hover:border-border"
+                      )}
+                    >
+                      <span className="text-[14px] font-medium text-ink">{it.label}</span>
+                      <Switch checked={on} onChange={() => toggle(it.key)} />
+                    </label>
+                  );
+                })}
+              </div>
+            );
+          }}
+        />
+        <p className="text-[12px] text-ink-subtle">
+          Если ничего не выбрано — используется набор по умолчанию для категории.
+        </p>
       </Panel>
       </div>
 

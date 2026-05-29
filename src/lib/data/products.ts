@@ -49,7 +49,12 @@ export type Product = {
   highlights?: string[];
   priceCash: number;
   priceCard: number;
+  /** Устаревшее одиночное поле бейджа (оставлено для обратной совместимости). */
   badge?: string;
+  /** Ключи бейджей из реестра (shop_settings.product_badges) — может быть несколько. */
+  badges?: string[];
+  /** Значения кастомных опций (базовые color/memory/sim/condition — в своих полях). */
+  options?: Record<string, string>;
   condition?: string;
   battery?: number;
   isUsed?: boolean;

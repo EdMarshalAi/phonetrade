@@ -10,8 +10,10 @@ import { slugify } from "@/lib/admin/slug";
 import { Field, TextInput, Textarea, Select, Switch, FormError, AdminButton } from "@/components/admin/form";
 import { ImageField } from "@/components/admin/ImageField";
 import { Panel } from "@/components/admin/ui";
+import type { ProductOption, ProductBadge } from "@/lib/content";
 import { createProduct, updateProduct } from "./actions";
 import { VariantsSection, GallerySection, type Variant, type ProductImage } from "./VariantsManager";
+import { OptionsBadgesSection } from "./OptionsBadgesSection";
 
 export interface ProductValue extends Partial<ProductInput> {
   id: string;
@@ -19,6 +21,7 @@ export interface ProductValue extends Partial<ProductInput> {
 
 const TABS = [
   { key: "main", label: "Основное" },
+  { key: "optionsBadges", label: "Опции и Бейджи" },
   { key: "price", label: "Цены и наличие" },
   { key: "used", label: "Состояние (Б/У)" },
   { key: "seo", label: "SEO" },
@@ -32,11 +35,15 @@ export function ProductForm({
   categories,
   variants = [],
   images = [],
+  optionDefs = [],
+  badgeDefs = [],
 }: {
   product?: ProductValue;
   categories: { slug: string; title: string }[];
   variants?: Variant[];
   images?: ProductImage[];
+  optionDefs?: ProductOption[];
+  badgeDefs?: ProductBadge[];
 }) {
   const isEdit = !!product;
   const [tab, setTab] = React.useState<TabKey>("main");
@@ -60,8 +67,12 @@ export function ProductForm({
       model: product?.model ?? "",
       color: product?.color ?? "",
       memory: product?.memory ?? "",
+      sim: product?.sim ?? "",
+      condition: product?.condition ?? "",
       type: product?.type ?? "new",
       badge: product?.badge ?? "",
+      badges: product?.badges ?? [],
+      options: product?.options ?? {},
       short_description: product?.short_description ?? "",
       image: product?.image ?? "",
       price_cash: product?.price_cash ?? 0,
@@ -169,19 +180,13 @@ export function ProductForm({
               <TextInput placeholder="IP17PRO-256-ORANGE" {...register("sku")} />
             </Field>
           </div>
-          <div className="grid gap-4 sm:grid-cols-4">
-            <Field label="Модель">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Модель" hint="Линейка для фильтра (напр. iPhone 17 Pro)">
               <TextInput placeholder="iPhone 17 Pro" {...register("model")} />
             </Field>
-            <Field label="Цвет">
-              <TextInput placeholder="Orange" {...register("color")} />
-            </Field>
-            <Field label="Память">
-              <TextInput placeholder="256GB" {...register("memory")} />
-            </Field>
-            <Field label="Бейдж">
-              <TextInput placeholder="Новинка" {...register("badge")} />
-            </Field>
+            <div className="flex items-end pb-1 text-[12.5px] text-ink-subtle">
+              Цвет, память, SIM, состояние и бейджи — на вкладке «Опции и Бейджи».
+            </div>
           </div>
           <Field label="Краткое описание" hint="1–2 строки для карточки в списке">
             <Textarea {...register("short_description")} />
@@ -199,6 +204,11 @@ export function ProductForm({
             />
           </Field>
         </Panel>
+      </div>
+
+      {/* Опции и Бейджи */}
+      <div hidden={tab !== "optionsBadges"}>
+        <OptionsBadgesSection control={control} options={optionDefs} badges={badgeDefs} />
       </div>
 
       {/* Цены и наличие */}

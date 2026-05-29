@@ -17,6 +17,8 @@ export type ProductRow = {
   price_cash: number;
   price_card: number;
   badge: string | null;
+  badges: string[] | null;
+  options: Record<string, string> | null;
   condition: string | null;
   battery: number | null;
   is_used: boolean;
@@ -50,6 +52,8 @@ export function rowToProduct(r: ProductRow): Product {
     priceCash: r.price_cash,
     priceCard: r.price_card,
     badge: r.badge ?? undefined,
+    badges: Array.isArray(r.badges) ? r.badges : undefined,
+    options: r.options ?? undefined,
     condition: r.condition ?? undefined,
     battery: r.battery ?? undefined,
     isUsed: r.is_used,
@@ -69,6 +73,17 @@ export function rowToCategory(r: CategoryRow): Category {
   };
 }
 
+/** Бейджи: явные ключи или вывод из устаревших isNew/badge (для идемпотентного сида). */
+function deriveBadges(p: Product): string[] {
+  if (Array.isArray(p.badges)) return p.badges;
+  const out: string[] = [];
+  if (p.isNew) out.push("new");
+  if (p.badge === "Без RuStore") out.push("no-rustore");
+  else if (p.badge === "В наличии") out.push("in-stock");
+  else if (p.badge === "Уточняйте наличие") out.push("check-availability");
+  return out;
+}
+
 export function productToRow(p: Product, sort = 0): ProductRow & { sort: number } {
   return {
     id: p.id,
@@ -86,6 +101,8 @@ export function productToRow(p: Product, sort = 0): ProductRow & { sort: number 
     price_cash: p.priceCash,
     price_card: p.priceCard,
     badge: p.badge ?? null,
+    badges: deriveBadges(p),
+    options: p.options ?? {},
     condition: p.condition ?? null,
     battery: p.battery ?? null,
     is_used: p.isUsed ?? false,

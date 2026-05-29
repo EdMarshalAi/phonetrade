@@ -78,13 +78,69 @@ export interface CategoryMeta {
   title: string;
   icon_url: string | null;
   seo_text: string | null;
+  available_filters: string[] | null;
 }
 
-/** Мета категории из БД (иконка + SEO-текст внизу страницы). */
+/** Мета категории из БД (иконка + SEO-текст + включённые фильтры). */
 export async function getCategoryMeta(slug: string): Promise<CategoryMeta | null> {
   if (!supabase) return null;
-  const { data } = await supabase.from("categories").select("title,icon_url,seo_text").eq("slug", slug).maybeSingle();
-  return (data as CategoryMeta) ?? null;
+  const { data } = await supabase
+    .from("categories")
+    .select("title,icon_url,seo_text,available_filters")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    ...(data as Omit<CategoryMeta, "available_filters">),
+    available_filters: Array.isArray((data as { available_filters?: unknown }).available_filters)
+      ? ((data as { available_filters: string[] }).available_filters)
+      : null,
+  };
+}
+
+// ── Реестр опций и бейджей товаров (shop_settings) ───────────────────────────
+
+/** Тип-опция (характеристика-фильтр) со справочником значений. */
+export interface ProductOption {
+  key: string;
+  label: string;
+  /** Колонка products для базовых опций (color/memory/sim/condition) или null для кастомных. */
+  field: string | null;
+  values: string[];
+  sort: number;
+}
+
+/** Бейдж с настраиваемыми цветами и подсказкой. */
+export interface ProductBadge {
+  key: string;
+  label: string;
+  bg: string;
+  fg: string;
+  tooltip?: string;
+  sort: number;
+}
+
+/** Дефолты — если в БД реестра ещё нет (фолбэк, чтобы витрина не ломалась). */
+export const DEFAULT_PRODUCT_BADGES: ProductBadge[] = [
+  { key: "new", label: "Новинка", bg: "#1d1d1f", fg: "#ffffff", tooltip: "", sort: 0 },
+  { key: "no-rustore", label: "Без RuStore", bg: "#1d1d1f", fg: "#ffffff", tooltip: "Имеет недостаток в виде невозможности предустановки RuStore", sort: 1 },
+  { key: "in-stock", label: "В наличии", bg: "#ffffff", fg: "#1d1d1f", tooltip: "", sort: 2 },
+  { key: "check-availability", label: "Уточняйте наличие", bg: "#ffffff", fg: "#1d1d1f", tooltip: "", sort: 3 },
+];
+
+export async function getProductOptions(): Promise<ProductOption[]> {
+  if (!supabase) return [];
+  const { data } = await supabase.from("shop_settings").select("value").eq("key", "product_options").maybeSingle();
+  const arr = (data?.value as ProductOption[] | undefined) ?? [];
+  return [...arr].sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+}
+
+export async function getProductBadges(): Promise<ProductBadge[]> {
+  if (!supabase) return DEFAULT_PRODUCT_BADGES;
+  const { data } = await supabase.from("shop_settings").select("value").eq("key", "product_badges").maybeSingle();
+  const arr = (data?.value as ProductBadge[] | undefined) ?? null;
+  if (!arr || arr.length === 0) return DEFAULT_PRODUCT_BADGES;
+  return [...arr].sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 }
 
 export interface HeroSlideRow {

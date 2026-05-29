@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { Plus, ImageOff } from "lucide-react";
+import { Plus, ImageOff, Settings } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rangeFor } from "@/lib/admin/mutations";
 import { PageHeader, StatusBadge } from "@/components/admin/ui";
@@ -67,11 +67,18 @@ export default async function ProductsPage({
         title="Товары"
         description={`Всего: ${total}. Новые и Б/У, цены, наличие, статус.`}
         actions={
-          <Link href="/admin/catalog/products/new">
-            <AdminButton>
-              <Plus className="h-4 w-4" strokeWidth={2} /> Добавить
-            </AdminButton>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/admin/catalog/products/settings">
+              <AdminButton variant="outline">
+                <Settings className="h-4 w-4" strokeWidth={1.75} /> Настройки
+              </AdminButton>
+            </Link>
+            <Link href="/admin/catalog/products/new">
+              <AdminButton>
+                <Plus className="h-4 w-4" strokeWidth={2} /> Добавить
+              </AdminButton>
+            </Link>
+          </div>
         }
       />
 

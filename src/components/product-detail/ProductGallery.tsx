@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import type { Product } from "@/lib/data/products";
 import { cn } from "@/lib/utils/cn";
 import { productImages } from "@/lib/utils/product-images";
+import { ProductBadges } from "@/components/product/ProductBadges";
 
 type Props = { product: Product };
 
@@ -51,16 +52,7 @@ export function ProductGallery({ product }: Props) {
       )}
 
       <div className="relative flex-1 rounded-3xl bg-surface overflow-hidden aspect-square">
-        {product.badge && (
-          <span className="absolute top-5 left-5 z-10 inline-flex items-center rounded-full bg-white/95 backdrop-blur-sm px-3 py-1.5 text-[11px] font-medium tracking-tight text-ink shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-            {product.badge}
-          </span>
-        )}
-        {product.isNew && (
-          <span className="absolute top-5 right-5 z-10 inline-flex items-center rounded-full bg-ink text-white px-3 py-1.5 text-[11px] font-medium tracking-wide uppercase">
-            Новинка
-          </span>
-        )}
+        <ProductBadges badges={product.badges} className="absolute top-5 left-5 z-10 max-w-[calc(100%-2.5rem)]" />
 
         <AnimatePresence mode="wait" initial={false}>
           <motion.div

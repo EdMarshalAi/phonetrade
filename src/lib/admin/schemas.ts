@@ -41,6 +41,7 @@ export const categorySchema = z.object({
   sort: z.coerce.number().int().min(0).default(0),
   show_on_home: z.boolean().default(false),
   home_limit: z.coerce.number().int().min(1).max(24).default(8),
+  available_filters: z.array(z.string()).default([]),
   is_published: z.boolean().default(true),
 });
 export type CategoryInput = z.infer<typeof categorySchema>;
@@ -55,8 +56,12 @@ export const productSchema = z.object({
   model: z.string().trim().nullable().optional(),
   color: z.string().trim().nullable().optional(),
   memory: z.string().trim().nullable().optional(),
+  sim: z.string().trim().nullable().optional(),
+  condition: z.string().trim().nullable().optional(),
   type: z.enum(["new", "used"]).default("new"),
   badge: z.string().trim().nullable().optional(),
+  badges: z.array(z.string()).default([]),
+  options: z.record(z.string(), z.string()).default({}),
   short_description: z.string().trim().nullable().optional(),
   image: z.string().trim().nullable().optional(),
   price_cash: z.coerce.number().int().min(0).default(0),

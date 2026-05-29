@@ -8,6 +8,7 @@ import { AdminButton } from "@/components/admin/form";
 import { ProductForm, type ProductValue } from "../../ProductForm";
 import type { ProductImage } from "../../VariantsManager";
 import { productImages } from "@/lib/utils/product-images";
+import { getProductOptions, getProductBadges } from "@/lib/content";
 
 export const metadata: Metadata = { title: "Товар" };
 
@@ -18,10 +19,12 @@ export default async function EditProductPage({
 }) {
   const { id } = await params;
   const db = createSupabaseAdminClient();
-  const [{ data: prod }, { data: cats }, { data: varRows }] = await Promise.all([
+  const [{ data: prod }, { data: cats }, { data: varRows }, optionDefs, badgeDefs] = await Promise.all([
     db.from("products").select("*").eq("id", id).maybeSingle(),
     db.from("categories").select("slug,title").order("sort"),
     db.from("product_variants").select("*").eq("product_id", id).order("sort_order"),
+    getProductOptions(),
+    getProductBadges(),
   ]);
 
   if (!prod) notFound();
@@ -61,6 +64,8 @@ export default async function EditProductPage({
         categories={categories}
         variants={varRows ?? []}
         images={imgRows ?? []}
+        optionDefs={optionDefs}
+        badgeDefs={badgeDefs}
       />
     </>
   );

@@ -21,6 +21,7 @@ function normalize(input: CategoryInput) {
     sort: input.sort ?? 0,
     show_on_home: input.show_on_home ?? false,
     home_limit: input.home_limit ?? 8,
+    available_filters: input.available_filters ?? [],
     is_published: input.is_published ?? true,
     updated_at: new Date().toISOString(),
   };

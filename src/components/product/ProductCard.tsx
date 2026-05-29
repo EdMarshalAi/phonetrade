@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { InfoBadge } from "@/components/ui/InfoBadge";
+import { ProductBadges } from "@/components/product/ProductBadges";
 import { formatPrice } from "@/lib/utils/format-price";
 import { productImages } from "@/lib/utils/product-images";
 import { cn } from "@/lib/utils/cn";
@@ -15,17 +15,7 @@ type Props = {
   className?: string;
 };
 
-const BADGE_TOOLTIPS: Record<string, string> = {
-  "Без RuStore":
-    "Имеет недостаток в виде невозможности предустановки RuStore",
-};
-
 export function ProductCard({ product, className }: Props) {
-  const isRustore = product.badge?.toLowerCase().includes("rustore");
-  const badgeClass = isRustore
-    ? "bg-ink text-white"
-    : "bg-white/95 text-ink backdrop-blur-sm shadow-[0_1px_2px_rgba(0,0,0,0.04)]";
-
   const images = React.useMemo(
     () => productImages(product),
     [product.gallery, product.image] // eslint-disable-line react-hooks/exhaustive-deps
@@ -54,15 +44,7 @@ export function ProductCard({ product, className }: Props) {
       )}
     >
       <div className="relative -mx-4 -mt-4 sm:-mx-5 sm:-mt-5 mb-4 bg-surface aspect-square overflow-hidden">
-        {product.badge && (
-          <div className="absolute top-3 left-3 z-20">
-            <InfoBadge
-              text={product.badge}
-              tooltip={BADGE_TOOLTIPS[product.badge]}
-              className={badgeClass}
-            />
-          </div>
-        )}
+        <ProductBadges badges={product.badges} className="absolute top-3 left-3 z-20 max-w-[calc(100%-1.5rem)]" />
 
         {product.isUsed && (
           <span className="absolute bottom-3 right-3 z-20 inline-flex items-center rounded-md bg-ink text-white text-[10px] font-semibold px-2 py-1 tracking-wide">
