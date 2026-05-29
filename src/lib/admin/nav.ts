@@ -22,7 +22,6 @@ import {
   Bell,
   Plug,
   UserCog,
-  ScrollText,
   Image as ImageIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -101,7 +100,6 @@ export const ADMIN_NAV: NavGroup[] = [
       { label: "Уведомления", href: "/admin/settings/notifications", icon: Bell, roles: ADMIN_ONLY },
       { label: "Интеграции", href: "/admin/settings/integrations", icon: Plug, roles: ADMIN_ONLY },
       { label: "Пользователи", href: "/admin/settings/users", icon: UserCog, roles: ADMIN_ONLY },
-      { label: "Журнал аудита", href: "/admin/settings/audit-log", icon: ScrollText, roles: ADMIN_ONLY },
     ],
   },
   {

@@ -3,12 +3,20 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { cn } from "@/lib/utils/cn";
 import { PageHeader } from "@/components/admin/ui";
 import { Table, THead, TH, TBody, TR, TD, EmptyState } from "@/components/admin/table";
 import { AdminButton } from "@/components/admin/form";
+import { AuditLogView } from "@/components/admin/AuditLogView";
 import { RoleSelect, ActiveToggle } from "./UserControls";
 
 export const metadata: Metadata = { title: "Пользователи админки" };
+
+const TABS = [
+  { key: "users", label: "Пользователи" },
+  { key: "audit", label: "Журнал действий" },
+] as const;
+type Tab = (typeof TABS)[number]["key"];
 
 interface Row {
   id: string;
@@ -19,47 +27,77 @@ interface Row {
   last_login_at: string | null;
 }
 
-export default async function UsersPage() {
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   await requireAdmin(["admin"]);
-  const db = createSupabaseAdminClient();
-  const { data } = await db.from("admin_users").select("id,email,full_name,role,is_active,last_login_at").order("created_at");
-  const rows = (data ?? []) as Row[];
+  const sp = await searchParams;
+  const tab: Tab = (TABS.some((t) => t.key === sp.tab) ? sp.tab : "users") as Tab;
 
   return (
     <>
       <PageHeader
         title="Пользователи админки"
-        description="Сотрудники, роли и доступ. Управление доступно только администраторам."
+        description="Сотрудники, роли, доступ и журнал действий."
         actions={
-          <Link href="/admin/settings/users/new">
-            <AdminButton><Plus className="h-4 w-4" strokeWidth={2} /> Добавить</AdminButton>
-          </Link>
+          tab === "users" ? (
+            <Link href="/admin/settings/users/new">
+              <AdminButton>
+                <Plus className="h-4 w-4" strokeWidth={2} /> Добавить
+              </AdminButton>
+            </Link>
+          ) : undefined
         }
       />
-      {rows.length === 0 ? (
-        <EmptyState title="Нет пользователей" />
-      ) : (
-        <Table>
-          <THead>
-            <TH>Имя</TH>
-            <TH>Email</TH>
-            <TH className="w-44">Роль</TH>
-            <TH className="w-40">Последний вход</TH>
-            <TH className="w-24">Активен</TH>
-          </THead>
-          <TBody>
-            {rows.map((u) => (
-              <TR key={u.id}>
-                <TD className="font-medium">{u.full_name || "—"}</TD>
-                <TD className="text-ink-muted">{u.email}</TD>
-                <TD><RoleSelect id={u.id} role={u.role} /></TD>
-                <TD className="text-ink-muted">{u.last_login_at ? new Date(u.last_login_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" }) : "—"}</TD>
-                <TD><ActiveToggle id={u.id} active={u.is_active} /></TD>
-              </TR>
-            ))}
-          </TBody>
-        </Table>
-      )}
+
+      <div className="flex flex-wrap gap-1 border-b border-border/70">
+        {TABS.map((t) => (
+          <Link
+            key={t.key}
+            href={`/admin/settings/users?tab=${t.key}`}
+            className={cn(
+              "relative px-3.5 py-2 text-[13.5px] font-medium transition-colors",
+              tab === t.key ? "text-ink" : "text-ink-muted hover:text-ink"
+            )}
+          >
+            {t.label}
+            {tab === t.key ? <span className="absolute inset-x-2.5 -bottom-px h-0.5 rounded-full bg-ink" /> : null}
+          </Link>
+        ))}
+      </div>
+
+      {tab === "users" ? <UsersTab /> : <AuditLogView searchParams={sp} />}
     </>
+  );
+}
+
+async function UsersTab() {
+  const db = createSupabaseAdminClient();
+  const { data } = await db.from("admin_users").select("id,email,full_name,role,is_active,last_login_at").order("created_at");
+  const rows = (data ?? []) as Row[];
+  if (rows.length === 0) return <EmptyState title="Нет пользователей" />;
+  return (
+    <Table>
+      <THead>
+        <TH>Имя</TH>
+        <TH>Email</TH>
+        <TH className="w-44">Роль</TH>
+        <TH className="w-40">Последний вход</TH>
+        <TH className="w-24">Активен</TH>
+      </THead>
+      <TBody>
+        {rows.map((u) => (
+          <TR key={u.id}>
+            <TD className="font-medium">{u.full_name || "—"}</TD>
+            <TD className="text-ink-muted">{u.email}</TD>
+            <TD><RoleSelect id={u.id} role={u.role} /></TD>
+            <TD className="text-ink-muted">{u.last_login_at ? new Date(u.last_login_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" }) : "—"}</TD>
+            <TD><ActiveToggle id={u.id} active={u.is_active} /></TD>
+          </TR>
+        ))}
+      </TBody>
+    </Table>
   );
 }
