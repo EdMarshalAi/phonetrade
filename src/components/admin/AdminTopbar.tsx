@@ -29,11 +29,20 @@ const CRUMB_OVERRIDES: { prefix: string; group: string; label: string; href: str
   { prefix: "/admin/settings/users/audit-log", group: "Настройки", label: "Пользователи", href: "/admin/settings/users" },
 ];
 
+/** Русские подписи для известных хвостовых сегментов пути. */
+const TAIL_LABELS: Record<string, string> = {
+  new: "Создание",
+  edit: "Редактирование",
+  settings: "Настройки",
+  "audit-log": "Журнал действий",
+};
+
 function tailLabel(pathname: string, base: string): string {
   const tail = pathname.slice(base.length).split("/").filter(Boolean);
   const last = tail[tail.length - 1] ?? "";
   if (last === "new") return "Создание";
   if (last === "edit" || tail.includes("edit")) return "Редактирование";
+  if (TAIL_LABELS[last]) return TAIL_LABELS[last];
   return last.charAt(0).toUpperCase() + last.slice(1);
 }
 
