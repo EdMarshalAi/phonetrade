@@ -56,26 +56,38 @@ jobs:
       - name: Setup SSH
         if: env.SKIP_DEPLOY != 'true'
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_deploy
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          # printf '%s\n' гарантирует завершающий перевод строки —
+          # без него OpenSSH ругается "invalid format" на ключе из секрета.
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
-          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # Проверяем, что ключ читается (явная ошибка вместо падения rsync)
+          ssh-keygen -y -f ~/.ssh/id_deploy >/dev/null
+          # Доверяем host key при первом подключении (без интерактива)
+          cat >> ~/.ssh/config <<EOF
+          Host deploy-target
+            HostName $SSH_HOST
+            User $SSH_USER
+            Port $SSH_PORT
+            IdentityFile ~/.ssh/id_deploy
+            StrictHostKeyChecking accept-new
+            IdentitiesOnly yes
+            BatchMode yes
+          EOF
 
       - name: Rsync standalone to server
         if: env.SKIP_DEPLOY != 'true'
         run: |
-          # Папка деплоя + rsync на сервере (ставим, если отсутствует)
-          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+          ssh deploy-target \
             "mkdir -p '$DEPLOY_PATH'; command -v rsync >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y rsync)"
-          rsync -az --delete \
-            -e "ssh -i ~/.ssh/id_deploy -p $SSH_PORT" \
+          rsync -az --delete -e "ssh" \
             .next/standalone/ \
-            "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/"
+            "deploy-target:$DEPLOY_PATH/"
 
       - name: Restart with PM2
         if: env.SKIP_DEPLOY != 'true'
         env:
           SVC: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
-            "cd '$DEPLOY_PATH' && SUPABASE_SERVICE_ROLE_KEY='$SVC' (pm2 reload ecosystem.config.js --update-env || pm2 start ecosystem.config.js) && pm2 save"
+          ssh deploy-target \
+            "cd '$DEPLOY_PATH' && SUPABASE_SERVICE_ROLE_KEY='$SVC' bash -c '(pm2 reload ecosystem.config.js --update-env || pm2 start ecosystem.config.js) && pm2 save'"
