@@ -7,7 +7,15 @@ export type AuditAction =
   | "delete"
   | "login"
   | "logout"
-  | "status_change";
+  | "status_change"
+  | "settings_change"
+  | "bulk_update"
+  | "export"
+  | "import"
+  | "invite_sent"
+  | "invite_accepted"
+  | "role_changed"
+  | "login_failed";
 
 export interface AuditEntry {
   userId: string | null;

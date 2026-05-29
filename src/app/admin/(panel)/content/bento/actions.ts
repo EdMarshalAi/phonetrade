@@ -37,7 +37,7 @@ export async function createBentoTile(input: BentoInput): Promise<{ error?: stri
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка сохранения" };
   }
-  redirect("/admin/content/bento");
+  redirect("/admin/content/home-blocks?tab=bento");
 }
 
 export async function updateBentoTile(id: string, input: BentoInput): Promise<{ error?: string }> {
@@ -59,7 +59,7 @@ export async function updateBentoTile(id: string, input: BentoInput): Promise<{ 
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка сохранения" };
   }
-  redirect("/admin/content/bento");
+  redirect("/admin/content/home-blocks?tab=bento");
 }
 
 export async function deleteBentoTile(id: string): Promise<{ error?: string }> {

@@ -65,6 +65,25 @@ export async function getBrands(): Promise<BrandRow[]> {
   return data as BrandRow[];
 }
 
+export interface HomeBlocksVisibility {
+  bento: boolean;
+  trade_in: boolean;
+  advantages: boolean;
+}
+
+/** Видимость управляемых блоков главной (shop_settings key='home_blocks'). По умолчанию всё включено. */
+export async function getHomeBlocksVisibility(): Promise<HomeBlocksVisibility> {
+  const def: HomeBlocksVisibility = { bento: true, trade_in: true, advantages: true };
+  if (!supabase) return def;
+  const { data } = await supabase.from("shop_settings").select("value").eq("key", "home_blocks").maybeSingle();
+  const v = (data?.value ?? {}) as Partial<HomeBlocksVisibility>;
+  return {
+    bento: v.bento !== false,
+    trade_in: v.trade_in !== false,
+    advantages: v.advantages !== false,
+  };
+}
+
 export interface BentoTileRow {
   id: string;
   category_slug: string | null;

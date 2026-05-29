@@ -72,7 +72,7 @@ export async function createStep(input: TradeInStepInput): Promise<{ error?: str
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка сохранения" };
   }
-  redirect("/admin/content/trade-in-block");
+  redirect("/admin/content/home-blocks?tab=trade-in");
 }
 
 export async function updateStep(id: string, input: TradeInStepInput): Promise<{ error?: string }> {
@@ -94,7 +94,7 @@ export async function updateStep(id: string, input: TradeInStepInput): Promise<{
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка сохранения" };
   }
-  redirect("/admin/content/trade-in-block");
+  redirect("/admin/content/home-blocks?tab=trade-in");
 }
 
 export async function deleteStep(id: string): Promise<{ error?: string }> {

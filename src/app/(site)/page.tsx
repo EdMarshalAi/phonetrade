@@ -20,6 +20,7 @@ import {
   getTradeInSteps,
   getBlogPosts,
   getBentoTiles,
+  getHomeBlocksVisibility,
 } from "@/lib/content";
 
 /**
@@ -74,7 +75,7 @@ const HERO_SLIDES: HeroSlide[] = [
 ];
 
 export default async function HomePage() {
-  const [categories, iphones, catalog, used, heroRows, advantageRows, brandRows, tiBlock, tiSteps, blogRows, bentoRows] =
+  const [categories, iphones, catalog, used, heroRows, advantageRows, brandRows, tiBlock, tiSteps, blogRows, bentoRows, blocks] =
     await Promise.all([
       getCategories(),
       getFeaturedIphones(),
@@ -87,6 +88,7 @@ export default async function HomePage() {
       getTradeInSteps(),
       getBlogPosts(6),
       getBentoTiles(),
+      getHomeBlocksVisibility(),
     ]);
 
   const features =
@@ -139,7 +141,7 @@ export default async function HomePage() {
   return (
     <>
       <Hero slides={heroSlides} />
-      <BentoCategories categories={categories} tiles={bentoRows} />
+      {blocks.bento ? <BentoCategories categories={categories} tiles={bentoRows} /> : null}
       <ProductRail
         eyebrow="Свежее в магазине"
         title="Новинки iPhone"
@@ -159,11 +161,15 @@ export default async function HomePage() {
         href="/used"
         products={used}
       />
-      <TradeInPromo block={tradeInBlock} />
-      <TradeInSteps steps={tradeInSteps} />
+      {blocks.trade_in ? (
+        <>
+          <TradeInPromo block={tradeInBlock} />
+          <TradeInSteps steps={tradeInSteps} />
+        </>
+      ) : null}
       <BrandMarquee items={brandItems} />
       <BlogTeaser posts={blogPosts} />
-      <WhyAndFaq features={features} />
+      {blocks.advantages ? <WhyAndFaq features={features} /> : null}
     </>
   );
 }

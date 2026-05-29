@@ -34,7 +34,7 @@ export async function createAdvantage(input: AdvantageInput): Promise<{ error?: 
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка сохранения" };
   }
-  redirect("/admin/content/advantages");
+  redirect("/admin/content/home-blocks?tab=advantages");
 }
 
 export async function updateAdvantage(id: string, input: AdvantageInput): Promise<{ error?: string }> {
@@ -56,7 +56,7 @@ export async function updateAdvantage(id: string, input: AdvantageInput): Promis
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка сохранения" };
   }
-  redirect("/admin/content/advantages");
+  redirect("/admin/content/home-blocks?tab=advantages");
 }
 
 export async function deleteAdvantage(id: string): Promise<{ error?: string }> {

@@ -44,7 +44,24 @@ function buildCrumbs(pathname: string): Crumb[] {
 
   const crumbs: Crumb[] = [root];
   if (best.groupLabel) crumbs.push({ label: best.groupLabel });
-  crumbs.push({ label: best.label });
+
+  const isExact = pathname === best.href;
+  if (isExact) {
+    // Текущий раздел — последняя крошка (без ссылки).
+    crumbs.push({ label: best.label });
+  } else {
+    // Мы на под-странице (new/edit/…): раздел кликабельный, плюс финальная крошка.
+    crumbs.push({ label: best.label, href: best.href });
+    const tail = pathname.slice(best.href.length).split("/").filter(Boolean);
+    const lastSeg = tail[tail.length - 1] ?? "";
+    const tailLabel =
+      lastSeg === "new"
+        ? "Создание"
+        : lastSeg === "edit" || tail.includes("edit")
+          ? "Редактирование"
+          : lastSeg.charAt(0).toUpperCase() + lastSeg.slice(1);
+    crumbs.push({ label: tailLabel });
+  }
   return crumbs;
 }
 
