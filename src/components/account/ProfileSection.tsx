@@ -23,6 +23,17 @@ export function ProfileSection() {
   const [email, setEmail] = React.useState(user?.email ?? "");
   const [address, setAddress] = React.useState(user?.address ?? "");
   const [error, setError] = React.useState<string | null>(null);
+
+  // Профиль грузится из БД асинхронно — синхронизируем поля, когда пользователь готов.
+  const uid = user?.id;
+  React.useEffect(() => {
+    if (!user) return;
+    setName(user.name ?? "");
+    setPhone(user.phone ?? "");
+    setEmail(user.email ?? "");
+    setAddress(user.address ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid]);
   const [saved, setSaved] = React.useState(false);
   const savedTimer = React.useRef<number | null>(null);
 
