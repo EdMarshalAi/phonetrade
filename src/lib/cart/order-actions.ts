@@ -16,7 +16,7 @@ export type PlaceOrderInput = {
   name: string;
   phone: string;
   email?: string;
-  deliveryMethod: "pickup" | "courier";
+  deliveryMethod: string;
   deliveryAddress?: string;
   paymentMethod: string;
   promoCode?: string;

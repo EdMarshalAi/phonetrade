@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -51,12 +52,22 @@ export function AdminSidebar({
       >
         {/* бренд */}
         <div className="flex items-center justify-between px-5 py-5">
-          <Link href="/admin" className="flex flex-col leading-none" onClick={onClose}>
-            <span className="text-[17px] font-semibold tracking-tight text-white">
-              PhoneTrade
-            </span>
-            <span className="mt-1 text-[11px] uppercase tracking-[0.18em] text-onDark-muted">
-              Админка
+          <Link href="/admin" className="flex items-center gap-3 leading-none" onClick={onClose}>
+            <Image
+              src="/brand/logo-mark-white.png"
+              alt=""
+              aria-hidden
+              width={32}
+              height={32}
+              className="size-7 shrink-0 select-none"
+            />
+            <span className="flex flex-col">
+              <span className="text-[17px] font-semibold tracking-tight text-white">
+                PhoneTrade
+              </span>
+              <span className="mt-1 text-[11px] uppercase tracking-[0.18em] text-onDark-muted">
+                Админка
+              </span>
             </span>
           </Link>
           <button

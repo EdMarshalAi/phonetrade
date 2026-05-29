@@ -36,7 +36,7 @@ export default function AccountLayout({
           Личный кабинет
         </h1>
         <div className="grid gap-5 lg:gap-6 lg:grid-cols-12 items-start">
-          <div className="lg:col-span-4 xl:col-span-3">
+          <div className="lg:col-span-4 xl:col-span-3 lg:self-start">
             <AccountSidebar />
           </div>
           <div className="lg:col-span-8 xl:col-span-9">{children}</div>

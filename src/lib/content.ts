@@ -182,22 +182,29 @@ export const getCheckoutBlocks = () => getBlocks("checkout_blocks", DEFAULT_CHEC
 
 // ── Настройки корзины: оплата, доставка ──────────────────────────────────────
 
-export type PaymentKey = "sbp" | "card" | "cash" | "credit";
-export type DeliveryKey = "pickup" | "courier";
+/** Какая цена товара берётся при способе оплаты. */
+export type PriceBase = "cash" | "card";
 
 export interface CartPaymentMethod {
-  key: PaymentKey;
+  key: string; // произвольный ключ (можно добавлять способы)
   enabled: boolean;
-  label: string;
-  note: string;
+  label: string; // заголовок способа
+  note: string; // короткая подпись под заголовком (в радиокнопке)
+  description: string; // развёрнутый текст под выбранным способом
+  icon: string | null; // имя иконки из единого набора
+  priceBase: PriceBase; // какую цену брать за основу (наличными/картой)
+  surcharge: number; // наценка в % к выбранной базе (0 — без наценки)
 }
 export interface CartDeliveryOption {
-  key: DeliveryKey;
+  key: string; // произвольный ключ
   enabled: boolean;
   label: string;
   note: string;
-  price: number; // цена доставки (для курьера); 0 — бесплатно
-  freeFrom: number; // бесплатно от суммы (0 — всегда бесплатно)
+  description: string; // текст под выбранным способом (адрес ПВЗ / условия)
+  icon: string | null;
+  requiresAddress: boolean; // нужен адрес доставки (курьер-подобные)
+  price: number; // стоимость доставки; 0 — бесплатно
+  freeFrom: number; // бесплатно от суммы (0 — порога нет)
 }
 export interface CartSettings {
   payments: CartPaymentMethod[];
@@ -206,16 +213,42 @@ export interface CartSettings {
 
 export const DEFAULT_CART_SETTINGS: CartSettings = {
   payments: [
-    { key: "sbp", enabled: true, label: "СБП", note: "Без комиссии, мгновенно" },
-    { key: "card", enabled: true, label: "Банковская карта", note: "Visa, Mastercard, Мир" },
-    { key: "cash", enabled: true, label: "При получении", note: "Наличные или картой курьеру" },
-    { key: "credit", enabled: true, label: "Кредит / Рассрочка", note: "Решение банка за 5 минут" },
+    { key: "sbp", enabled: true, label: "СБП", note: "Без комиссии, мгновенно", icon: "smartphone", priceBase: "cash", surcharge: 0, description: "После подтверждения заказа откроется приложение вашего банка для оплаты по QR-коду. Без комиссии, без ввода реквизитов." },
+    { key: "card", enabled: true, label: "Банковская карта", note: "Visa, Mastercard, Мир", icon: "credit-card", priceBase: "card", surcharge: 0, description: "Оплата картой онлайн по защищённому каналу банка-эквайра." },
+    { key: "cash", enabled: true, label: "При получении", note: "Наличные или картой курьеру", icon: "banknote", priceBase: "cash", surcharge: 0, description: "Оплата наличными или картой при получении заказа." },
+    { key: "credit", enabled: true, label: "Кредит / Рассрочка", note: "Решение банка за 5 минут", icon: "wallet", priceBase: "card", surcharge: 0, description: "Оформление кредита или рассрочки — решение банка за 5 минут." },
   ],
   delivery: [
-    { key: "pickup", enabled: true, label: "Самовывоз", note: "Бесплатно · сегодня", price: 0, freeFrom: 0 },
-    { key: "courier", enabled: true, label: "Курьер", note: "Завтра, в удобное время", price: 0, freeFrom: 0 },
+    { key: "pickup", enabled: true, label: "Самовывоз", note: "Бесплатно · сегодня", icon: "map-pin", requiresAddress: false, price: 0, freeFrom: 0, description: "Универмаг Белгород, ул. Попова, 36, 1 этаж. Готовим заказ к выдаче в течение часа." },
+    { key: "courier", enabled: true, label: "Курьер", note: "Завтра, в удобное время", icon: "truck", requiresAddress: true, price: 0, freeFrom: 0, description: "Доставка по Белгороду в удобное время." },
   ],
 };
+
+function mergePayment(p: Partial<CartPaymentMethod>, i: number): CartPaymentMethod {
+  return {
+    key: p.key ?? `pay-${i}`,
+    enabled: p.enabled ?? true,
+    label: p.label ?? "",
+    note: p.note ?? "",
+    description: p.description ?? "",
+    icon: p.icon ?? null,
+    priceBase: p.priceBase === "card" ? "card" : "cash",
+    surcharge: Number(p.surcharge) || 0,
+  };
+}
+function mergeDelivery(d: Partial<CartDeliveryOption>, i: number): CartDeliveryOption {
+  return {
+    key: d.key ?? `del-${i}`,
+    enabled: d.enabled ?? true,
+    label: d.label ?? "",
+    note: d.note ?? "",
+    description: d.description ?? "",
+    icon: d.icon ?? null,
+    requiresAddress: !!d.requiresAddress,
+    price: Number(d.price) || 0,
+    freeFrom: Number(d.freeFrom) || 0,
+  };
+}
 
 export async function getCartSettings(): Promise<CartSettings> {
   if (!supabase) return DEFAULT_CART_SETTINGS;
@@ -223,8 +256,8 @@ export async function getCartSettings(): Promise<CartSettings> {
   const v = data?.value as Partial<CartSettings> | undefined;
   if (!v) return DEFAULT_CART_SETTINGS;
   return {
-    payments: v.payments?.length ? v.payments : DEFAULT_CART_SETTINGS.payments,
-    delivery: v.delivery?.length ? v.delivery : DEFAULT_CART_SETTINGS.delivery,
+    payments: v.payments?.length ? v.payments.map(mergePayment) : DEFAULT_CART_SETTINGS.payments,
+    delivery: v.delivery?.length ? v.delivery.map(mergeDelivery) : DEFAULT_CART_SETTINGS.delivery,
   };
 }
 

@@ -6,8 +6,9 @@ export type CartItem = {
   qty: number;
 };
 
-export type DeliveryMethod = "pickup" | "courier";
-export type PaymentMethod = "sbp" | "card" | "cash" | "credit";
+/** Ключи способов оплаты/доставки теперь произвольные (управляются в админке). */
+export type DeliveryMethod = string;
+export type PaymentMethod = string;
 export type CustomerType = "person" | "company";
 export type CheckoutMode = "guest" | "login";
 

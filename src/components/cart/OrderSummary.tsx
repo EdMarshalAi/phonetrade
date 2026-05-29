@@ -6,7 +6,7 @@ import { formatPrice } from "@/lib/utils/format-price";
 import { pluralizeItems } from "@/lib/utils/plural";
 import { resolveIcon } from "@/lib/admin/icons";
 import type { CartItem, CheckoutState } from "@/lib/cart/types";
-import type { InfoBlock, CartDeliveryOption } from "@/lib/content";
+import type { InfoBlock, CartDeliveryOption, CartPaymentMethod } from "@/lib/content";
 import { cn } from "@/lib/utils/cn";
 
 type Props = {
@@ -17,6 +17,7 @@ type Props = {
   errorCount: number;
   blocks: InfoBlock[];
   delivery: CartDeliveryOption[];
+  payments: CartPaymentMethod[];
 };
 
 const PROMO_CODES: Record<string, number> = {
@@ -34,8 +35,11 @@ export function OrderSummary({
   errorCount,
   blocks,
   delivery,
+  payments,
 }: Props) {
   const deliveryOpt = delivery.find((d) => d.key === state.delivery);
+  const paymentOpt = payments.find((p) => p.key === state.payment);
+  const base = paymentOpt?.priceBase === "card" ? "card" : "cash";
   const DELIVERY_LABEL: Record<string, string> = Object.fromEntries(
     delivery.map((d) => [d.key, d.label])
   );
@@ -47,21 +51,19 @@ export function OrderSummary({
   const [promoError, setPromoError] = React.useState<string | null>(null);
 
   const totalQty = items.reduce((acc, i) => acc + i.qty, 0);
-  const subtotalCash = items.reduce(
-    (acc, i) => acc + i.product.priceCash * i.qty,
+  // Сумма по выбранной базе цены (наличными/картой) выбранного способа оплаты.
+  const subtotal = items.reduce(
+    (acc, i) => acc + (base === "card" ? i.product.priceCard : i.product.priceCash) * i.qty,
     0
   );
-  const subtotalCard = items.reduce(
-    (acc, i) => acc + i.product.priceCard * i.qty,
-    0
-  );
-  const discount = subtotalCard - subtotalCash;
+  const surchargePct = paymentOpt?.surcharge ?? 0;
+  const surchargeAmount = surchargePct > 0 ? Math.round((subtotal * surchargePct) / 100) : 0;
   const deliveryPrice =
-    deliveryOpt && deliveryOpt.price > 0 && !(deliveryOpt.freeFrom > 0 && subtotalCash >= deliveryOpt.freeFrom)
+    deliveryOpt && deliveryOpt.price > 0 && !(deliveryOpt.freeFrom > 0 && subtotal >= deliveryOpt.freeFrom)
       ? deliveryOpt.price
       : 0;
-  const promoDiscount = promo ? Math.round(subtotalCash * promo.rate) : 0;
-  const total = Math.max(0, subtotalCash + deliveryPrice - promoDiscount);
+  const promoDiscount = promo ? Math.round(subtotal * promo.rate) : 0;
+  const total = Math.max(0, subtotal + surchargeAmount + deliveryPrice - promoDiscount);
   const monthly = Math.ceil(total / CREDIT_MONTHS);
 
   const applyPromo = () => {
@@ -156,13 +158,17 @@ export function OrderSummary({
 
         <dl className="space-y-2.5 text-sm pb-5 border-b border-dashed border-border/70">
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Товары</dt>
-            <dd className="text-ink tabular-nums">{formatPrice(subtotalCard)}</dd>
+            <dt className="text-ink-muted">
+              Товары · {base === "card" ? "цена картой" : "цена наличными"}
+            </dt>
+            <dd className="text-ink tabular-nums">{formatPrice(subtotal)}</dd>
           </div>
-          {discount > 0 && (
+          {surchargeAmount > 0 && (
             <div className="flex justify-between gap-3">
-              <dt className="text-ink-muted">Скидка за наличные</dt>
-              <dd className="text-sale tabular-nums">− {formatPrice(discount)}</dd>
+              <dt className="text-ink-muted">
+                Наценка{paymentOpt ? ` · ${paymentOpt.label}` : ""} +{surchargePct}%
+              </dt>
+              <dd className="text-ink tabular-nums">+ {formatPrice(surchargeAmount)}</dd>
             </div>
           )}
           {promoDiscount > 0 && (

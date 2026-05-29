@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Toaster } from "sonner";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminTopbar } from "@/components/admin/AdminTopbar";
@@ -38,8 +39,16 @@ export function AdminShell({
           userEmail={userEmail}
           onMenuClick={() => setOpen(true)}
         />
-        <main className="flex-1 px-4 py-6 lg:px-8 lg:py-8">
-          <div className="mx-auto w-full max-w-[1200px] space-y-6">{children}</div>
+        <main className="relative flex-1 overflow-hidden px-4 py-6 lg:px-8 lg:py-8">
+          <Image
+            src="/brand/logo-mark-white.png"
+            alt=""
+            aria-hidden
+            width={200}
+            height={200}
+            className="pointer-events-none absolute bottom-4 right-4 z-0 w-[160px] select-none opacity-10 lg:w-[200px]"
+          />
+          <div className="relative z-10 mx-auto w-full max-w-[1200px] space-y-6">{children}</div>
         </main>
       </div>
       <Toaster

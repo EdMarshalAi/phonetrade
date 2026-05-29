@@ -20,7 +20,8 @@ function digitsOf(value: string): string {
 /** Pure validator — returns one message per invalid field, or {} when valid. */
 export function validateCheckout(
   state: CheckoutState,
-  items: CartItem[]
+  items: CartItem[],
+  requiresAddress = false
 ): CheckoutErrors {
   const errors: CheckoutErrors = {};
   if (items.length === 0) return errors;
@@ -34,7 +35,7 @@ export function validateCheckout(
   if (state.email.trim() && !EMAIL_RE.test(state.email.trim()))
     errors.email = "Проверьте формат e-mail";
 
-  if (state.delivery === "courier" && !(state.deliveryAddress ?? "").trim())
+  if (requiresAddress && !(state.deliveryAddress ?? "").trim())
     errors.deliveryAddress = "Укажите адрес доставки";
 
   if (state.customerType === "company") {

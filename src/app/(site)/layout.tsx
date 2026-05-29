@@ -5,6 +5,7 @@ import { FavoritesProvider } from "@/components/providers/FavoritesProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
+import { BackToTop } from "@/components/ui/BackToTop";
 import { BadgeRegistryProvider } from "@/components/product/ProductBadges";
 import { getShopContacts, getNavCategories, getMenu, getProductBadges } from "@/lib/content";
 
@@ -37,6 +38,7 @@ export default async function SiteLayout({
                 <Footer contacts={contacts} legalLinks={footerMenu} />
               </div>
               <PageViewTracker />
+              <BackToTop />
             </BadgeRegistryProvider>
           </FavoritesProvider>
         </CartProvider>

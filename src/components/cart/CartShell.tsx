@@ -83,9 +83,10 @@ export function CartShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const requiresAddress = !!settings.delivery.find((d) => d.key === state.delivery)?.requiresAddress;
   const errors = React.useMemo(
-    () => validateCheckout(state, items),
-    [state, items]
+    () => validateCheckout(state, items, requiresAddress),
+    [state, items, requiresAddress]
   );
   const errorCount = Object.keys(errors).length;
 
@@ -100,16 +101,19 @@ export function CartShell({
     setSubmitPending(true);
     trackFunnel("submit_order", { items_count: items.length });
 
-    // Вычисляем суммы для передачи в server action.
-    const isCash = state.payment === "cash" || state.payment === "sbp";
+    // Суммы по выбранному способу оплаты: база цены (наличными/картой) + наценка.
+    const payMethod = settings.payments.find((p) => p.key === state.payment);
+    const base = payMethod?.priceBase === "card" ? "card" : "cash";
     const subtotal = items.reduce(
-      (acc, i) => acc + (isCash ? i.product.priceCash : i.product.priceCard) * i.qty,
+      (acc, i) => acc + (base === "card" ? i.product.priceCard : i.product.priceCash) * i.qty,
       0
     );
-    const discountCash = isCash
-      ? items.reduce((acc, i) => acc + (i.product.priceCard - i.product.priceCash) * i.qty, 0)
-      : 0;
-    const total = subtotal;
+    const discountCash =
+      base === "cash"
+        ? items.reduce((acc, i) => acc + (i.product.priceCard - i.product.priceCash) * i.qty, 0)
+        : 0;
+    const surcharge = payMethod?.surcharge ? Math.round((subtotal * payMethod.surcharge) / 100) : 0;
+    const total = subtotal + surcharge;
 
     placeOrder({
       items: items.map((i) => ({
@@ -274,6 +278,7 @@ export function CartShell({
               onSubmit={handleSubmit}
               blocks={checkoutBlocks}
               delivery={settings.delivery}
+              payments={settings.payments}
             />
             {submitPending && (
               <p className="text-[13px] text-ink-muted text-center animate-pulse px-2">
