@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Phone, Mail, User, Link2 } from "lucide-react";
+import { ArrowLeft, Phone, Mail, User, Link2, ShoppingBag } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader, Panel, PanelHeader, PanelTitle, StatusBadge } from "@/components/admin/ui";
 import { AdminButton } from "@/components/admin/form";
@@ -22,6 +22,13 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const payloadRows = Object.entries(payload);
   const created = new Date(data.created_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
 
+  // Build URL for "create order from lead"
+  const newOrderParams = new URLSearchParams();
+  if (data.contact_name) newOrderParams.set("name", data.contact_name);
+  if (data.contact_phone) newOrderParams.set("phone", data.contact_phone);
+  if (data.contact_email) newOrderParams.set("email", data.contact_email);
+  const newOrderHref = `/admin/orders/new?${newOrderParams.toString()}`;
+
   return (
     <>
       <PageHeader
@@ -31,6 +38,11 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
           <div className="flex items-center gap-2">
             <Link href="/admin/leads">
               <AdminButton variant="outline" size="sm"><ArrowLeft className="h-4 w-4" strokeWidth={1.75} /> К списку</AdminButton>
+            </Link>
+            <Link href={newOrderHref}>
+              <AdminButton variant="outline" size="sm">
+                <ShoppingBag className="h-4 w-4" strokeWidth={1.75} /> Создать заказ из заявки
+              </AdminButton>
             </Link>
             <DeleteButton action={deleteLead.bind(null, id)} itemName="заявку" label="Удалить" redirectTo="/admin/leads" />
           </div>

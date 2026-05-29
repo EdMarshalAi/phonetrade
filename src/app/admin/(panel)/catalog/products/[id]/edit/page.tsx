@@ -16,9 +16,11 @@ export default async function EditProductPage({
 }) {
   const { id } = await params;
   const db = createSupabaseAdminClient();
-  const [{ data: prod }, { data: cats }] = await Promise.all([
+  const [{ data: prod }, { data: cats }, { data: varRows }, { data: imgRows }] = await Promise.all([
     db.from("products").select("*").eq("id", id).maybeSingle(),
     db.from("categories").select("slug,title").order("sort"),
+    db.from("product_variants").select("*").eq("product_id", id).order("sort_order"),
+    db.from("product_images").select("*").eq("product_id", id).order("sort_order"),
   ]);
 
   if (!prod) notFound();
@@ -38,7 +40,12 @@ export default async function EditProductPage({
           </Link>
         }
       />
-      <ProductForm product={product} categories={categories} />
+      <ProductForm
+        product={product}
+        categories={categories}
+        variants={varRows ?? []}
+        images={imgRows ?? []}
+      />
     </>
   );
 }

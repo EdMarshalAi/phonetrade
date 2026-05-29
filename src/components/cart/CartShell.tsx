@@ -12,6 +12,8 @@ import { validateCheckout } from "@/lib/cart/validate";
 import { MAX_QTY } from "@/lib/cart/constants";
 import { pluralizeItems } from "@/lib/utils/plural";
 import type { CartItem, CheckoutState } from "@/lib/cart/types";
+import { placeOrder } from "@/lib/cart/order-actions";
+import { saveOrder } from "@/lib/account/orders";
 
 const INITIAL_STATE: CheckoutState = {
   customerType: "person",
@@ -35,6 +37,8 @@ export function CartShell({ initialItems }: Props) {
   const [favorites, setFavorites] = React.useState<Set<string>>(new Set());
   const [attempted, setAttempted] = React.useState(false);
   const [order, setOrder] = React.useState<{ id: string } | null>(null);
+  const [submitPending, setSubmitPending] = React.useState(false);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [undo, setUndo] = React.useState<{ item: CartItem; index: number } | null>(
     null
   );
@@ -98,9 +102,72 @@ export function CartShell({ initialItems }: Props) {
   const handleSubmit = () => {
     setAttempted(true);
     if (items.length === 0 || errorCount > 0) return;
-    const id = `BG-${Date.now().toString().slice(-6)}`;
-    setOrder({ id });
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+    if (submitPending) return;
+
+    setSubmitError(null);
+    setSubmitPending(true);
+
+    // Вычисляем суммы для передачи в server action.
+    const isCash = state.payment === "cash" || state.payment === "sbp";
+    const subtotal = items.reduce(
+      (acc, i) => acc + (isCash ? i.product.priceCash : i.product.priceCard) * i.qty,
+      0
+    );
+    const discountCash = isCash
+      ? items.reduce((acc, i) => acc + (i.product.priceCard - i.product.priceCash) * i.qty, 0)
+      : 0;
+    const total = subtotal;
+
+    placeOrder({
+      items: items.map((i) => ({
+        productId: i.productId,
+        title: i.product.title,
+        image: i.product.image,
+        qty: i.qty,
+        priceCash: i.product.priceCash,
+        priceCard: i.product.priceCard,
+      })),
+      customerType: state.customerType === "company" ? "legal" : "individual",
+      name: state.name,
+      phone: state.phone,
+      email: state.email || undefined,
+      deliveryMethod: state.delivery,
+      deliveryAddress: state.deliveryAddress,
+      paymentMethod: state.payment,
+      subtotal,
+      discountCash,
+      total,
+    }).then((result) => {
+      setSubmitPending(false);
+      if (result.error) {
+        setSubmitError(result.error);
+        return;
+      }
+      // Используем номер из БД или fallback.
+      const displayId = result.orderNumber ?? `PT-${Date.now().toString().slice(-6)}`;
+
+      // Сохраняем в localStorage для страницы «Мои заказы».
+      saveOrder(state.phone, {
+        id: displayId,
+        date: new Date().toISOString().slice(0, 10),
+        status: "placed",
+        delivery: state.delivery === "courier" ? "Курьер по Белгороду" : "Самовывоз",
+        items: items.map((i) => ({
+          id: i.productId,
+          title: i.product.title,
+          image: i.product.image,
+          qty: i.qty,
+          priceCash: i.product.priceCash,
+        })),
+        total,
+      });
+
+      setOrder({ id: displayId });
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+    }).catch(() => {
+      setSubmitPending(false);
+      setSubmitError("Не удалось оформить заказ. Проверьте соединение и попробуйте снова.");
+    });
   };
 
   if (order) {
@@ -208,7 +275,7 @@ export function CartShell({ initialItems }: Props) {
             )}
           </div>
 
-          <div className="lg:col-span-4 lg:self-stretch">
+          <div className="lg:col-span-4 lg:self-stretch flex flex-col gap-3">
             <OrderSummary
               items={items}
               state={state}
@@ -216,6 +283,16 @@ export function CartShell({ initialItems }: Props) {
               errorCount={errorCount}
               onSubmit={handleSubmit}
             />
+            {submitPending && (
+              <p className="text-[13px] text-ink-muted text-center animate-pulse px-2">
+                Оформляем заказ…
+              </p>
+            )}
+            {submitError && (
+              <p className="text-[13px] text-sale text-center px-2" role="alert">
+                {submitError}
+              </p>
+            )}
           </div>
         </div>
       </div>

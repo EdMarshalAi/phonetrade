@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rangeFor } from "@/lib/admin/mutations";
 import { PageHeader, StatusBadge } from "@/components/admin/ui";
@@ -57,7 +58,17 @@ export default async function OrdersPage({
 
   return (
     <>
-      <PageHeader title="Заказы" description={`Всего: ${total}. Управление статусами и составом.`} />
+      <PageHeader
+        title="Заказы"
+        description={`Всего: ${total}. Управление статусами и составом.`}
+        actions={
+          <Link href="/admin/orders/new">
+            <AdminButton variant="primary" size="sm">
+              <Plus className="h-4 w-4" strokeWidth={1.75} /> Новый заказ
+            </AdminButton>
+          </Link>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <SearchBox placeholder="№ заказа, телефон, имя…" />

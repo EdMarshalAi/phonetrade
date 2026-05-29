@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { adminMutation } from "@/lib/admin/mutations";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin/auth";
@@ -56,6 +57,136 @@ export async function setOrderStatus(
     await sendTelegram(`❌ Заказ <b>${order.order_number ?? id}</b> отменён.`, chats.length ? chats : undefined);
   }
   return {};
+}
+
+/* ── Manual order creation ──────────────────────────────────────────────── */
+
+export interface ManualOrderItem {
+  productId: string;
+  title: string;
+  qty: number;
+  price: number;
+}
+
+export interface CreateManualOrderInput {
+  customerType: "individual" | "legal";
+  name: string;
+  phone: string;
+  email?: string;
+  deliveryMethod: "pickup" | "courier";
+  deliveryAddress?: string;
+  paymentMethod: string;
+  items: ManualOrderItem[];
+}
+
+export async function createManualOrder(
+  input: CreateManualOrderInput
+): Promise<{ error?: string }> {
+  const admin = await getAdminUser();
+  const db = createSupabaseAdminClient();
+
+  try {
+    await adminMutation({
+      roles: [...STAFF],
+      action: "create",
+      entityType: "order",
+      revalidate: ["/admin/orders", "/account/orders"],
+      run: async (d) => {
+        // 1. Count existing orders for sequential number
+        const { count } = await d
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .is("deleted_at", null);
+        const seq = (count ?? 0) + 1;
+        const year = new Date().getFullYear();
+        const order_number = `PT-${year}-${String(seq).padStart(4, "0")}`;
+        const id = crypto.randomUUID();
+
+        // 2. Upsert customer by phone
+        let customer_id: string | null = null;
+        const { data: existingCustomer } = await d
+          .from("customers")
+          .select("id")
+          .eq("phone", input.phone)
+          .maybeSingle();
+        if (existingCustomer) {
+          customer_id = existingCustomer.id;
+        } else {
+          const { data: newCustomer } = await d
+            .from("customers")
+            .insert({
+              name: input.name,
+              phone: input.phone,
+              email: input.email || null,
+              customer_type: input.customerType,
+            })
+            .select("id")
+            .maybeSingle();
+          if (newCustomer) customer_id = newCustomer.id;
+        }
+
+        // 3. Compute totals
+        const subtotal = input.items.reduce(
+          (sum, it) => sum + it.price * it.qty,
+          0
+        );
+        const total = subtotal;
+
+        // 4. Insert order
+        const { error: orderError } = await d.from("orders").insert({
+          id,
+          order_number,
+          customer_id,
+          customer_name: input.name,
+          phone: input.phone,
+          customer_phone: input.phone,
+          customer_email: input.email || null,
+          customer_type: input.customerType,
+          delivery_method: input.deliveryMethod,
+          delivery_address: input.deliveryAddress || null,
+          payment_method: input.paymentMethod,
+          payment_status: "pending",
+          status: "new",
+          subtotal,
+          discount_cash: 0,
+          discount_promo: 0,
+          delivery_cost: 0,
+          total,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+        if (orderError) throw orderError;
+
+        // 5. Insert order items
+        if (input.items.length > 0) {
+          const { error: itemsError } = await d.from("order_items").insert(
+            input.items.map((it) => ({
+              order_id: id,
+              product_id: it.productId || null,
+              title: it.title,
+              qty: it.qty,
+              applied_price: it.price,
+              total: it.price * it.qty,
+            }))
+          );
+          if (itemsError) throw itemsError;
+        }
+
+        // 6. Insert initial status history entry
+        await d.from("order_status_history").insert({
+          order_id: id,
+          from_status: null,
+          to_status: "new",
+          changed_by: admin?.id ?? null,
+          comment: "Создан вручную в админке",
+        });
+      },
+    });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Ошибка при создании заказа" };
+  }
+
+  redirect("/admin/orders");
 }
 
 export async function updateOrderNotes(id: string, notes: string): Promise<{ error?: string }> {

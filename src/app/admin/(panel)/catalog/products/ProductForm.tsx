@@ -11,6 +11,7 @@ import { Field, TextInput, Textarea, Select, Switch, FormError, AdminButton } fr
 import { ImageField } from "@/components/admin/ImageField";
 import { Panel } from "@/components/admin/ui";
 import { createProduct, updateProduct } from "./actions";
+import { VariantsSection, GallerySection, type Variant, type ProductImage } from "./VariantsManager";
 
 export interface ProductValue extends Partial<ProductInput> {
   id: string;
@@ -21,15 +22,21 @@ const TABS = [
   { key: "price", label: "Цены и наличие" },
   { key: "used", label: "Состояние (Б/У)" },
   { key: "seo", label: "SEO" },
+  { key: "variants", label: "Варианты" },
+  { key: "gallery", label: "Галерея" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
 export function ProductForm({
   product,
   categories,
+  variants = [],
+  images = [],
 }: {
   product?: ProductValue;
   categories: { slug: string; title: string }[];
+  variants?: Variant[];
+  images?: ProductImage[];
 }) {
   const isEdit = !!product;
   const [tab, setTab] = React.useState<TabKey>("main");
@@ -91,7 +98,11 @@ export function ProductForm({
     }
   };
 
-  const visibleTabs = TABS.filter((t) => t.key !== "used" || type === "used");
+  const visibleTabs = TABS.filter((t) => {
+    if (t.key === "used") return type === "used";
+    if (t.key === "variants" || t.key === "gallery") return isEdit;
+    return true;
+  });
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
@@ -280,6 +291,20 @@ export function ProductForm({
           <Controller control={control} name="is_indexable" render={({ field }) => <Switch checked={!!field.value} onChange={field.onChange} label="Индексировать (показывать в поиске)" />} />
         </Panel>
       </div>
+
+      {/* Варианты */}
+      {isEdit ? (
+        <div hidden={tab !== "variants"}>
+          <VariantsSection productId={product!.id} variants={variants} />
+        </div>
+      ) : null}
+
+      {/* Галерея */}
+      {isEdit ? (
+        <div hidden={tab !== "gallery"}>
+          <GallerySection productId={product!.id} images={images} />
+        </div>
+      ) : null}
 
       <div className="flex items-center gap-2">
         <AdminButton type="submit" loading={isSubmitting}>
