@@ -35,9 +35,10 @@ export default async function StaticPage({
       <div className="mx-auto max-w-3xl">
         <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-4xl">{page.title}</h1>
         {page.content ? (
-          <div className="prose prose-neutral mt-8 max-w-none whitespace-pre-wrap text-ink-muted">
-            {page.content}
-          </div>
+          <div
+            className="prose prose-neutral mt-8 max-w-none"
+            dangerouslySetInnerHTML={{ __html: page.content }}
+          />
         ) : null}
       </div>
     </article>

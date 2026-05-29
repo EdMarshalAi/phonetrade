@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { PanelLeft, ChevronRight, LogOut } from "lucide-react";
+import { PanelLeft, ChevronRight, LogOut, ExternalLink } from "lucide-react";
 import { ADMIN_NAV } from "@/lib/admin/nav";
 import { signOutAction } from "@/lib/admin/session-actions";
 
@@ -120,6 +120,16 @@ export function AdminTopbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
+        <Link
+          href="/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-border bg-white px-2.5 text-[13px] text-ink-muted transition-colors hover:bg-surface hover:text-ink"
+          title="Открыть сайт в новой вкладке"
+        >
+          <ExternalLink className="h-4 w-4" strokeWidth={1.75} />
+          <span className="hidden sm:inline">На сайт</span>
+        </Link>
         <div className="hidden text-right leading-tight sm:block">
           <p className="text-[13px] font-medium text-ink">{userName || userEmail}</p>
           <p className="text-[11px] text-ink-subtle">{ROLE_LABEL[role] ?? role}</p>

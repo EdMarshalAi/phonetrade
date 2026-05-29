@@ -8,6 +8,7 @@ import { staticPageSchema, type StaticPageInput, type StaticPageFormValues } fro
 import { slugify } from "@/lib/admin/slug";
 import { Field, TextInput, Textarea, Select, FormError, AdminButton } from "@/components/admin/form";
 import { Panel, PanelTitle } from "@/components/admin/ui";
+import { RichEditor } from "@/components/admin/RichEditor";
 import { createPage, updatePage } from "./actions";
 
 export interface PageValue {
@@ -59,8 +60,14 @@ export function PageForm({ page }: { page?: PageValue }) {
             <TextInput disabled={isEdit} hasError={!!errors.slug} {...register("slug", { onChange: () => (slugTouched.current = true) })} />
           </Field>
         </div>
-        <Field label="Контент" hint="Markdown или текст">
-          <Textarea className="min-h-[260px] font-mono text-[13px]" {...register("content")} />
+        <Field label="Контент" hint="Редактор с форматированием, картинками и режимом «Источник» (HTML)">
+          <Controller
+            control={control}
+            name="content"
+            render={({ field }) => (
+              <RichEditor value={field.value || ""} onChange={field.onChange} bucket="general" />
+            )}
+          />
         </Field>
         <Field label="Статус">
           <Controller control={control} name="status" render={({ field }) => (
