@@ -1,74 +1,84 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, X } from "lucide-react";
+import { ImagePlus, Ban } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { ICON_SET, resolveIcon } from "@/lib/admin/icons";
 
 /**
- * Визуальный выбор иконки из единого набора (в интерфейсе, не браузерный).
- * Хранит kebab-имя иконки. Кнопка показывает текущую иконку; по клику —
- * сетка иконок.
+ * Компактный выбор иконки: квадратная кнопка показывает ТОЛЬКО иконку (без
+ * текстовых имён). По клику — аккуратная сетка-поповер. Очистка — отдельным
+ * пунктом «Без иконки» внутри поповера. Хранит kebab-имя.
  */
 export function IconPicker({
   value,
   onChange,
+  size = "md",
 }: {
   value: string | null;
   onChange: (name: string | null) => void;
+  size?: "sm" | "md";
 }) {
   const [open, setOpen] = React.useState(false);
-  const Current = resolveIcon(value);
+  const Current = value ? resolveIcon(value) : null;
+  const box = size === "sm" ? "size-9" : "size-10";
 
   return (
     <div className="relative inline-block">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-10 items-center gap-2 rounded-sm border border-border bg-white px-3 text-[14px] text-ink hover:bg-surface"
+        aria-label="Выбрать иконку"
+        title={value ?? "Выбрать иконку"}
+        className={cn(
+          box,
+          "inline-flex items-center justify-center rounded-lg border bg-white transition-colors",
+          open ? "border-ink ring-2 ring-ink/15" : "border-border hover:border-ink/40",
+          value ? "text-ink" : "text-ink-subtle"
+        )}
       >
-        <Current className="h-4.5 w-4.5 text-ink" strokeWidth={1.75} />
-        <span className="text-ink-muted">{value || "Выбрать иконку"}</span>
-        <ChevronDown className={cn("h-4 w-4 text-ink-subtle transition-transform", open && "rotate-180")} strokeWidth={2} />
-        {value ? (
-          <span
-            role="button"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              onChange(null);
-            }}
-            className="ml-1 rounded-sm p-0.5 text-ink-subtle hover:text-sale"
-            aria-label="Очистить"
-          >
-            <X className="h-3.5 w-3.5" strokeWidth={2} />
-          </span>
-        ) : null}
+        {Current ? (
+          <Current className="size-[18px]" strokeWidth={1.75} />
+        ) : (
+          <ImagePlus className="size-[18px]" strokeWidth={1.75} />
+        )}
       </button>
 
       {open ? (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute left-0 top-[calc(100%+6px)] z-50 max-h-72 w-72 overflow-auto rounded-md border border-border/70 bg-white p-2 shadow-lg">
-            <div className="grid grid-cols-7 gap-1">
-              {ICON_SET.map(({ name, Icon }) => (
-                <button
-                  key={name}
-                  type="button"
-                  title={name}
-                  onClick={() => {
-                    onChange(name);
-                    setOpen(false);
-                  }}
-                  className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-sm transition-colors",
-                    value === name ? "bg-ink text-white" : "text-ink hover:bg-surface"
-                  )}
-                >
-                  <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
-                </button>
-              ))}
+          <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} aria-hidden />
+          <div className="absolute left-0 top-[calc(100%+6px)] z-[61] w-[268px] rounded-xl border border-border/70 bg-white p-2 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.25)]">
+            <div className="max-h-60 overflow-auto">
+              <div className="grid grid-cols-7 gap-1">
+                {ICON_SET.map(({ name, Icon }) => (
+                  <button
+                    key={name}
+                    type="button"
+                    title={name}
+                    onClick={() => {
+                      onChange(name);
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "flex size-9 items-center justify-center rounded-lg transition-colors",
+                      value === name ? "bg-ink text-white" : "text-ink hover:bg-surface"
+                    )}
+                  >
+                    <Icon className="size-[18px]" strokeWidth={1.75} />
+                  </button>
+                ))}
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                onChange(null);
+                setOpen(false);
+              }}
+              className="mt-1.5 flex w-full items-center gap-2 rounded-lg border-t border-border/60 px-2 pt-2 text-left text-[12.5px] text-ink-muted hover:text-ink"
+            >
+              <Ban className="size-3.5" strokeWidth={1.75} /> Без иконки
+            </button>
           </div>
         </>
       ) : null}

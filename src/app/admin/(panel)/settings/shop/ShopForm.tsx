@@ -105,38 +105,43 @@ export function ShopForm({ initial }: { initial: ShopGeneral }) {
               Включайте/выключайте, выбирайте иконку из набора или загружайте свою, и где показывать (шапка/футер).
             </p>
             {contacts.map((c, i) => (
-              <div key={c.id} className="rounded-md border border-border/60 p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex flex-col items-center gap-2">
-                    <IconPicker value={c.icon ?? null} onChange={(name) => patchC(i, { icon: name })} />
-                    <div className="w-[120px]">
-                      <ImageField value={c.iconUrl ?? null} onChange={(u) => patchC(i, { iconUrl: u ?? null })} bucket="general" folder="contact-icons" />
-                    </div>
-                  </div>
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-[14px] font-semibold text-ink">{c.label || "Контакт"}</span>
-                      <div className="flex items-center gap-1.5">
-                        <Switch checked={c.enabled} onChange={(on) => patchC(i, { enabled: on })} label={c.enabled ? "Вкл" : "Выкл"} />
-                        <button type="button" onClick={() => setContacts((a) => move(a, i, -1))} className={iconBtn} title="Выше"><ArrowUp className="h-4 w-4" strokeWidth={1.75} /></button>
-                        <button type="button" onClick={() => setContacts((a) => move(a, i, 1))} className={iconBtn} title="Ниже"><ArrowDown className="h-4 w-4" strokeWidth={1.75} /></button>
-                        <button type="button" onClick={() => setContacts((a) => a.filter((_, idx) => idx !== i))} className={cn(iconBtn, "text-sale hover:bg-sale/5")} title="Удалить"><Trash2 className="h-4 w-4" strokeWidth={1.75} /></button>
-                      </div>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Field label="Название"><TextInput value={c.label} onChange={(e) => patchC(i, { label: e.target.value })} placeholder="WhatsApp" /></Field>
-                      <Field label="Ссылка"><TextInput value={c.href} onChange={(e) => patchC(i, { href: e.target.value })} placeholder="https://wa.me/7900…" /></Field>
-                      <Field label="Где показывать">
-                        <Select value={c.location} onChange={(e) => patchC(i, { location: e.target.value as ShopContactLink["location"] })}>
-                          <option value="both">Шапка и футер</option>
-                          <option value="header">Только шапка</option>
-                          <option value="footer">Только футер</option>
-                        </Select>
-                      </Field>
-                    </div>
-                    <p className="text-[12px] text-ink-subtle">Иконка: выберите из набора слева или загрузите картинку (она приоритетнее).</p>
+              <div key={c.id} className="rounded-xl border border-border/60 bg-white p-4">
+                {/* строка 1: иконка + название + действия */}
+                <div className="flex items-center gap-3">
+                  <IconPicker value={c.icon ?? null} onChange={(name) => patchC(i, { icon: name })} />
+                  <input
+                    value={c.label}
+                    onChange={(e) => patchC(i, { label: e.target.value })}
+                    placeholder="Название (напр. WhatsApp)"
+                    className="h-10 min-w-0 flex-1 rounded-sm border border-border bg-white px-3 text-[14px] font-medium text-ink placeholder:text-ink-subtle focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15"
+                  />
+                  <Switch checked={c.enabled} onChange={(on) => patchC(i, { enabled: on })} />
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={() => setContacts((a) => move(a, i, -1))} className={iconBtn} title="Выше"><ArrowUp className="h-4 w-4" strokeWidth={1.75} /></button>
+                    <button type="button" onClick={() => setContacts((a) => move(a, i, 1))} className={iconBtn} title="Ниже"><ArrowDown className="h-4 w-4" strokeWidth={1.75} /></button>
+                    <button type="button" onClick={() => setContacts((a) => a.filter((_, idx) => idx !== i))} className={cn(iconBtn, "text-sale hover:bg-sale/5")} title="Удалить"><Trash2 className="h-4 w-4" strokeWidth={1.75} /></button>
                   </div>
                 </div>
+                {/* строка 2: ссылка + где показывать */}
+                <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_200px]">
+                  <Field label="Ссылка"><TextInput value={c.href} onChange={(e) => patchC(i, { href: e.target.value })} placeholder="https://wa.me/7900… или tel:+7900…" /></Field>
+                  <Field label="Где показывать">
+                    <Select value={c.location} onChange={(e) => patchC(i, { location: e.target.value as ShopContactLink["location"] })}>
+                      <option value="both">Шапка и футер</option>
+                      <option value="header">Только шапка</option>
+                      <option value="footer">Только футер</option>
+                    </Select>
+                  </Field>
+                </div>
+                {/* строка 3: своя иконка (необязательно) */}
+                <details className="mt-3 group">
+                  <summary className="cursor-pointer list-none text-[12.5px] text-ink-muted hover:text-ink">
+                    Своя иконка <span className="text-ink-subtle">(необязательно, заменит выбранную)</span>
+                  </summary>
+                  <div className="mt-3">
+                    <ImageField value={c.iconUrl ?? null} onChange={(u) => patchC(i, { iconUrl: u ?? null })} bucket="general" folder="contact-icons" />
+                  </div>
+                </details>
               </div>
             ))}
             <AdminButton type="button" variant="outline" size="sm" onClick={() => setContacts((a) => [...a, { id: rid(), label: "Новый контакт", value: "", href: "", icon: "phone", iconUrl: null, enabled: true, location: "both" }])}>

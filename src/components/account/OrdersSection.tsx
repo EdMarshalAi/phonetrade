@@ -5,12 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Package } from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
-import {
-  loadOrders,
-  ORDER_STATUS_LABEL,
-  type Order,
-  type OrderStatus,
-} from "@/lib/account/orders";
+import { ORDER_STATUS_LABEL, type Order, type OrderStatus } from "@/lib/account/orders";
+import { getOrdersByPhone } from "@/lib/account/orders-server";
 import { formatPrice } from "@/lib/utils/format-price";
 import { pluralizeItems } from "@/lib/utils/plural";
 import { cn } from "@/lib/utils/cn";
@@ -36,7 +32,14 @@ export function OrdersSection() {
   const [orders, setOrders] = React.useState<Order[] | null>(null);
 
   React.useEffect(() => {
-    if (user) setOrders(loadOrders(user.phone));
+    let active = true;
+    if (!user) return;
+    getOrdersByPhone(user.phone)
+      .then((o) => active && setOrders(o))
+      .catch(() => active && setOrders([]));
+    return () => {
+      active = false;
+    };
   }, [user]);
 
   if (orders === null) {

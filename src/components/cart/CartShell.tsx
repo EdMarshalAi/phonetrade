@@ -14,7 +14,6 @@ import { pluralizeItems } from "@/lib/utils/plural";
 import type { CartItem, CheckoutState } from "@/lib/cart/types";
 import { placeOrder } from "@/lib/cart/order-actions";
 import { trackFunnel } from "@/lib/analytics/track";
-import { saveOrder } from "@/lib/account/orders";
 import { useCart } from "@/components/providers/CartProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
 import type { CartSettings, InfoBlock } from "@/lib/content";
@@ -158,24 +157,8 @@ export function CartShell({
         setSubmitError(result.error);
         return;
       }
-      // Используем номер из БД или fallback.
+      // Номер из БД (заказ уже сохранён в БД через placeOrder) или fallback.
       const displayId = result.orderNumber ?? `PT-${Date.now().toString().slice(-6)}`;
-
-      // Сохраняем в localStorage для страницы «Мои заказы».
-      saveOrder(state.phone, {
-        id: displayId,
-        date: new Date().toISOString().slice(0, 10),
-        status: "placed",
-        delivery: state.delivery === "courier" ? "Курьер по Белгороду" : "Самовывоз",
-        items: items.map((i) => ({
-          id: i.productId,
-          title: i.product.title,
-          image: i.product.image,
-          qty: i.qty,
-          priceCash: i.product.priceCash,
-        })),
-        total,
-      });
 
       trackFunnel("pay_order", { order: displayId, total });
       // Сохраняем данные покупателя в профиль (если вошёл).
