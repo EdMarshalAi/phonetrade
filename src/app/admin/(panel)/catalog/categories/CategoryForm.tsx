@@ -9,7 +9,16 @@ import { slugify } from "@/lib/admin/slug";
 import { Field, TextInput, Textarea, Select, Switch, FormError, AdminButton } from "@/components/admin/form";
 import { ImageField } from "@/components/admin/ImageField";
 import { Panel, PanelTitle } from "@/components/admin/ui";
+import { cn } from "@/lib/utils/cn";
 import { createCategory, updateCategory } from "./actions";
+
+const CAT_TABS = [
+  { key: "main", label: "Основное" },
+  { key: "media", label: "Изображения" },
+  { key: "home", label: "На главной" },
+  { key: "seo", label: "SEO" },
+] as const;
+type CatTab = (typeof CAT_TABS)[number]["key"];
 
 export interface CategoryValue {
   slug: string;
@@ -37,6 +46,7 @@ export function CategoryForm({
 }) {
   const isEdit = !!category;
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [tab, setTab] = React.useState<CatTab>("main");
   const slugTouched = React.useRef(isEdit);
 
   const {
@@ -81,6 +91,24 @@ export function CategoryForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
       <FormError message={formError} />
 
+      <div className="flex flex-wrap gap-1 border-b border-border/70">
+        {CAT_TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={cn(
+              "relative px-3.5 py-2 text-[13.5px] font-medium transition-colors",
+              tab === t.key ? "text-ink" : "text-ink-muted hover:text-ink"
+            )}
+          >
+            {t.label}
+            {tab === t.key ? <span className="absolute inset-x-2.5 -bottom-px h-0.5 rounded-full bg-ink" /> : null}
+          </button>
+        ))}
+      </div>
+
+      <div hidden={tab !== "main"}>
       <Panel className="space-y-4 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Название" required error={errors.title?.message}>
@@ -130,7 +158,9 @@ export function CategoryForm({
           <Textarea placeholder="Описание категории…" {...register("description")} />
         </Field>
       </Panel>
+      </div>
 
+      <div hidden={tab !== "media"}>
       <Panel className="p-5">
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Изображение" hint="Картинка для bento-плитки в блоке «Каталог Apple» на главной">
@@ -159,7 +189,9 @@ export function CategoryForm({
           </Field>
         </div>
       </Panel>
+      </div>
 
+      <div hidden={tab !== "home"}>
       <Panel className="space-y-4 p-5">
         <PanelTitle>Вывод на главной</PanelTitle>
         <div className="flex flex-wrap items-end gap-6">
@@ -175,7 +207,9 @@ export function CategoryForm({
           </Field>
         </div>
       </Panel>
+      </div>
 
+      <div hidden={tab !== "seo"}>
       <Panel className="space-y-4 p-5">
         <PanelTitle>SEO</PanelTitle>
         <Field label="Meta title">
@@ -193,6 +227,7 @@ export function CategoryForm({
           render={({ field }) => <Switch checked={!!field.value} onChange={field.onChange} label="Опубликована" />}
         />
       </Panel>
+      </div>
 
       <div className="flex items-center gap-2">
         <AdminButton type="submit" loading={isSubmitting}>
