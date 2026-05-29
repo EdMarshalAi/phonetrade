@@ -1,10 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { ArrowRight, Zap, CircleUserRound } from "lucide-react";
+import { Zap, LogIn, CircleUserRound } from "lucide-react";
 import { SectionStep } from "@/components/cart/SectionStep";
-import type { CheckoutMode, CheckoutState } from "@/lib/cart/types";
+import type { CheckoutState } from "@/lib/cart/types";
 import type { CheckoutErrors } from "@/lib/cart/validate";
+import { useAuth, normalizePhone } from "@/components/providers/AuthProvider";
 import { cn } from "@/lib/utils/cn";
 
 type Props = {
@@ -12,225 +13,199 @@ type Props = {
   onChange: (next: Partial<CheckoutState>) => void;
   errors: CheckoutErrors;
   showErrors: boolean;
-  /** Авторизован ли пользователь — тогда прячем выбор гость/вход. */
   loggedIn?: boolean;
   userName?: string;
 };
 
-const MODE_TABS: { value: CheckoutMode; label: string; hint: string }[] = [
-  {
-    value: "guest",
-    label: "Быстрое оформление",
-    hint: "Без регистрации — оформим за 2 минуты",
-  },
-  {
-    value: "login",
-    label: "Войти",
-    hint: "Получите бонусы и историю заказов",
-  },
-];
-
 export function CustomerSection({ state, onChange, errors, showErrors, loggedIn, userName }: Props) {
-  const err = (field: keyof CheckoutErrors) =>
-    showErrors ? errors[field] : undefined;
+  const err = (field: keyof CheckoutErrors) => (showErrors ? errors[field] : undefined);
+  const { login, register } = useAuth();
+
+  // guest = быстрое оформление; auth = вход/регистрация
+  const tab = state.mode === "login" ? "auth" : "guest";
+  const setTab = (t: "guest" | "auth") => onChange({ mode: t === "auth" ? "login" : "guest" });
 
   return (
-    <SectionStep
-      step={2}
-      title="Данные покупателя"
-      hint="Нужны для связи и подтверждения заказа"
-    >
-      <div className="flex flex-wrap gap-2 mb-5">
-        <button
-          type="button"
-          onClick={() => onChange({ customerType: "person" })}
-          className={cn(
-            "inline-flex items-center h-10 px-5 rounded-full text-sm font-medium transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40",
-            state.customerType === "person"
-              ? "bg-ink text-white border-ink"
-              : "bg-white text-ink border-border hover:border-ink/30"
-          )}
-        >
-          Физическое лицо
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange({ customerType: "company" })}
-          className={cn(
-            "inline-flex items-center h-10 px-5 rounded-full text-sm font-medium transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40",
-            state.customerType === "company"
-              ? "bg-ink text-white border-ink"
-              : "bg-white text-ink border-border hover:border-ink/30"
-          )}
-        >
-          Юридическое лицо
-        </button>
-      </div>
-
+    <SectionStep step={2} title="Данные покупателя" hint="Нужны для связи и подтверждения заказа">
       {loggedIn ? (
         <div className="mb-6 flex items-center gap-3 rounded-2xl border border-border/60 bg-surface/60 p-4">
           <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-ink text-white">
             <CircleUserRound className="size-5" />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-ink">
-              Вы вошли{userName ? ` как ${userName}` : ""}
-            </p>
+            <p className="text-sm font-semibold text-ink">Вы вошли{userName ? ` как ${userName}` : ""}</p>
             <p className="text-[12px] text-ink-muted">Данные подставлены из профиля — проверьте и при необходимости поправьте.</p>
           </div>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-2 mb-6">
-          {MODE_TABS.map((t) => {
-            const active = state.mode === t.value;
-            return (
-              <button
-                key={t.value}
-                type="button"
-                onClick={() => onChange({ mode: t.value })}
-                className={cn(
-                  "relative text-left rounded-2xl border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40",
-                  active ? "border-ink bg-surface/60" : "border-border/60 bg-white hover:border-ink/30"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  {t.value === "guest" && <Zap className="size-4 text-ink" aria-hidden />}
-                  <span className="text-sm font-semibold text-ink">{t.label}</span>
-                  {active && <ArrowRight className="ml-auto size-4 text-ink" aria-hidden />}
-                </div>
-                <p className="mt-1 text-[12px] text-ink-muted leading-snug">{t.hint}</p>
-              </button>
-            );
-          })}
+        <div className="mb-6 grid grid-cols-2 gap-2">
+          <SegBtn active={tab === "guest"} onClick={() => setTab("guest")} icon={<Zap className="size-4" />} title="Быстрое оформление" hint="Без регистрации, за 2 минуты" />
+          <SegBtn active={tab === "auth"} onClick={() => setTab("auth")} icon={<LogIn className="size-4" />} title="Войти" hint="Бонусы и история заказов" />
         </div>
       )}
 
-      {state.customerType === "company" && (
-        <div className="grid sm:grid-cols-2 gap-3 mb-3">
-          <Field
-            id="companyName"
-            label="Название компании"
-            required
-            autoComplete="organization"
-            placeholder="ООО «Ромашка»"
-            value={state.companyName ?? ""}
-            onChange={(v) => onChange({ companyName: v })}
-            error={err("companyName")}
-          />
-          <Field
-            id="companyInn"
-            label="ИНН"
-            required
-            inputMode="numeric"
-            placeholder="10 или 12 цифр"
-            value={state.companyInn ?? ""}
-            onChange={(v) => onChange({ companyInn: v })}
-            error={err("companyInn")}
-          />
-        </div>
+      {/* Панель входа/регистрации (только для гостя на вкладке «Войти») */}
+      {!loggedIn && tab === "auth" ? (
+        <AuthPanel defaultPhone={state.phone} login={login} register={register} />
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-2 mb-5">
+            <TypeBtn active={state.customerType === "person"} onClick={() => onChange({ customerType: "person" })}>Физическое лицо</TypeBtn>
+            <TypeBtn active={state.customerType === "company"} onClick={() => onChange({ customerType: "company" })}>Юридическое лицо</TypeBtn>
+          </div>
+
+          {state.customerType === "company" && (
+            <div className="grid sm:grid-cols-2 gap-3 mb-3">
+              <Field id="companyName" label="Название компании" required autoComplete="organization" placeholder="ООО «Ромашка»" value={state.companyName ?? ""} onChange={(v) => onChange({ companyName: v })} error={err("companyName")} />
+              <Field id="companyInn" label="ИНН" required inputMode="numeric" placeholder="10 или 12 цифр" value={state.companyInn ?? ""} onChange={(v) => onChange({ companyInn: v })} error={err("companyInn")} />
+            </div>
+          )}
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Field id="phone" label="Телефон" required type="tel" inputMode="tel" autoComplete="tel" placeholder="+7 ___ ___-__-__" value={state.phone} onChange={(v) => onChange({ phone: v })} error={err("phone")} />
+            <Field id="email" label="E-mail" type="email" inputMode="email" autoComplete="email" placeholder="вы@почта.ру" value={state.email} onChange={(v) => onChange({ email: v })} error={err("email")} />
+            <Field id="name" label="Как к вам обращаться" required autoComplete="name" placeholder="Имя" value={state.name} onChange={(v) => onChange({ name: v })} error={err("name")} />
+          </div>
+
+          <label htmlFor="comment" className="block mt-3">
+            <span className="block text-[11px] uppercase tracking-[0.14em] text-ink-subtle mb-1.5">Комментарий к заказу</span>
+            <textarea id="comment" rows={2} placeholder="Например: позвонить за час до доставки" value={state.comment ?? ""} onChange={(e) => onChange({ comment: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-surface text-[15px] text-ink placeholder:text-ink-subtle outline-none focus:bg-white focus:ring-2 focus:ring-ink/15 transition-colors resize-y" />
+          </label>
+
+          <p className="mt-4 text-[12px] text-ink-subtle leading-relaxed">
+            Нажимая «Подтвердить заказ», вы соглашаетесь с{" "}
+            <a href="/offer" className="text-ink underline-offset-4 hover:underline">публичной офертой</a> и{" "}
+            <a href="/privacy" className="text-ink underline-offset-4 hover:underline">политикой обработки данных</a>.
+          </p>
+        </>
       )}
-
-      <div className="grid sm:grid-cols-2 gap-3">
-        <Field
-          id="phone"
-          label="Телефон"
-          required
-          type="tel"
-          inputMode="tel"
-          autoComplete="tel"
-          placeholder="+7 ___ ___-__-__"
-          value={state.phone}
-          onChange={(v) => onChange({ phone: v })}
-          error={err("phone")}
-        />
-        <Field
-          id="email"
-          label="E-mail"
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          placeholder="вы@почта.ру"
-          value={state.email}
-          onChange={(v) => onChange({ email: v })}
-          error={err("email")}
-        />
-        <Field
-          id="name"
-          label="Как к вам обращаться"
-          required
-          autoComplete="name"
-          placeholder="Имя"
-          value={state.name}
-          onChange={(v) => onChange({ name: v })}
-          error={err("name")}
-        />
-        {state.mode === "login" && (
-          <Field
-            id="password"
-            label="Пароль"
-            required
-            type="password"
-            autoComplete="current-password"
-            placeholder="••••••••"
-            value={state.password ?? ""}
-            onChange={(v) => onChange({ password: v })}
-            error={err("password")}
-            action={
-              <a
-                href="/auth/login"
-                className="text-[12px] text-ink-muted hover:text-ink underline-offset-4 hover:underline"
-              >
-                Забыли?
-              </a>
-            }
-          />
-        )}
-      </div>
-
-      <label htmlFor="comment" className="block mt-3">
-        <span className="block text-[11px] uppercase tracking-[0.14em] text-ink-subtle mb-1.5">
-          Комментарий к заказу
-        </span>
-        <textarea
-          id="comment"
-          rows={2}
-          placeholder="Например: позвонить за час до доставки"
-          value={state.comment ?? ""}
-          onChange={(e) => onChange({ comment: e.target.value })}
-          className="w-full px-4 py-3 rounded-xl bg-surface text-[15px] text-ink placeholder:text-ink-subtle outline-none focus:bg-white focus:ring-2 focus:ring-ink/15 transition-colors resize-y"
-        />
-      </label>
-
-      <p className="mt-4 text-[12px] text-ink-subtle leading-relaxed">
-        Нажимая «Подтвердить заказ», вы соглашаетесь с{" "}
-        <a href="/offer" className="text-ink underline-offset-4 hover:underline">
-          публичной офертой
-        </a>{" "}
-        и{" "}
-        <a
-          href="/privacy"
-          className="text-ink underline-offset-4 hover:underline"
-        >
-          политикой обработки данных
-        </a>
-        .
-      </p>
     </SectionStep>
   );
 }
 
+/* ── Панель входа / регистрации ─────────────────────────────────────────────── */
+
+function AuthPanel({
+  defaultPhone,
+  login,
+  register,
+}: {
+  defaultPhone: string;
+  login: (phone: string, password: string) => Promise<void>;
+  register: (input: { name: string; phone: string; email?: string; password: string }) => Promise<void>;
+}) {
+  const [mode, setMode] = React.useState<"login" | "register">("login");
+  const [name, setName] = React.useState("");
+  const [phone, setPhone] = React.useState(defaultPhone || "+7 ");
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+  const [pending, setPending] = React.useState(false);
+
+  const submit = async () => {
+    setError(null);
+    if (normalizePhone(phone).length < 11) return setError("Укажите корректный номер телефона");
+    if (password.length < 6) return setError("Пароль — минимум 6 символов");
+    if (mode === "register" && !name.trim()) return setError("Укажите имя");
+    setPending(true);
+    try {
+      if (mode === "register") await register({ name, phone, email, password });
+      else await login(phone, password);
+      // успех → провайдер обновит user, секция перерисуется в «Вы вошли…»
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось войти");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-surface/40 p-5">
+      <p className="mb-4 text-[13px] font-semibold text-ink">
+        {mode === "login" ? "Вход в личный кабинет" : "Регистрация"}
+      </p>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {mode === "register" ? (
+          <Field id="auth-name" label="Имя" required autoComplete="name" placeholder="Имя" value={name} onChange={setName} />
+        ) : null}
+        <Field id="auth-phone" label="Телефон" required type="tel" inputMode="tel" autoComplete="tel" placeholder="+7 ___ ___-__-__" value={phone} onChange={setPhone} />
+        {mode === "register" ? (
+          <Field id="auth-email" label="E-mail" type="email" inputMode="email" autoComplete="email" placeholder="вы@почта.ру" value={email} onChange={setEmail} />
+        ) : null}
+        <Field
+          id="auth-password"
+          label="Пароль"
+          required
+          type="password"
+          autoComplete={mode === "login" ? "current-password" : "new-password"}
+          placeholder="Минимум 6 символов"
+          value={password}
+          onChange={setPassword}
+        />
+      </div>
+
+      {error ? <p className="mt-3 text-[12px] text-sale" role="alert">{error}</p> : null}
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={pending}
+          className="inline-flex h-11 items-center justify-center rounded-2xl bg-ink px-6 text-sm font-medium text-white transition-colors hover:bg-ink/85 disabled:opacity-60 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+        >
+          {pending ? "Подождите…" : mode === "login" ? "Войти" : "Зарегистрироваться"}
+        </button>
+        <button
+          type="button"
+          onClick={() => { setError(null); setMode((m) => (m === "login" ? "register" : "login")); }}
+          className="text-[13px] text-ink-muted underline-offset-4 hover:text-ink hover:underline"
+        >
+          {mode === "login" ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Мелкие контролы ─────────────────────────────────────────────────────────── */
+
+function SegBtn({ active, onClick, icon, title, hint }: { active: boolean; onClick: () => void; icon: React.ReactNode; title: string; hint: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "text-left rounded-2xl border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40",
+        active ? "border-ink bg-surface/60" : "border-border/60 bg-white hover:border-ink/30"
+      )}
+    >
+      <div className="flex items-center gap-2 text-ink">
+        {icon}
+        <span className="text-sm font-semibold">{title}</span>
+      </div>
+      <p className="mt-1 text-[12px] text-ink-muted leading-snug">{hint}</p>
+    </button>
+  );
+}
+
+function TypeBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center h-10 px-5 rounded-full text-sm font-medium transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40",
+        active ? "bg-ink text-white border-ink" : "bg-white text-ink border-border hover:border-ink/30"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 function Field({
-  id,
-  label,
-  value,
-  onChange,
-  required,
-  placeholder,
-  type = "text",
-  inputMode,
-  autoComplete,
-  error,
-  action,
+  id, label, value, onChange, required, placeholder, type = "text", inputMode, autoComplete, error,
 }: {
   id: string;
   label: string;
@@ -242,17 +217,12 @@ function Field({
   inputMode?: "text" | "tel" | "email" | "numeric";
   autoComplete?: string;
   error?: string;
-  action?: React.ReactNode;
 }) {
   const errorId = error ? `${id}-error` : undefined;
   return (
     <label htmlFor={id} className="block">
       <span className="flex items-center justify-between text-[11px] uppercase tracking-[0.14em] text-ink-subtle mb-1.5">
-        <span>
-          {label}
-          {required && " *"}
-        </span>
-        {action}
+        <span>{label}{required && " *"}</span>
       </span>
       <input
         id={id}
@@ -270,11 +240,7 @@ function Field({
           error ? "ring-2 ring-sale/50 focus:ring-sale/60" : "focus:ring-ink/15"
         )}
       />
-      {error && (
-        <span id={errorId} className="mt-1 block text-[12px] text-sale">
-          {error}
-        </span>
-      )}
+      {error && <span id={errorId} className="mt-1 block text-[12px] text-sale">{error}</span>}
     </label>
   );
 }

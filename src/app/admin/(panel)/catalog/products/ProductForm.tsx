@@ -7,7 +7,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
 import { productSchema, type ProductInput, type ProductFormValues } from "@/lib/admin/schemas";
 import { slugify } from "@/lib/admin/slug";
-import { Field, TextInput, Textarea, Select, Switch, FormError, AdminButton } from "@/components/admin/form";
+import { Field, TextInput, Textarea, Select, Switch, ToggleRow, FormError, AdminButton } from "@/components/admin/form";
 import { ImageField } from "@/components/admin/ImageField";
 import { Panel } from "@/components/admin/ui";
 import type { ProductOption, ProductBadge } from "@/lib/content";
@@ -241,17 +241,21 @@ export function ProductForm({
               />
             </Field>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Остаток на складе">
               <TextInput type="number" min={0} placeholder="оставьте пустым — «уточняйте»" {...register("stock")} />
             </Field>
             <Field label="Мин. остаток (алёрт)">
               <TextInput type="number" min={0} {...register("min_stock")} />
             </Field>
-            <div className="flex flex-col justify-center gap-3 pt-5">
-              <Controller control={control} name="is_available" render={({ field }) => <Switch checked={!!field.value} onChange={field.onChange} label="Доступен для заказа" />} />
-              <Controller control={control} name="in_stock" render={({ field }) => <Switch checked={!!field.value} onChange={field.onChange} label="В наличии" />} />
-            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Controller control={control} name="is_available" render={({ field }) => (
+              <ToggleRow checked={!!field.value} onChange={field.onChange} title="Доступен для заказа" hint="Можно добавить в корзину и оформить" />
+            )} />
+            <Controller control={control} name="in_stock" render={({ field }) => (
+              <ToggleRow checked={!!field.value} onChange={field.onChange} title="В наличии" hint="Показывать как «в наличии» на витрине" />
+            )} />
           </div>
         </Panel>
       </div>

@@ -38,7 +38,7 @@ export function ContactLinks({
             className={itemClassName}
           >
             {c.iconUrl ? (
-              <Image src={c.iconUrl} alt="" width={18} height={18} className={cn("object-contain", iconClassName)} />
+              <Image src={c.iconUrl} alt="" width={18} height={18} unoptimized className={cn("object-contain", iconClassName)} />
             ) : Icon ? (
               <Icon className={iconClassName} aria-hidden />
             ) : null}

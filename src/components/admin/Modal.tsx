@@ -45,7 +45,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "relative z-10 my-8 w-full max-w-lg rounded-2xl border border-border/70 bg-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.25)]",
+          "relative z-10 my-8 w-full max-w-2xl rounded-2xl border border-border/70 bg-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.25)]",
           className
         )}
       >

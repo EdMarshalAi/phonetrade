@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ImagePlus, Ban } from "lucide-react";
+import { ImagePlus, Ban, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { ICON_SET, resolveIcon } from "@/lib/admin/icons";
 
@@ -21,7 +21,7 @@ export function IconPicker({
 }) {
   const [open, setOpen] = React.useState(false);
   const Current = value ? resolveIcon(value) : null;
-  const box = size === "sm" ? "size-9" : "size-10";
+  const box = size === "sm" ? "size-10" : "size-11";
 
   return (
     <div className="relative inline-block">
@@ -29,19 +29,30 @@ export function IconPicker({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Выбрать иконку"
-        title={value ?? "Выбрать иконку"}
+        aria-expanded={open}
+        title="Выбрать иконку"
         className={cn(
           box,
-          "inline-flex items-center justify-center rounded-lg border bg-white transition-colors",
-          open ? "border-ink ring-2 ring-ink/15" : "border-border hover:border-ink/40",
+          "group relative inline-flex items-center justify-center rounded-lg border bg-white transition-colors",
+          open ? "border-ink ring-2 ring-ink/15" : "border-border hover:border-ink/40 hover:bg-surface",
           value ? "text-ink" : "text-ink-subtle"
         )}
       >
         {Current ? (
-          <Current className="size-[18px]" strokeWidth={1.75} />
+          <Current className="size-5" strokeWidth={1.75} />
         ) : (
-          <ImagePlus className="size-[18px]" strokeWidth={1.75} />
+          <ImagePlus className="size-5" strokeWidth={1.75} />
         )}
+        {/* affordance: «можно выбрать» */}
+        <span
+          aria-hidden
+          className={cn(
+            "absolute -bottom-1.5 -right-1.5 inline-flex size-4 items-center justify-center rounded-full border border-border bg-white text-ink-subtle shadow-sm transition-transform",
+            open && "rotate-180"
+          )}
+        >
+          <ChevronDown className="size-2.5" strokeWidth={2.5} />
+        </span>
       </button>
 
       {open ? (

@@ -47,8 +47,5 @@ export function validateCheckout(
       errors.companyInn = "ИНН состоит из 10 или 12 цифр";
   }
 
-  if (state.mode === "login" && !(state.password ?? ""))
-    errors.password = "Введите пароль";
-
   return errors;
 }

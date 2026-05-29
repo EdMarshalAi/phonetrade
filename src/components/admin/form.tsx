@@ -223,6 +223,49 @@ export function Switch({
   );
 }
 
+/* ── ToggleRow: переключатель в виде аккуратной строки-карточки ───────────── */
+export function ToggleRow({
+  checked,
+  onChange,
+  title,
+  hint,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  title: string;
+  hint?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "flex w-full items-center justify-between gap-4 rounded-lg border px-4 py-3 text-left transition-colors disabled:opacity-60",
+        checked ? "border-ink/30 bg-ink/[0.03]" : "border-border/60 bg-white hover:border-border"
+      )}
+    >
+      <span className="min-w-0">
+        <span className="block text-[14px] font-medium text-ink">{title}</span>
+        {hint ? <span className="mt-0.5 block text-[12px] text-ink-subtle">{hint}</span> : null}
+      </span>
+      <span
+        aria-hidden
+        className={cn(
+          "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full px-0.5 transition-colors duration-200",
+          checked ? "bg-ink" : "bg-border-strong"
+        )}
+      >
+        <span className={cn("inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200", checked ? "translate-x-4" : "translate-x-0")} />
+      </span>
+    </button>
+  );
+}
+
 /* ── Checkbox ─────────────────────────────────────────────────────────── */
 export function Checkbox({
   checked,

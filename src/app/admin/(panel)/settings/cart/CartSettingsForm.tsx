@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Plus, ArrowUp, ArrowDown, Trash2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Panel } from "@/components/admin/ui";
-import { Field, TextInput, Textarea, Switch, AdminButton } from "@/components/admin/form";
+import { Field, TextInput, Textarea, Switch, ToggleRow, AdminButton } from "@/components/admin/form";
 import { Modal } from "@/components/admin/Modal";
 import { IconPicker } from "@/components/admin/IconPicker";
 import { BlocksEditor } from "@/components/admin/BlocksEditor";
@@ -207,8 +207,10 @@ export function CartSettingsForm({
       >
         {editPay !== null && payments[editPay] ? (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <IconPicker value={payments[editPay].icon ?? null} onChange={(name) => patchP(editPay, { icon: name })} />
+            <div className="flex items-start gap-3">
+              <Field label="Иконка">
+                <IconPicker value={payments[editPay].icon ?? null} onChange={(name) => patchP(editPay, { icon: name })} />
+              </Field>
               <Field label="Название" className="flex-1">
                 <TextInput value={payments[editPay].label} onChange={(e) => patchP(editPay, { label: e.target.value })} />
               </Field>
@@ -247,8 +249,10 @@ export function CartSettingsForm({
       >
         {editDel !== null && delivery[editDel] ? (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <IconPicker value={delivery[editDel].icon ?? null} onChange={(name) => patchD(editDel, { icon: name })} />
+            <div className="flex items-start gap-3">
+              <Field label="Иконка">
+                <IconPicker value={delivery[editDel].icon ?? null} onChange={(name) => patchD(editDel, { icon: name })} />
+              </Field>
               <Field label="Название" className="flex-1">
                 <TextInput value={delivery[editDel].label} onChange={(e) => patchD(editDel, { label: e.target.value })} />
               </Field>
@@ -259,9 +263,12 @@ export function CartSettingsForm({
             <Field label="Описание (текст под выбранным способом)">
               <Textarea value={delivery[editDel].description} onChange={(e) => patchD(editDel, { description: e.target.value })} className="min-h-[64px]" />
             </Field>
-            <Field label="Нужен адрес доставки">
-              <Switch checked={delivery[editDel].requiresAddress} onChange={(v) => patchD(editDel, { requiresAddress: v })} label={delivery[editDel].requiresAddress ? "Да (показать форму адреса)" : "Нет (самовывоз)"} />
-            </Field>
+            <ToggleRow
+              checked={delivery[editDel].requiresAddress}
+              onChange={(v) => patchD(editDel, { requiresAddress: v })}
+              title="Нужен адрес доставки"
+              hint="Курьер — показать форму адреса и времени; выкл — самовывоз"
+            />
             <div className="grid grid-cols-2 gap-4">
               <Field label="Стоимость, ₽" hint="0 — бесплатно">
                 <TextInput type="number" min={0} value={delivery[editDel].price} onChange={(e) => patchD(editDel, { price: Number(e.target.value) || 0 })} />
