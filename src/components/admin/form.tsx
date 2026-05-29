@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useFormStatus } from "react-dom";
+import { createPortal } from "react-dom";
 import { Loader2, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -104,9 +105,34 @@ export function Select({
   id?: string;
 }) {
   const [open, setOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+  const [rect, setRect] = React.useState<{ top: number; left: number; width: number } | null>(null);
+  const btnRef = React.useRef<HTMLButtonElement>(null);
   const opts = React.useMemo(() => parseOptions(children), [children]);
   const current = String(value ?? "");
   const selected = opts.find((o) => o.value === current);
+
+  React.useEffect(() => setMounted(true), []);
+
+  // Меню рендерится в портал с fixed-позицией → не обрезается overflow-контейнерами (таблицы и т.п.).
+  const place = React.useCallback(() => {
+    const el = btnRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setRect({ top: r.bottom + 4, left: r.left, width: r.width });
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    place();
+    const close = () => setOpen(false);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [open, place]);
 
   const pick = (v: string) => {
     onChange?.({ target: { value: v } } as unknown as React.ChangeEvent<HTMLSelectElement>);
@@ -117,36 +143,43 @@ export function Select({
     <div className={cn("relative", className)}>
       {name ? <input type="hidden" name={name} value={current} readOnly /> : null}
       <button
+        ref={btnRef}
         type="button"
         id={id}
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className={cn(controlBase, borderCls(hasError), "flex h-10 items-center justify-between gap-2 px-2.5 text-left")}
+        className={cn(controlBase, borderCls(hasError), "flex h-10 w-full items-center justify-between gap-2 px-2.5 text-left")}
       >
         <span className={cn("truncate", !selected && "text-ink-subtle")}>{selected?.label ?? "—"}</span>
         <ChevronDown className={cn("h-4 w-4 shrink-0 text-ink-subtle transition-transform", open && "rotate-180")} strokeWidth={2} />
       </button>
-      {open ? (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-64 overflow-auto rounded-sm border border-border/70 bg-white py-1 shadow-lg">
-            {opts.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                disabled={o.disabled}
-                onClick={() => pick(o.value)}
-                className={cn(
-                  "flex w-full items-center px-3 py-1.5 text-left text-[14px] transition-colors disabled:opacity-40",
-                  o.value === current ? "bg-ink text-white" : "text-ink hover:bg-surface"
-                )}
+      {open && mounted && rect
+        ? createPortal(
+            <>
+              <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} aria-hidden />
+              <div
+                className="fixed z-[61] max-h-64 overflow-auto rounded-sm border border-border/70 bg-white py-1 shadow-lg"
+                style={{ top: rect.top, left: rect.left, width: rect.width }}
               >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </>
-      ) : null}
+                {opts.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    disabled={o.disabled}
+                    onClick={() => pick(o.value)}
+                    className={cn(
+                      "flex w-full items-center px-3 py-1.5 text-left text-[14px] transition-colors disabled:opacity-40",
+                      o.value === current ? "bg-ink text-white" : "text-ink hover:bg-surface"
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
