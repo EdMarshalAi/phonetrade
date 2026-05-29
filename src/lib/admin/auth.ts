@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export type AdminRole = "admin" | "manager" | "content";
+export type AdminRole = "owner" | "admin" | "manager" | "content" | "analytics";
 
 export interface AdminUser {
   id: string;
@@ -47,13 +47,15 @@ export async function getAdminUser(): Promise<AdminUser | null> {
 export async function requireAdmin(roles?: AdminRole[]): Promise<AdminUser> {
   const admin = await getAdminUser();
   if (!admin) redirect("/admin/login?error=forbidden");
+  // Owner — суперадмин: доступ ко всему независимо от списка ролей.
+  if (admin.role === "owner") return admin;
   if (roles && roles.length > 0 && !roles.includes(admin.role)) {
     redirect("/admin?error=role");
   }
   return admin;
 }
 
-/** Доступ к разделу по роли (для гейтинга навигации/действий). */
+/** Доступ к разделу по роли (owner — всегда). */
 export function canAccess(role: AdminRole, allowed: AdminRole[]): boolean {
-  return allowed.includes(role);
+  return role === "owner" || allowed.includes(role);
 }

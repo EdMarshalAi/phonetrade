@@ -48,15 +48,23 @@ const ALL: AdminRole[] = ["admin", "manager", "content"];
 const STAFF: AdminRole[] = ["admin", "manager"];
 const ADMIN_ONLY: AdminRole[] = ["admin"];
 const CONTENT: AdminRole[] = ["admin", "content"];
+const ANALYTICS: AdminRole[] = ["admin", "manager", "analytics"];
 
 /** Структура сайдбара админки (спека §2). */
 export const ADMIN_NAV: NavGroup[] = [
   {
     items: [
-      { label: "Обзор", href: "/admin", icon: LayoutDashboard, roles: ALL },
-      { label: "Аналитика", href: "/admin/analytics", icon: BarChart3, roles: STAFF },
+      { label: "Обзор", href: "/admin", icon: LayoutDashboard, roles: [...ALL, "analytics"] },
       { label: "Заказы", href: "/admin/orders", icon: ShoppingCart, roles: STAFF },
       { label: "Заявки", href: "/admin/leads", icon: Inbox, roles: STAFF },
+      { label: "Клиенты", href: "/admin/customers", icon: Users, roles: STAFF },
+    ],
+  },
+  {
+    label: "Аналитика",
+    items: [
+      { label: "Аналитика сайта", href: "/admin/analytics/site", icon: BarChart3, roles: ANALYTICS },
+      { label: "Аналитика заказов", href: "/admin/analytics/orders", icon: BarChart3, roles: ANALYTICS },
     ],
   },
   {
@@ -87,12 +95,6 @@ export const ADMIN_NAV: NavGroup[] = [
     ],
   },
   {
-    label: "Клиенты",
-    items: [
-      { label: "Клиенты", href: "/admin/customers", icon: Users, roles: STAFF },
-    ],
-  },
-  {
     label: "Настройки",
     items: [
       { label: "Магазин", href: "/admin/settings/shop", icon: Store, roles: ADMIN_ONLY },
@@ -116,6 +118,8 @@ export const ADMIN_NAV: NavGroup[] = [
 
 /** Плоский список доступных пользователю пунктов (для фильтрации по роли). */
 export function navForRole(role: AdminRole): NavGroup[] {
+  // Owner — суперадмин: видит всё.
+  if (role === "owner") return ADMIN_NAV;
   return ADMIN_NAV.map((group) => ({
     ...group,
     items: group.items.filter((i) => !i.roles || i.roles.includes(role)),

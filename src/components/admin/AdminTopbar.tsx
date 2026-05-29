@@ -12,9 +12,11 @@ interface Crumb {
 }
 
 const ROLE_LABEL: Record<string, string> = {
+  owner: "Владелец",
   admin: "Администратор",
   manager: "Менеджер",
   content: "Контент-менеджер",
+  analytics: "Аналитик",
 };
 
 /** Хлебные крошки по текущему пути через структуру навигации. */
