@@ -1,11 +1,7 @@
 "use server";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-
-/** Телефон → синтетический email для Supabase Auth (без SMS-провайдера). */
-export function phoneToEmail(phone: string): string {
-  return `${phone.replace(/\D/g, "")}@phonetrade.local`;
-}
+import { phoneToEmail } from "@/lib/auth/phone-email";
 
 /**
  * Регистрация покупателя: создаём пользователя в Supabase Auth (без подтверждения

@@ -3,7 +3,8 @@
 import * as React from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Session } from "@supabase/supabase-js";
-import { registerStorefront, phoneToEmail } from "@/lib/auth/auth-actions";
+import { registerStorefront } from "@/lib/auth/auth-actions";
+import { phoneToEmail } from "@/lib/auth/phone-email";
 
 export type AuthUser = {
   id: string;
