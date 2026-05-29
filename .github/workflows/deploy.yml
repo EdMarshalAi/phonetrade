@@ -5,10 +5,17 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Не запускать два деплоя одновременно; новый пуш отменяет предыдущий
 concurrency:
   group: deploy-main
   cancel-in-progress: true
+
+# Несекретные параметры сервера — здесь, чтобы в GitHub нужен был только
+# приватный ключ (SSH_PRIVATE_KEY) и две публичные переменные Supabase.
+env:
+  SSH_HOST: "31.129.97.8"
+  SSH_USER: "root"
+  SSH_PORT: "22"
+  DEPLOY_PATH: "/opt/phonetrade"
 
 jobs:
   deploy:
@@ -30,9 +37,8 @@ jobs:
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
-          # --- Supabase (раскомментировать, когда подключим клиент) ---
-          # NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          # NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Assemble standalone bundle
         run: |
@@ -40,11 +46,10 @@ jobs:
           if [ -d public ]; then cp -r public .next/standalone/public; fi
           cp ecosystem.config.js .next/standalone/ecosystem.config.js
 
-      - name: Check deploy secrets
+      - name: Check deploy key
         run: |
-          if [ -z "${{ secrets.SSH_HOST }}" ] || [ -z "${{ secrets.SSH_USER }}" ] \
-             || [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ] || [ -z "${{ secrets.DEPLOY_PATH }}" ]; then
-            echo "::warning::Деплой пропущен — не заданы секреты SSH_HOST / SSH_USER / SSH_PRIVATE_KEY / DEPLOY_PATH. Сборка прошла успешно."
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "::warning::Деплой пропущен — нет секрета SSH_PRIVATE_KEY. Сборка прошла успешно."
             echo "SKIP_DEPLOY=true" >> "$GITHUB_ENV"
           fi
 
@@ -54,19 +59,21 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
-          ssh-keyscan -p "${{ secrets.SSH_PORT || '22' }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Rsync standalone to server
         if: env.SKIP_DEPLOY != 'true'
         run: |
+          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p '$DEPLOY_PATH'"
           rsync -az --delete \
-            -e "ssh -i ~/.ssh/id_deploy -p ${{ secrets.SSH_PORT || '22' }}" \
+            -e "ssh -i ~/.ssh/id_deploy -p $SSH_PORT" \
             .next/standalone/ \
-            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:${{ secrets.DEPLOY_PATH }}/"
+            "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/"
 
       - name: Restart with PM2
         if: env.SKIP_DEPLOY != 'true'
+        env:
+          SVC: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          ssh -i ~/.ssh/id_deploy -p "${{ secrets.SSH_PORT || '22' }}" \
-            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
-            "cd '${{ secrets.DEPLOY_PATH }}' && (pm2 reload ecosystem.config.js --update-env || pm2 start ecosystem.config.js) && pm2 save"
+          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            "cd '$DEPLOY_PATH' && SUPABASE_SERVICE_ROLE_KEY='$SVC' (pm2 reload ecosystem.config.js --update-env || pm2 start ecosystem.config.js) && pm2 save"
