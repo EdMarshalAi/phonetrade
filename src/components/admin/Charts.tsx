@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -20,6 +21,17 @@ export interface SeriesPoint {
   value: number;
 }
 
+/**
+ * Recharts не умеет рендериться на сервере (нужны размеры контейнера) — на SSR
+ * это валит страницу. Монтируем графики только на клиенте: до маунта отдаём
+ * плейсхолдер нужной высоты, чтобы не было сдвига layout.
+ */
+function useMounted() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted;
+}
+
 /** Монохромная палитра для donut/bar (оттенки ink). */
 export const INK_SHADES = ["#1d1d1f", "#3a3a3c", "#56565a", "#727276", "#8e8e93", "#aeaeb2", "#c7c7cc", "#d8d8dc"];
 
@@ -36,6 +48,8 @@ export function TimeSeriesChart({
   height?: number;
   valueFormatter?: (v: number) => string;
 }) {
+  const mounted = useMounted();
+  if (!mounted) return <div style={{ width: "100%", height }} />;
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
@@ -70,6 +84,8 @@ export function DonutChart({
   height?: number;
   valueFormatter?: (v: number) => string;
 }) {
+  const mounted = useMounted();
+  if (!mounted) return <div style={{ width: "100%", height }} />;
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
@@ -99,6 +115,8 @@ export function BarsChart({
   horizontal?: boolean;
   valueFormatter?: (v: number) => string;
 }) {
+  const mounted = useMounted();
+  if (!mounted) return <div style={{ width: "100%", height }} />;
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
