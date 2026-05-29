@@ -36,9 +36,11 @@ export function AuthShell() {
   const [name, setName] = React.useState("");
   const [phone, setPhone] = React.useState("+7 ");
   const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
+  const [pending, setPending] = React.useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -46,24 +48,31 @@ export function AuthShell() {
       setError("Укажите корректный номер телефона");
       return;
     }
+    if (!password || password.length < 6) {
+      setError("Пароль — минимум 6 символов");
+      return;
+    }
     if (email.trim() && !EMAIL_RE.test(email.trim())) {
       setError("Проверьте формат e-mail");
       return;
     }
+    if (mode === "register" && !name.trim()) {
+      setError("Как к вам обращаться?");
+      return;
+    }
 
+    setPending(true);
     try {
       if (mode === "register") {
-        if (!name.trim()) {
-          setError("Как к вам обращаться?");
-          return;
-        }
-        register({ name, phone, email });
+        await register({ name, phone, email, password });
       } else {
-        login(phone);
+        await login(phone, password);
       }
       router.push(returnTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Что-то пошло не так");
+    } finally {
+      setPending(false);
     }
   };
 
@@ -182,6 +191,16 @@ export function AuthShell() {
                     onChange={setEmail}
                   />
                 )}
+                <AuthField
+                  id="auth-password"
+                  label="Пароль"
+                  required
+                  type="password"
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                  placeholder="Минимум 6 символов"
+                  value={password}
+                  onChange={setPassword}
+                />
 
                 {error && (
                   <p className="text-[13px] text-sale" role="alert">
@@ -191,9 +210,10 @@ export function AuthShell() {
 
                 <button
                   type="submit"
-                  className="mt-2 inline-flex w-full items-center justify-center h-12 rounded-2xl bg-ink text-white text-sm font-medium hover:bg-ink/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 focus-visible:ring-offset-2"
+                  disabled={pending}
+                  className="mt-2 inline-flex w-full items-center justify-center h-12 rounded-2xl bg-ink text-white text-sm font-medium hover:bg-ink/85 disabled:opacity-60 disabled:pointer-events-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 focus-visible:ring-offset-2"
                 >
-                  {mode === "login" ? "Войти" : "Создать аккаунт"}
+                  {pending ? "Подождите…" : mode === "login" ? "Войти" : "Создать аккаунт"}
                 </button>
               </form>
 
