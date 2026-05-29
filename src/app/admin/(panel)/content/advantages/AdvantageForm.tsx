@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { advantageSchema, type AdvantageInput, type AdvantageFormValues } from "@/lib/admin/schemas";
 import { Field, TextInput, Textarea, Switch, FormError, AdminButton } from "@/components/admin/form";
+import { IconPicker } from "@/components/admin/IconPicker";
 import { Panel } from "@/components/admin/ui";
 import { createAdvantage, updateAdvantage } from "./actions";
 
@@ -51,11 +52,10 @@ export function AdvantageForm({ advantage }: { advantage?: AdvantageValue }) {
           <Field label="Заголовок" required error={errors.title?.message}>
             <TextInput placeholder="Только оригинал" hasError={!!errors.title} {...register("title")} />
           </Field>
-          <Field
-            label="Иконка (lucide)"
-            hint="Имя иконки lucide, напр. shield-check, truck, badge-percent"
-          >
-            <TextInput placeholder="shield-check" {...register("icon")} />
+          <Field label="Иконка" hint="Выберите из набора — она покажется на карточке преимущества">
+            <Controller control={control} name="icon" render={({ field }) => (
+              <IconPicker value={field.value || null} onChange={(n) => field.onChange(n ?? "")} />
+            )} />
           </Field>
         </div>
         <Field label="Описание">

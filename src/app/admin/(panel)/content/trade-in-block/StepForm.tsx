@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { tradeInStepSchema, type TradeInStepInput, type TradeInStepFormValues } from "@/lib/admin/schemas";
 import { Field, TextInput, Textarea, FormError, AdminButton } from "@/components/admin/form";
+import { IconPicker } from "@/components/admin/IconPicker";
 import { Panel } from "@/components/admin/ui";
 import { createStep, updateStep } from "./actions";
 
@@ -24,6 +25,7 @@ export function StepForm({ step }: { step?: StepValue }) {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<TradeInStepFormValues, unknown, TradeInStepInput>({
     resolver: zodResolver(tradeInStepSchema),
@@ -53,8 +55,10 @@ export function StepForm({ step }: { step?: StepValue }) {
           <Field label="Порядок">
             <TextInput type="number" min={0} {...register("sort_order")} />
           </Field>
-          <Field label="Иконка (lucide)">
-            <TextInput placeholder="search" {...register("icon")} />
+          <Field label="Иконка">
+            <Controller control={control} name="icon" render={({ field }) => (
+              <IconPicker value={field.value || null} onChange={(n) => field.onChange(n ?? "")} />
+            )} />
           </Field>
         </div>
         <Field label="Заголовок" required error={errors.title?.message}>
