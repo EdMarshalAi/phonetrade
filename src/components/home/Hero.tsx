@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils/cn";
+import { trackHero } from "@/lib/analytics/track";
 
 /**
  * Banner slide schema — будущая админка-конструктор будет сохранять
@@ -79,6 +80,11 @@ export function Hero({ slides, autoplayMs = AUTOPLAY_DEFAULT }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [next, prev]);
+
+  // Трекинг показа слайда (CTR hero в аналитике).
+  React.useEffect(() => {
+    if (slide?.id) trackHero(slide.id, "view");
+  }, [slide?.id]);
 
   const tone = slide.textTone ?? (slide.background === "ink" ? "light" : "dark");
   const isLight = tone === "light";
@@ -175,6 +181,7 @@ export function Hero({ slides, autoplayMs = AUTOPLAY_DEFAULT }: Props) {
                       variant={isLight ? "invert" : "primary"}
                       size="sm"
                       onClick={() => {
+                        trackHero(slide.id, "click");
                         window.location.href = slide.cta!.href;
                       }}
                       className="h-9 px-4 text-[12px] sm:h-10 sm:px-5 sm:text-[13px] md:h-12 md:px-7 md:text-[15px]"

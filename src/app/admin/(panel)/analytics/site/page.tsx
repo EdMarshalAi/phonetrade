@@ -194,16 +194,20 @@ export default async function SiteAnalyticsPage({
   const uniqueVisitors = new Set(views.map((v) => v.visitor_id ?? v.session_id)).size;
   const totalPageViews = views.length;
 
-  // Sessions
-  const totalSessions = sessions.length;
-  const bounceSessions = sessions.filter((s) => s.is_bounce).length;
+  // Sessions: из таблицы sessions если заполнена (cron), иначе выводим из
+  // page_views по session_id — работает без cron-агрегации.
+  const sessionPageCounts: Record<string, number> = {};
+  for (const v of views) {
+    const sid = v.session_id ?? "—";
+    sessionPageCounts[sid] = (sessionPageCounts[sid] ?? 0) + 1;
+  }
+  const derivedSessions = Object.keys(sessionPageCounts).length;
+  const totalSessions = sessions.length || derivedSessions;
+  const bounceSessions = sessions.length
+    ? sessions.filter((s) => s.is_bounce).length
+    : Object.values(sessionPageCounts).filter((c) => c === 1).length;
   const bounceRate = totalSessions > 0 ? (bounceSessions / totalSessions) * 100 : 0;
-
-  // Avg depth: page_views / sessions (or from pages_count avg)
-  const avgDepth =
-    totalSessions > 0
-      ? (totalPageViews / totalSessions).toFixed(1)
-      : "—";
+  const avgDepth = totalSessions > 0 ? (totalPageViews / totalSessions).toFixed(1) : "—";
 
   // Conversion
   const convRate =

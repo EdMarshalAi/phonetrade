@@ -13,6 +13,7 @@ import { MAX_QTY } from "@/lib/cart/constants";
 import { pluralizeItems } from "@/lib/utils/plural";
 import type { CartItem, CheckoutState } from "@/lib/cart/types";
 import { placeOrder } from "@/lib/cart/order-actions";
+import { trackFunnel } from "@/lib/analytics/track";
 import { saveOrder } from "@/lib/account/orders";
 
 const INITIAL_STATE: CheckoutState = {
@@ -91,6 +92,12 @@ export function CartShell({ initialItems }: Props) {
     };
   }, []);
 
+  // Воронка: пользователь зашёл в оформление.
+  React.useEffect(() => {
+    trackFunnel("begin_checkout", { items_count: items.length });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const errors = React.useMemo(
     () => validateCheckout(state, items),
     [state, items]
@@ -106,6 +113,7 @@ export function CartShell({ initialItems }: Props) {
 
     setSubmitError(null);
     setSubmitPending(true);
+    trackFunnel("submit_order", { items_count: items.length });
 
     // Вычисляем суммы для передачи в server action.
     const isCash = state.payment === "cash" || state.payment === "sbp";
@@ -162,6 +170,7 @@ export function CartShell({ initialItems }: Props) {
         total,
       });
 
+      trackFunnel("pay_order", { order: displayId, total });
       setOrder({ id: displayId });
       if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
     }).catch(() => {
