@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useFormStatus } from "react-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 /* Базовые классы контролов — крисп, плотно, на токенах. */
@@ -68,16 +68,88 @@ export const Textarea = React.forwardRef<
 ));
 Textarea.displayName = "Textarea";
 
-/* ── Select ───────────────────────────────────────────────────────────── */
-export const Select = React.forwardRef<
-  HTMLSelectElement,
-  React.SelectHTMLAttributes<HTMLSelectElement> & { hasError?: boolean }
->(({ className, hasError, children, ...props }, ref) => (
-  <select ref={ref} className={cn(controlBase, borderCls(hasError), "h-10 px-2.5", className)} {...props}>
-    {children}
-  </select>
-));
-Select.displayName = "Select";
+/* ── Select (кастомный, в интерфейсе — не браузерный) ─────────────────────
+   Drop-in для native select: принимает value + onChange (вызывается с
+   event-like { target: { value } }, чтобы работали и onChange={field.onChange},
+   и onChange={(e)=>e.target.value}); опции передаются <option> детьми. */
+type Opt = { value: string; label: React.ReactNode; disabled?: boolean };
+
+function parseOptions(children: React.ReactNode): Opt[] {
+  const out: Opt[] = [];
+  React.Children.forEach(children, (child) => {
+    if (!React.isValidElement(child) || child.type !== "option") return;
+    const p = child.props as { value?: string | number; children?: React.ReactNode; disabled?: boolean };
+    out.push({ value: String(p.value ?? ""), label: p.children, disabled: p.disabled });
+  });
+  return out;
+}
+
+export function Select({
+  className,
+  hasError,
+  children,
+  value,
+  onChange,
+  disabled,
+  name,
+  id,
+}: {
+  className?: string;
+  hasError?: boolean;
+  children?: React.ReactNode;
+  value?: string | number | readonly string[];
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  disabled?: boolean;
+  name?: string;
+  id?: string;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const opts = React.useMemo(() => parseOptions(children), [children]);
+  const current = String(value ?? "");
+  const selected = opts.find((o) => o.value === current);
+
+  const pick = (v: string) => {
+    onChange?.({ target: { value: v } } as unknown as React.ChangeEvent<HTMLSelectElement>);
+    setOpen(false);
+  };
+
+  return (
+    <div className={cn("relative", className)}>
+      {name ? <input type="hidden" name={name} value={current} readOnly /> : null}
+      <button
+        type="button"
+        id={id}
+        disabled={disabled}
+        onClick={() => setOpen((v) => !v)}
+        className={cn(controlBase, borderCls(hasError), "flex h-10 items-center justify-between gap-2 px-2.5 text-left")}
+      >
+        <span className={cn("truncate", !selected && "text-ink-subtle")}>{selected?.label ?? "—"}</span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 text-ink-subtle transition-transform", open && "rotate-180")} strokeWidth={2} />
+      </button>
+      {open ? (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
+          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-64 overflow-auto rounded-sm border border-border/70 bg-white py-1 shadow-lg">
+            {opts.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                disabled={o.disabled}
+                onClick={() => pick(o.value)}
+                className={cn(
+                  "flex w-full items-center px-3 py-1.5 text-left text-[14px] transition-colors disabled:opacity-40",
+                  o.value === current ? "bg-ink text-white" : "text-ink hover:bg-surface"
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
 
 /* ── Switch (toggle) ──────────────────────────────────────────────────── */
 export function Switch({

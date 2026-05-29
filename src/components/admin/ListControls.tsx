@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { Select } from "@/components/admin/form";
 
 /** Обновляет один search-param и сбрасывает страницу на 1. */
 function useSetParam() {
@@ -67,10 +68,10 @@ export function FilterSelect({
   const setParam = useSetParam();
   const current = params.get(param) ?? "";
   return (
-    <select
+    <Select
+      className="w-48"
       value={current}
       onChange={(e) => setParam({ [param]: e.target.value || null })}
-      className="h-9 rounded-sm border border-border bg-white px-2.5 text-[14px] text-ink focus:border-ink focus:outline-none focus:ring-2 focus:ring-ink/15"
     >
       <option value="">{allLabel}</option>
       {options.map((o) => (
@@ -78,7 +79,7 @@ export function FilterSelect({
           {o.label}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import Link from "next/link";
 import { Field, TextInput, Select, FormError, AdminButton } from "@/components/admin/form";
 import { Panel } from "@/components/admin/ui";
@@ -9,7 +9,7 @@ import { createAdminUser, type NewUserInput } from "./actions";
 
 export function NewUserForm() {
   const [formError, setFormError] = React.useState<string | null>(null);
-  const { register, handleSubmit, formState: { isSubmitting } } = useForm<NewUserInput>({
+  const { register, handleSubmit, control, formState: { isSubmitting } } = useForm<NewUserInput>({
     defaultValues: { email: "", full_name: "", role: "manager", password: "" },
   });
 
@@ -29,11 +29,13 @@ export function NewUserForm() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Роль">
-            <Select {...register("role")}>
-              <option value="manager">Менеджер</option>
-              <option value="content">Контент</option>
-              <option value="admin">Администратор</option>
-            </Select>
+            <Controller control={control} name="role" render={({ field }) => (
+              <Select value={field.value} onChange={field.onChange}>
+                <option value="manager">Менеджер</option>
+                <option value="content">Контент</option>
+                <option value="admin">Администратор</option>
+              </Select>
+            )} />
           </Field>
           <Field label="Пароль" required hint="Минимум 8 символов; сотрудник сменит после входа">
             <TextInput type="text" placeholder="временный пароль" {...register("password")} />
