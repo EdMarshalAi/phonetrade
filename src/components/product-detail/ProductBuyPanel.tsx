@@ -5,6 +5,8 @@ import { Check, Heart, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils/format-price";
 import { cn } from "@/lib/utils/cn";
+import { useCart } from "@/components/providers/CartProvider";
+import { useFavorites } from "@/components/providers/FavoritesProvider";
 import type { Product } from "@/lib/data/products";
 
 type Props = {
@@ -34,10 +36,12 @@ function colorSwatchClass(colorName: string): string {
 }
 
 export function ProductBuyPanel({ product, variants }: Props) {
-  const [favorited, setFavorited] = React.useState(false);
+  const { add } = useCart();
+  const { enabled: favEnabled, has: favHas, toggle: favToggle } = useFavorites();
   const [added, setAdded] = React.useState(false);
 
   const handleAdd = () => {
+    void add(product);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1800);
   };
@@ -196,22 +200,25 @@ export function ProductBuyPanel({ product, variants }: Props) {
               </>
             )}
           </Button>
-          <button
-            type="button"
-            aria-label="В избранное"
-            onClick={() => setFavorited((v) => !v)}
-            className={cn(
-              "inline-flex size-12 shrink-0 items-center justify-center rounded-2xl transition-colors border",
-              favorited
-                ? "bg-ink text-white border-ink"
-                : "bg-surface text-ink-muted hover:text-ink border-transparent"
-            )}
-          >
-            <Heart
-              className={cn("size-5", favorited && "fill-current")}
-              aria-hidden
-            />
-          </button>
+          {favEnabled && (
+            <button
+              type="button"
+              aria-label={favHas(product.id) ? "Убрать из избранного" : "В избранное"}
+              aria-pressed={favHas(product.id)}
+              onClick={() => void favToggle(product)}
+              className={cn(
+                "inline-flex size-12 shrink-0 items-center justify-center rounded-2xl transition-colors border",
+                favHas(product.id)
+                  ? "bg-ink text-white border-ink"
+                  : "bg-surface text-ink-muted hover:text-ink border-transparent"
+              )}
+            >
+              <Heart
+                className={cn("size-5", favHas(product.id) && "fill-current")}
+                aria-hidden
+              />
+            </button>
+          )}
         </div>
       </div>
 

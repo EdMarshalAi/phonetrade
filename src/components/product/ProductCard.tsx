@@ -2,12 +2,14 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Heart } from "lucide-react";
+import { Heart, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ProductBadges } from "@/components/product/ProductBadges";
 import { formatPrice } from "@/lib/utils/format-price";
 import { productImages } from "@/lib/utils/product-images";
 import { cn } from "@/lib/utils/cn";
+import { useCart } from "@/components/providers/CartProvider";
+import { useFavorites } from "@/components/providers/FavoritesProvider";
 import type { Product } from "@/lib/data/products";
 
 type Props = {
@@ -16,6 +18,19 @@ type Props = {
 };
 
 export function ProductCard({ product, className }: Props) {
+  const { add } = useCart();
+  const { enabled: favEnabled, has: favHas, toggle: favToggle } = useFavorites();
+  const [added, setAdded] = React.useState(false);
+  const addedTimer = React.useRef<number | null>(null);
+  React.useEffect(() => () => { if (addedTimer.current) window.clearTimeout(addedTimer.current); }, []);
+
+  const buy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    void add(product);
+    setAdded(true);
+    if (addedTimer.current) window.clearTimeout(addedTimer.current);
+    addedTimer.current = window.setTimeout(() => setAdded(false), 1600);
+  };
   const images = React.useMemo(
     () => productImages(product),
     [product.gallery, product.image] // eslint-disable-line react-hooks/exhaustive-deps
@@ -173,18 +188,35 @@ export function ProductCard({ product, className }: Props) {
           size="md"
           className="flex-1 rounded-2xl"
           aria-label={`Купить ${product.title}`}
-          onClick={(e) => e.stopPropagation()}
+          onClick={buy}
         >
-          Купить
+          {added ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Check className="size-[18px]" strokeWidth={2.25} /> В корзине
+            </span>
+          ) : (
+            "Купить"
+          )}
         </Button>
-        <button
-          type="button"
-          aria-label="В избранное"
-          onClick={(e) => e.stopPropagation()}
-          className="inline-flex size-11 shrink-0 items-center justify-center rounded-2xl bg-surface text-ink-muted hover:bg-border/60 hover:text-ink transition-colors"
-        >
-          <Heart className="size-[18px]" />
-        </button>
+        {favEnabled && (
+          <button
+            type="button"
+            aria-label={favHas(product.id) ? "Убрать из избранного" : "В избранное"}
+            aria-pressed={favHas(product.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              void favToggle(product);
+            }}
+            className={cn(
+              "inline-flex size-11 shrink-0 items-center justify-center rounded-2xl transition-colors",
+              favHas(product.id)
+                ? "bg-ink text-white hover:bg-ink/90"
+                : "bg-surface text-ink-muted hover:bg-border/60 hover:text-ink"
+            )}
+          >
+            <Heart className={cn("size-[18px]", favHas(product.id) && "fill-current")} />
+          </button>
+        )}
       </div>
     </article>
   );

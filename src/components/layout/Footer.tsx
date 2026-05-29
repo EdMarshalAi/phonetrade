@@ -1,4 +1,5 @@
 import * as React from "react";
+import Image from "next/image";
 import { MapPin, Phone, Clock, Send } from "lucide-react";
 
 const SOCIAL = [
@@ -51,8 +52,8 @@ export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | nul
         <div className="grid gap-10 lg:gap-14 lg:grid-cols-12 items-start">
           <div className="lg:col-span-7 flex flex-col">
             <div className="flex items-center gap-2.5 mb-8">
-              <span className="inline-flex size-8 items-center justify-center rounded-lg bg-white text-ink text-[11px] font-bold tracking-tighter">
-                PT
+              <span className="inline-flex size-8 items-center justify-center rounded-lg bg-white p-1">
+                <Image src="/brand/logo-mark-black.png" alt="PhoneTrade" width={28} height={28} className="h-full w-full object-contain" />
               </span>
               <span className="text-base font-semibold tracking-tight text-white">
                 PhoneTrade

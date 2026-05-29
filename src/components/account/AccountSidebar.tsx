@@ -16,12 +16,10 @@ import { cn } from "@/lib/utils/cn";
 const NAV = [
   { href: "/account", label: "Профиль", icon: UserIcon },
   { href: "/account/orders", label: "Мои заказы", icon: Package },
+  { href: "/account/favorites", label: "Избранное", icon: Heart },
 ];
 
-const SOON = [
-  { label: "Избранное", icon: Heart },
-  { label: "Адреса", icon: MapPin },
-];
+const SOON = [{ label: "Адреса", icon: MapPin }];
 
 export function AccountSidebar() {
   const pathname = usePathname();

@@ -20,6 +20,8 @@ import {
   subcategoryHref,
 } from "@/lib/catalog/subcategories";
 import type { CategorySlug } from "@/lib/data/products";
+import { useCart } from "@/components/providers/CartProvider";
+import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
 
 const TOP_LINKS = [
@@ -102,6 +104,7 @@ export function Header({
   categories?: { slug: string; title: string; icon_url?: string | null }[];
   topLinks?: { title: string; href: string }[];
 }) {
+  const { count: cartCount } = useCart();
   const phone = contacts?.phone || "+7 (904) 098-88-77";
   const phoneTel = `tel:+${phone.replace(/\D/g, "")}`;
   const hours = contacts?.working_hours || "Ежедневно 10:00–20:00";
@@ -191,8 +194,8 @@ export function Header({
             aria-label="PhoneTrade — главная"
             className="shrink-0 inline-flex items-center gap-2.5"
           >
-            <span className="inline-flex size-8 items-center justify-center rounded-lg bg-white text-ink text-[11px] font-bold tracking-tighter">
-              PT
+            <span className="inline-flex size-8 items-center justify-center rounded-lg bg-white p-1">
+              <Image src="/brand/logo-mark-black.png" alt="PhoneTrade" width={28} height={28} className="h-full w-full object-contain" priority />
             </span>
             <span className="text-lg font-semibold tracking-tight text-white">
               PhoneTrade
@@ -204,9 +207,16 @@ export function Header({
           <div className="ml-auto flex items-center gap-1 shrink-0">
             <a
               href="/cart"
-              className="inline-flex items-center gap-2 h-10 px-3 rounded-xl text-sm font-medium text-white hover:bg-white/8 transition-colors"
+              className="relative inline-flex items-center gap-2 h-10 px-3 rounded-xl text-sm font-medium text-white hover:bg-white/8 transition-colors"
             >
-              <ShoppingBag className="size-[18px]" aria-hidden />
+              <span className="relative">
+                <ShoppingBag className="size-[18px]" aria-hidden />
+                {cartCount > 0 && (
+                  <span className="absolute -right-2 -top-2 inline-flex min-w-[16px] h-4 items-center justify-center rounded-full bg-white px-1 text-[10px] font-semibold text-ink tabular-nums">
+                    {cartCount}
+                  </span>
+                )}
+              </span>
               Корзина
             </a>
             <a
@@ -231,8 +241,8 @@ export function Header({
                 aria-label="PhoneTrade — главная"
                 className="shrink-0 animate-in fade-in slide-in-from-left-2 duration-300"
               >
-                <span className="inline-flex size-9 items-center justify-center rounded-lg bg-ink text-white text-[11px] font-bold tracking-tighter">
-                  PT
+                <span className="inline-flex size-9 items-center justify-center rounded-lg bg-ink p-1.5">
+                  <Image src="/brand/logo-mark-white.png" alt="PhoneTrade" width={28} height={28} className="h-full w-full object-contain" />
                 </span>
               </a>
             )}
@@ -418,9 +428,14 @@ export function Header({
                 <a
                   href="/cart"
                   aria-label="Корзина"
-                  className="inline-flex size-10 items-center justify-center rounded-full text-ink hover:bg-surface transition-colors"
+                  className="relative inline-flex size-10 items-center justify-center rounded-full text-ink hover:bg-surface transition-colors"
                 >
                   <ShoppingBag className="size-[18px]" />
+                  {cartCount > 0 && (
+                    <span className="absolute right-1 top-1 inline-flex min-w-[16px] h-4 items-center justify-center rounded-full bg-ink px-1 text-[10px] font-semibold text-white tabular-nums">
+                      {cartCount}
+                    </span>
+                  )}
                 </a>
                 <a
                   href="/account"
@@ -442,8 +457,8 @@ export function Header({
               aria-label="PhoneTrade — главная"
               className="inline-flex items-center gap-2"
             >
-              <span className="inline-flex size-7 items-center justify-center rounded-md bg-white text-ink text-[10px] font-bold tracking-tighter">
-                PT
+              <span className="inline-flex size-7 items-center justify-center rounded-md bg-white p-0.5">
+                <Image src="/brand/logo-mark-black.png" alt="PhoneTrade" width={24} height={24} className="h-full w-full object-contain" />
               </span>
               <span className="text-[15px] font-semibold tracking-tight text-white">
                 PhoneTrade
@@ -471,9 +486,11 @@ export function Header({
                 className="relative inline-flex size-10 items-center justify-center rounded-full text-white hover:bg-white/10 transition-colors"
               >
                 <ShoppingBag className="size-[18px]" />
-                <span className="absolute -right-0.5 -top-0.5 inline-flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-white text-ink text-[10px] font-semibold px-1">
-                  0
-                </span>
+                {cartCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 inline-flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-white text-ink text-[10px] font-semibold px-1">
+                    {cartCount}
+                  </span>
+                )}
               </a>
               <button
                 type="button"

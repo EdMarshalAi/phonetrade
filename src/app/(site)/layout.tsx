@@ -1,5 +1,7 @@
 import { TooltipProvider } from "@/components/providers/TooltipProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { CartProvider } from "@/components/providers/CartProvider";
+import { FavoritesProvider } from "@/components/providers/FavoritesProvider";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
@@ -26,14 +28,18 @@ export default async function SiteLayout({
   return (
     <AuthProvider>
       <TooltipProvider>
-        <BadgeRegistryProvider badges={badges}>
-          <div className="flex min-h-dvh flex-col">
-            <Header contacts={contacts} categories={navCategories} topLinks={topMenu} />
-            <main className="flex-1">{children}</main>
-            <Footer contacts={contacts} legalLinks={footerMenu} />
-          </div>
-          <PageViewTracker />
-        </BadgeRegistryProvider>
+        <CartProvider>
+          <FavoritesProvider>
+            <BadgeRegistryProvider badges={badges}>
+              <div className="flex min-h-dvh flex-col">
+                <Header contacts={contacts} categories={navCategories} topLinks={topMenu} />
+                <main className="flex-1">{children}</main>
+                <Footer contacts={contacts} legalLinks={footerMenu} />
+              </div>
+              <PageViewTracker />
+            </BadgeRegistryProvider>
+          </FavoritesProvider>
+        </CartProvider>
       </TooltipProvider>
     </AuthProvider>
   );

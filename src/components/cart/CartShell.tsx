@@ -15,6 +15,7 @@ import type { CartItem, CheckoutState } from "@/lib/cart/types";
 import { placeOrder } from "@/lib/cart/order-actions";
 import { trackFunnel } from "@/lib/analytics/track";
 import { saveOrder } from "@/lib/account/orders";
+import { useCart } from "@/components/providers/CartProvider";
 
 const INITIAL_STATE: CheckoutState = {
   customerType: "person",
@@ -28,21 +29,15 @@ const INITIAL_STATE: CheckoutState = {
   agreement: true,
 };
 
-type Props = {
-  initialItems: CartItem[];
-};
-
-export function CartShell({ initialItems }: Props) {
-  const [items, setItems] = React.useState<CartItem[]>(initialItems);
+export function CartShell() {
+  const { items, setQty: ctxSetQty, remove: ctxRemove, add: ctxAdd, clear: ctxClear } = useCart();
   const [state, setState] = React.useState<CheckoutState>(INITIAL_STATE);
   const [favorites, setFavorites] = React.useState<Set<string>>(new Set());
   const [attempted, setAttempted] = React.useState(false);
   const [order, setOrder] = React.useState<{ id: string } | null>(null);
   const [submitPending, setSubmitPending] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
-  const [undo, setUndo] = React.useState<{ item: CartItem; index: number } | null>(
-    null
-  );
+  const [undo, setUndo] = React.useState<{ item: CartItem } | null>(null);
   const undoTimer = React.useRef<number | null>(null);
 
   const update = React.useCallback((next: Partial<CheckoutState>) => {
@@ -51,28 +46,21 @@ export function CartShell({ initialItems }: Props) {
 
   const setQty = (productId: string, qty: number) => {
     const clamped = Math.max(1, Math.min(MAX_QTY, Math.round(qty) || 1));
-    setItems((arr) =>
-      arr.map((i) => (i.productId === productId ? { ...i, qty: clamped } : i))
-    );
+    void ctxSetQty(productId, clamped);
   };
 
   const remove = (productId: string) => {
-    const index = items.findIndex((i) => i.productId === productId);
-    if (index === -1) return;
-    setUndo({ item: items[index], index });
-    setItems((arr) => arr.filter((i) => i.productId !== productId));
+    const item = items.find((i) => i.productId === productId);
+    if (!item) return;
+    setUndo({ item });
+    void ctxRemove(productId);
     if (undoTimer.current) window.clearTimeout(undoTimer.current);
     undoTimer.current = window.setTimeout(() => setUndo(null), 6000);
   };
 
   const restore = () => {
     if (!undo) return;
-    setItems((arr) => {
-      if (arr.some((i) => i.productId === undo.item.productId)) return arr;
-      const next = [...arr];
-      next.splice(Math.min(undo.index, next.length), 0, undo.item);
-      return next;
-    });
+    void ctxAdd(undo.item.product, undo.item.qty);
     setUndo(null);
     if (undoTimer.current) window.clearTimeout(undoTimer.current);
   };
@@ -171,6 +159,7 @@ export function CartShell({ initialItems }: Props) {
       });
 
       trackFunnel("pay_order", { order: displayId, total });
+      void ctxClear();
       setOrder({ id: displayId });
       if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
     }).catch(() => {
