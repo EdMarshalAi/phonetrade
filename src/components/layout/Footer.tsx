@@ -1,28 +1,8 @@
 import * as React from "react";
 import Image from "next/image";
-import { MapPin, Phone, Clock, Send } from "lucide-react";
+import { MapPin, Clock, Phone } from "lucide-react";
+import { ContactLinks } from "@/components/layout/ContactLinks";
 
-const SOCIAL = [
-  {
-    href: "https://vk.com/phonetradebel",
-    label: "VK",
-    glyph: (
-      <span className="text-[15px] font-bold leading-none tracking-tight">
-        VK
-      </span>
-    ),
-  },
-  {
-    href: "https://wa.me/79040988877",
-    label: "WhatsApp",
-    glyph: <Phone className="size-[15px]" aria-hidden />,
-  },
-  {
-    href: "https://t.me/phonetradebel",
-    label: "Telegram",
-    glyph: <Send className="size-[15px]" aria-hidden />,
-  },
-];
 
 const LEGAL = [
   { href: "/service-rules", label: "Правила ремонтных работ" },
@@ -95,21 +75,13 @@ export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | nul
                 {phone}
               </a>
 
-              <ul className="flex items-center gap-2.5">
-                {SOCIAL.map(({ href, label, glyph }) => (
-                  <li key={label}>
-                    <a
-                      href={href}
-                      aria-label={label}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex size-10 items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-onDark hover:text-white"
-                    >
-                      {glyph}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              <ContactLinks
+                contacts={contacts?.contacts}
+                location="footer"
+                className="flex items-center gap-2.5"
+                itemClassName="inline-flex size-10 items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-onDark hover:text-white"
+                iconClassName="size-[15px]"
+              />
             </div>
           </div>
 

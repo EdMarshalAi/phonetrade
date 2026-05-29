@@ -453,6 +453,18 @@ export async function getBlogPost(slug: string): Promise<BlogPostCard | null> {
   return (data as BlogPostCard) ?? null;
 }
 
+/** Управляемая контакт-ссылка (иконка пресет/загруженная, где показывать). */
+export interface ShopContactLink {
+  id: string;
+  label: string; // подпись/aria (напр. WhatsApp)
+  value: string; // отображаемый текст (напр. телефон) — необязателен
+  href: string; // ссылка (tel:, https://wa.me/…, https://t.me/…)
+  icon: string | null; // имя иконки из набора
+  iconUrl: string | null; // загруженная иконка (приоритетнее пресета)
+  enabled: boolean;
+  location: "header" | "footer" | "both";
+}
+
 export interface ShopContacts {
   name?: string;
   address?: string;
@@ -462,13 +474,26 @@ export interface ShopContacts {
   vk?: string;
   whatsapp?: string;
   telegram?: string;
+  /** Управляемый список контакт-ссылок для шапки/футера. */
+  contacts?: ShopContactLink[];
 }
+
+export const DEFAULT_SHOP_CONTACTS: ShopContactLink[] = [
+  { id: "wa", label: "WhatsApp", value: "", href: "https://wa.me/79040988877", icon: "phone", iconUrl: null, enabled: true, location: "both" },
+  { id: "tg", label: "Telegram", value: "", href: "https://t.me/phonetradebel", icon: "messages-square", iconUrl: null, enabled: true, location: "both" },
+  { id: "vk", label: "ВКонтакте", value: "", href: "https://vk.com/phonetradebel", icon: "thumbs-up", iconUrl: null, enabled: true, location: "footer" },
+];
 
 /** Контакты магазина из настроек (shop_settings key='general'). */
 export async function getShopContacts(): Promise<ShopContacts | null> {
   if (!supabase) return null;
   const { data } = await supabase.from("shop_settings").select("value").eq("key", "general").maybeSingle();
-  return ((data?.value as ShopContacts) ?? null) || null;
+  const v = (data?.value as ShopContacts) ?? null;
+  if (!v) return null;
+  return {
+    ...v,
+    contacts: Array.isArray(v.contacts) && v.contacts.length > 0 ? v.contacts : DEFAULT_SHOP_CONTACTS,
+  };
 }
 
 export interface StaticPageRow {

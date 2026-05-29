@@ -1,6 +1,7 @@
 "use server";
 
 import { adminMutation } from "@/lib/admin/mutations";
+import type { ShopContactLink } from "@/lib/content";
 
 export interface ShopGeneral {
   name?: string;
@@ -17,6 +18,7 @@ export interface ShopGeneral {
   inn?: string;
   ogrn?: string;
   legal_address?: string;
+  contacts?: ShopContactLink[];
 }
 
 export async function saveShopSettings(value: ShopGeneral): Promise<{ error?: string }> {

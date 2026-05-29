@@ -89,7 +89,7 @@ export const ADMIN_NAV: NavGroup[] = [
   {
     label: "Настройки",
     items: [
-      { label: "Магазин", href: "/admin/settings/shop", icon: Store, roles: ADMIN_ONLY },
+      { label: "Общие", href: "/admin/settings/shop", icon: Store, roles: ADMIN_ONLY },
       { label: "Навигация", href: "/admin/settings/navigation", icon: Menu, roles: ADMIN_ONLY },
       { label: "Корзина", href: "/admin/settings/cart", icon: ShoppingCart, roles: ADMIN_ONLY },
       { label: "SEO", href: "/admin/settings/seo", icon: Search, roles: ADMIN_ONLY },

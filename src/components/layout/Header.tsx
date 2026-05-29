@@ -22,6 +22,7 @@ import {
 import type { CategorySlug } from "@/lib/data/products";
 import { useCart } from "@/components/providers/CartProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { ContactLinks } from "@/components/layout/ContactLinks";
 import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
 
@@ -162,24 +163,12 @@ export function Header({
               ))}
             </ul>
             <div className="flex items-center gap-3">
-              <a
-                href="https://wa.me/79040988877"
-                aria-label="WhatsApp"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex size-7 items-center justify-center rounded-full bg-white/8 text-onDark hover:bg-white/15 hover:text-white transition-colors"
-              >
-                <Phone className="size-3.5" aria-hidden />
-              </a>
-              <a
-                href="https://t.me/phonetradebel"
-                aria-label="Telegram"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex size-7 items-center justify-center rounded-full bg-white/8 text-onDark hover:bg-white/15 hover:text-white transition-colors"
-              >
-                <Send className="size-3.5" aria-hidden />
-              </a>
+              <ContactLinks
+                contacts={contacts?.contacts}
+                location="header"
+                className="flex items-center gap-3"
+                itemClassName="inline-flex size-7 items-center justify-center rounded-full bg-white/8 text-onDark hover:bg-white/15 hover:text-white transition-colors"
+              />
               <a
                 href={phoneTel}
                 className="font-medium text-white hover:text-onDark transition-colors tabular-nums"
