@@ -64,7 +64,9 @@ jobs:
       - name: Rsync standalone to server
         if: env.SKIP_DEPLOY != 'true'
         run: |
-          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p '$DEPLOY_PATH'"
+          # Папка деплоя + rsync на сервере (ставим, если отсутствует)
+          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            "mkdir -p '$DEPLOY_PATH'; command -v rsync >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y rsync)"
           rsync -az --delete \
             -e "ssh -i ~/.ssh/id_deploy -p $SSH_PORT" \
             .next/standalone/ \
