@@ -76,18 +76,32 @@ async function main() {
   }
   console.log("OK hero_slides.image_url обновлены");
 
-  // 4) Товары: сопоставляем по имени файла в products.image
-  const { data: prods } = await db.from("products").select("id,image");
+  // 4) Товары: сопоставляем по имени файла в products.image и products.gallery
+  const toUrl = (ref: string | null): string | null => {
+    if (!ref) return null;
+    const base = ref.split("/").pop()?.split("?")[0] ?? "";
+    return prodMap[base] ?? null;
+  };
+  const { data: prods } = await db.from("products").select("id,image,gallery");
   let pcount = 0;
-  for (const p of (prods ?? []) as { id: string; image: string | null }[]) {
-    if (!p.image) continue;
-    const base = p.image.split("/").pop()?.split("?")[0] ?? "";
-    if (prodMap[base]) {
-      await db.from("products").update({ image: prodMap[base] }).eq("id", p.id);
+  for (const p of (prods ?? []) as { id: string; image: string | null; gallery: string[] | null }[]) {
+    const patch: { image?: string; gallery?: string[] } = {};
+    const mainUrl = toUrl(p.image);
+    if (mainUrl) patch.image = mainUrl;
+    if (Array.isArray(p.gallery) && p.gallery.length) {
+      // галерея → Storage-URL, без дублей и без главного фото
+      const seen = new Set<string>([patch.image ?? p.image ?? ""]);
+      const gallery = p.gallery
+        .map((g) => toUrl(g) ?? g)
+        .filter((g) => (seen.has(g) ? false : (seen.add(g), true)));
+      patch.gallery = gallery;
+    }
+    if (Object.keys(patch).length) {
+      await db.from("products").update(patch).eq("id", p.id);
       pcount++;
     }
   }
-  console.log(`OK products.image обновлены: ${pcount}`);
+  console.log(`OK products.image + gallery обновлены: ${pcount}`);
   console.log("\nГотово. Картинки в Storage, ссылки в БД обновлены.");
 }
 

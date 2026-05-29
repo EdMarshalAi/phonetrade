@@ -100,7 +100,7 @@ export default async function OrdersPage({
                   <TD className="font-medium">
                     <Link href={`/admin/orders/${o.id}`} className="hover:underline">{o.order_number ?? o.id.slice(0, 8)}</Link>
                   </TD>
-                  <TD className="text-ink-muted">{fmtDate(o.created_at)}</TD>
+                  <TD className="whitespace-nowrap text-ink-muted">{fmtDate(o.created_at)}</TD>
                   <TD>
                     <div>{o.customer_name || "—"}</div>
                     <div className="text-[12px] text-ink-subtle">{o.phone || ""}</div>

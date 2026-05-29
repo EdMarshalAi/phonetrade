@@ -6,6 +6,7 @@ import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { InfoBadge } from "@/components/ui/InfoBadge";
 import { formatPrice } from "@/lib/utils/format-price";
+import { productImages } from "@/lib/utils/product-images";
 import { cn } from "@/lib/utils/cn";
 import type { Product } from "@/lib/data/products";
 
@@ -19,18 +20,16 @@ const BADGE_TOOLTIPS: Record<string, string> = {
     "Имеет недостаток в виде невозможности предустановки RuStore",
 };
 
-const FALLBACK_DOTS = 4;
-
 export function ProductCard({ product, className }: Props) {
   const isRustore = product.badge?.toLowerCase().includes("rustore");
   const badgeClass = isRustore
     ? "bg-ink text-white"
     : "bg-white/95 text-ink backdrop-blur-sm shadow-[0_1px_2px_rgba(0,0,0,0.04)]";
 
-  const images = React.useMemo(() => {
-    if (product.gallery && product.gallery.length > 0) return product.gallery;
-    return [product.image];
-  }, [product.gallery, product.image]);
+  const images = React.useMemo(
+    () => productImages(product),
+    [product.gallery, product.image] // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const hasGallery = images.length > 1;
 
   const [index, setIndex] = React.useState(0);
@@ -110,47 +109,37 @@ export function ProductCard({ product, className }: Props) {
         )}
       </div>
 
+      {/* Точки-индикаторы — только при реальной галерее (>1 фото).
+          Фиксированная высота строки сохраняется всегда, чтобы карточки
+          в сетке оставались выровнены по высоте. */}
       <div
-        className="flex justify-center gap-1 mb-4"
-        aria-hidden={!hasGallery}
+        className="flex h-1.5 justify-center gap-1 mb-4"
         role={hasGallery ? "tablist" : "presentation"}
       >
-        {(hasGallery
-          ? Array.from({ length: images.length })
-          : Array.from({ length: FALLBACK_DOTS })
-        ).map((_, i) => {
-          const isActive = hasGallery ? i === index : i === 0;
-          if (hasGallery) {
-            return (
-              <button
-                key={i}
-                type="button"
-                role="tab"
-                data-stop-card
-                aria-selected={isActive}
-                aria-label={`Фото ${i + 1}`}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIndex(i);
-                }}
-                className={cn(
-                  "h-1.5 rounded-full transition-all",
-                  isActive ? "w-4 bg-ink" : "w-1.5 bg-ink/20 hover:bg-ink/40"
-                )}
-              />
-            );
-          }
-          return (
-            <span
-              key={i}
-              className={cn(
-                "h-1.5 rounded-full transition-all",
-                isActive ? "w-3.5 bg-ink" : "w-1.5 bg-ink/15"
-              )}
-            />
-          );
-        })}
+        {hasGallery
+          ? images.map((_, i) => {
+              const isActive = i === index;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  role="tab"
+                  data-stop-card
+                  aria-selected={isActive}
+                  aria-label={`Фото ${i + 1}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIndex(i);
+                  }}
+                  className={cn(
+                    "h-1.5 rounded-full transition-all",
+                    isActive ? "w-4 bg-ink" : "w-1.5 bg-ink/20 hover:bg-ink/40"
+                  )}
+                />
+              );
+            })
+          : null}
       </div>
 
       <h3 className="text-[15px] font-semibold leading-snug tracking-tight text-ink line-clamp-2 min-h-[44px]">

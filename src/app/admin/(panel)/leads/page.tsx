@@ -68,7 +68,7 @@ export default async function LeadsPage({
             <TBody>
               {rows.map((r) => (
                 <TR key={r.id}>
-                  <TD className="text-ink-muted">{fmtDate(r.created_at)}</TD>
+                  <TD className="whitespace-nowrap text-ink-muted">{fmtDate(r.created_at)}</TD>
                   <TD>{LEAD_TYPE[r.type] ?? r.type}</TD>
                   <TD>
                     <div className="font-medium">{r.contact_name || "—"}</div>

@@ -5,14 +5,15 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "motion/react";
 import type { Product } from "@/lib/data/products";
 import { cn } from "@/lib/utils/cn";
+import { productImages } from "@/lib/utils/product-images";
 
 type Props = { product: Product };
 
 export function ProductGallery({ product }: Props) {
-  const images = React.useMemo(() => {
-    if (product.gallery && product.gallery.length > 0) return product.gallery;
-    return [product.image];
-  }, [product.gallery, product.image]);
+  const images = React.useMemo(
+    () => productImages(product),
+    [product.gallery, product.image] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const [index, setIndex] = React.useState(0);
   const hasMultiple = images.length > 1;

@@ -113,12 +113,30 @@ export async function deleteVariant(
   }
 }
 
-// ── Images ─────────────────────────────────────────────────────────────────
+// ── Изображения товара ───────────────────────────────────────────────────────
+// Единый источник правды для фото — колонки products.image (главное) и
+// products.gallery (доп. фото, jsonb-массив URL). Витрина показывает
+// dedupe([image, ...gallery]); админка управляет тем же набором, поэтому
+// в админке и на сайте всегда одинаковые фотографии.
 
+async function readImages(
+  db: Awaited<ReturnType<typeof import("@/lib/supabase/admin").createSupabaseAdminClient>>,
+  productId: string
+): Promise<{ image: string | null; gallery: string[] }> {
+  const { data, error } = await db
+    .from("products")
+    .select("image,gallery")
+    .eq("id", productId)
+    .maybeSingle();
+  if (error) throw error;
+  const gallery = Array.isArray(data?.gallery) ? (data!.gallery as string[]) : [];
+  return { image: (data?.image as string | null) ?? null, gallery };
+}
+
+/** Добавить фото: если главного нет — становится главным, иначе уходит в галерею. */
 export async function addProductImage(
   productId: string,
-  url: string,
-  alt?: string
+  url: string
 ): Promise<{ error?: string }> {
   try {
     await adminMutation({
@@ -129,19 +147,15 @@ export async function addProductImage(
       changes: { url },
       revalidate: ["/", `/product/${productId}`],
       run: async (db) => {
-        // Count existing to determine sort_order and whether this is first (primary)
-        const { count } = await db
-          .from("product_images")
-          .select("id", { count: "exact", head: true })
-          .eq("product_id", productId);
-        const isFirst = (count ?? 0) === 0;
-        const { error } = await db.from("product_images").insert({
-          product_id: productId,
-          url,
-          alt: alt || null,
-          sort_order: count ?? 0,
-          is_primary: isFirst,
-        });
+        const { image, gallery } = await readImages(db, productId);
+        const patch =
+          !image
+            ? { image: url }
+            : url === image || gallery.includes(url)
+              ? null // уже есть — ничего не делаем
+              : { gallery: [...gallery, url] };
+        if (!patch) return;
+        const { error } = await db.from("products").update(patch).eq("id", productId);
         if (error) throw error;
       },
     });
@@ -151,8 +165,9 @@ export async function addProductImage(
   }
 }
 
+/** Удалить фото по URL. Удаление главного повышает первое из галереи. */
 export async function deleteProductImage(
-  id: string,
+  url: string,
   productId: string
 ): Promise<{ error?: string }> {
   try {
@@ -160,10 +175,16 @@ export async function deleteProductImage(
       roles: [...STAFF],
       action: "delete",
       entityType: "product_image",
-      entityId: id,
+      entityId: productId,
+      changes: { url },
       revalidate: ["/", `/product/${productId}`],
       run: async (db) => {
-        const { error } = await db.from("product_images").delete().eq("id", id);
+        const { image, gallery } = await readImages(db, productId);
+        const patch =
+          url === image
+            ? { image: gallery[0] ?? "", gallery: gallery.slice(1) }
+            : { gallery: gallery.filter((g) => g !== url) };
+        const { error } = await db.from("products").update(patch).eq("id", productId);
         if (error) throw error;
       },
     });
@@ -173,30 +194,31 @@ export async function deleteProductImage(
   }
 }
 
+/** Сделать фото главным: бывшее главное уходит в галерею. */
 export async function setPrimaryImage(
   productId: string,
-  id: string
+  url: string
 ): Promise<{ error?: string }> {
   try {
     await adminMutation({
       roles: [...STAFF],
       action: "update",
       entityType: "product_image",
-      entityId: id,
-      changes: { is_primary: true },
+      entityId: productId,
+      changes: { primary: url },
       revalidate: ["/", `/product/${productId}`],
       run: async (db) => {
-        // Clear primary on all images for this product, then set on target
-        const { error: e1 } = await db
-          .from("product_images")
-          .update({ is_primary: false })
-          .eq("product_id", productId);
-        if (e1) throw e1;
-        const { error: e2 } = await db
-          .from("product_images")
-          .update({ is_primary: true })
-          .eq("id", id);
-        if (e2) throw e2;
+        const { image, gallery } = await readImages(db, productId);
+        if (url === image) return;
+        const nextGallery = [
+          ...(image ? [image] : []),
+          ...gallery.filter((g) => g !== url),
+        ];
+        const { error } = await db
+          .from("products")
+          .update({ image: url, gallery: nextGallery })
+          .eq("id", productId);
+        if (error) throw error;
       },
     });
     return {};

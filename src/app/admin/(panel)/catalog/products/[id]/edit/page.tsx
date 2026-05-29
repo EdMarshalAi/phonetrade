@@ -6,6 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminButton } from "@/components/admin/form";
 import { ProductForm, type ProductValue } from "../../ProductForm";
+import type { ProductImage } from "../../VariantsManager";
+import { productImages } from "@/lib/utils/product-images";
 
 export const metadata: Metadata = { title: "Товар" };
 
@@ -16,16 +18,30 @@ export default async function EditProductPage({
 }) {
   const { id } = await params;
   const db = createSupabaseAdminClient();
-  const [{ data: prod }, { data: cats }, { data: varRows }, { data: imgRows }] = await Promise.all([
+  const [{ data: prod }, { data: cats }, { data: varRows }] = await Promise.all([
     db.from("products").select("*").eq("id", id).maybeSingle(),
     db.from("categories").select("slug,title").order("sort"),
     db.from("product_variants").select("*").eq("product_id", id).order("sort_order"),
-    db.from("product_images").select("*").eq("product_id", id).order("sort_order"),
   ]);
 
   if (!prod) notFound();
   const categories = (cats ?? []) as { slug: string; title: string }[];
   const product = { ...prod, id } as ProductValue;
+
+  // Галерея берётся из тех же колонок, что и сайт (image + gallery), а не из
+  // отдельной таблицы — чтобы в админке и на витрине были одинаковые фото.
+  const imgRows: ProductImage[] = productImages({
+    image: (prod.image as string) ?? "",
+    gallery: Array.isArray(prod.gallery) ? (prod.gallery as string[]) : undefined,
+  }).map((url, i) => ({
+    id: url,
+    product_id: id,
+    variant_id: null,
+    url,
+    alt: null,
+    sort_order: i,
+    is_primary: url === prod.image,
+  }));
 
   return (
     <>

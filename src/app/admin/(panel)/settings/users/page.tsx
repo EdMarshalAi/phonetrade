@@ -93,7 +93,7 @@ async function UsersTab() {
             <TD className="font-medium">{u.full_name || "—"}</TD>
             <TD className="text-ink-muted">{u.email}</TD>
             <TD><RoleSelect id={u.id} role={u.role} /></TD>
-            <TD className="text-ink-muted">{u.last_login_at ? new Date(u.last_login_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" }) : "—"}</TD>
+            <TD className="whitespace-nowrap text-ink-muted">{u.last_login_at ? new Date(u.last_login_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" }) : "—"}</TD>
             <TD><ActiveToggle id={u.id} active={u.is_active} /></TD>
           </TR>
         ))}

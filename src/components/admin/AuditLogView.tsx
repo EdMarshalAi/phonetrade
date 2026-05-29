@@ -72,7 +72,7 @@ export async function AuditLogView({ searchParams }: { searchParams: Record<stri
             <TBody>
               {rows.map((r) => (
                 <TR key={r.id}>
-                  <TD className="text-ink-muted">{new Date(r.created_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })}</TD>
+                  <TD className="whitespace-nowrap text-ink-muted">{new Date(r.created_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })}</TD>
                   <TD>{r.user_id ? names[r.user_id] ?? r.user_id.slice(0, 8) : "—"}</TD>
                   <TD><StatusBadge>{ACTION_LABEL[r.action] ?? r.action}</StatusBadge></TD>
                   <TD className="text-ink-muted">{r.entity_type}{r.entity_id ? ` · ${r.entity_id}` : ""}</TD>

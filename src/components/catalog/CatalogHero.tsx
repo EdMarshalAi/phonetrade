@@ -30,14 +30,16 @@ export function CatalogHero({ title, description, total }: Props) {
           <ChevronRight className="size-3.5" aria-hidden />
           <span className="text-ink">{title}</span>
         </nav>
-        <h1 className="text-4xl md:text-5xl font-semibold tracking-[-0.03em] text-ink">
-          {title}
-        </h1>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 className="text-4xl md:text-5xl font-semibold tracking-[-0.03em] text-ink">
+            {title}
+          </h1>
+          <span className="text-xs uppercase tracking-[0.16em] text-ink-subtle">
+            {formatTotal(total)}
+          </span>
+        </div>
         <p className="mt-3 text-sm md:text-base text-ink-muted max-w-2xl">
           {description}
-        </p>
-        <p className="mt-4 text-xs uppercase tracking-[0.16em] text-ink-subtle">
-          {formatTotal(total)}
         </p>
       </div>
     </section>

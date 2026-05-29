@@ -38,7 +38,8 @@ export type Product = {
   memory?: string;
   sim?: Sim;
   image: string;
-  /** Optional extra gallery images (first slot is always the main `image`). */
+  /** Доп. фото товара БЕЗ главного — `image` подставляется первым автоматически
+   *  (см. productImages()). Дубли главного в галерее убираются. */
   gallery?: string[];
   /** Technical specifications for the product page summary. */
   specs?: ProductSpec[];
@@ -124,8 +125,8 @@ export const ALL_PRODUCTS: Product[] = [
     memory: "128GB",
     sim: "eSIM + SIM",
     image: "/products/iphone-17-black-1-cut.png",
+    // Доп. фото (без главного — оно подставляется первым автоматически).
     gallery: [
-      "/products/iphone-17-black-1-cut.png",
       "/products/iphone-17-black-2-cut.png",
       "/products/iphone-17-black-3-cut.png",
     ],
@@ -182,8 +183,8 @@ export const ALL_PRODUCTS: Product[] = [
     memory: "256GB",
     sim: "eSIM + SIM",
     image: "/products/iphone-17-black-1-cut.png",
+    // Доп. фото (без главного — оно подставляется первым автоматически).
     gallery: [
-      "/products/iphone-17-black-1-cut.png",
       "/products/iphone-17-black-2-cut.png",
       "/products/iphone-17-black-3-cut.png",
     ],
@@ -201,8 +202,8 @@ export const ALL_PRODUCTS: Product[] = [
     memory: "512GB",
     sim: "eSIM + SIM",
     image: "/products/iphone-17-black-1-cut.png",
+    // Доп. фото (без главного — оно подставляется первым автоматически).
     gallery: [
-      "/products/iphone-17-black-1-cut.png",
       "/products/iphone-17-black-2-cut.png",
       "/products/iphone-17-black-3-cut.png",
     ],
@@ -220,8 +221,8 @@ export const ALL_PRODUCTS: Product[] = [
     memory: "1TB",
     sim: "eSIM",
     image: "/products/iphone-17-black-1-cut.png",
+    // Доп. фото (без главного — оно подставляется первым автоматически).
     gallery: [
-      "/products/iphone-17-black-1-cut.png",
       "/products/iphone-17-black-2-cut.png",
       "/products/iphone-17-black-3-cut.png",
     ],
