@@ -4,6 +4,7 @@ import * as React from "react";
 import { Info } from "lucide-react";
 import { Tooltip } from "@base-ui-components/react/tooltip";
 import { cn } from "@/lib/utils/cn";
+import { resolveIcon } from "@/lib/admin/icons";
 import type { ProductBadge } from "@/lib/content";
 
 /* Реестр бейджей передаётся через контекст из серверного layout — чтобы любая
@@ -28,12 +29,14 @@ const pill =
   "inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-medium tracking-tight " +
   "shadow-[0_1px_2px_rgba(0,0,0,0.06)] ring-1 ring-black/[0.04]";
 
-/** Один бейдж: цвета из реестра, подсказка при наведении (как InfoBadge). */
+/** Один бейдж: иконка + цвета из реестра, подсказка при наведении (как InfoBadge). */
 function Badge({ badge }: { badge: ProductBadge }) {
   const style = { backgroundColor: badge.bg, color: badge.fg };
+  const Icon = badge.icon ? resolveIcon(badge.icon) : null;
   if (!badge.tooltip) {
     return (
       <span className={pill} style={style}>
+        {Icon ? <Icon className="size-3" strokeWidth={2} aria-hidden /> : null}
         {badge.label}
       </span>
     );
@@ -43,6 +46,7 @@ function Badge({ badge }: { badge: ProductBadge }) {
       <Tooltip.Trigger
         render={(props) => (
           <span {...props} className={cn(pill, "cursor-help")} style={style}>
+            {Icon ? <Icon className="size-3" strokeWidth={2} aria-hidden /> : null}
             {badge.label}
             <Info className="size-3 opacity-70" aria-hidden />
           </span>

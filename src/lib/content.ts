@@ -110,22 +110,24 @@ export interface ProductOption {
   sort: number;
 }
 
-/** Бейдж с настраиваемыми цветами и подсказкой. */
+/** Бейдж с настраиваемыми цветами, иконкой и подсказкой. */
 export interface ProductBadge {
   key: string;
   label: string;
   bg: string;
   fg: string;
+  /** Имя иконки из единого набора (lib/admin/icons) или null. */
+  icon?: string | null;
   tooltip?: string;
   sort: number;
 }
 
 /** Дефолты — если в БД реестра ещё нет (фолбэк, чтобы витрина не ломалась). */
 export const DEFAULT_PRODUCT_BADGES: ProductBadge[] = [
-  { key: "new", label: "Новинка", bg: "#1d1d1f", fg: "#ffffff", tooltip: "", sort: 0 },
-  { key: "no-rustore", label: "Без RuStore", bg: "#1d1d1f", fg: "#ffffff", tooltip: "Имеет недостаток в виде невозможности предустановки RuStore", sort: 1 },
-  { key: "in-stock", label: "В наличии", bg: "#ffffff", fg: "#1d1d1f", tooltip: "", sort: 2 },
-  { key: "check-availability", label: "Уточняйте наличие", bg: "#ffffff", fg: "#1d1d1f", tooltip: "", sort: 3 },
+  { key: "new", label: "Новинка", bg: "#1d1d1f", fg: "#ffffff", icon: "zap", tooltip: "", sort: 0 },
+  { key: "no-rustore", label: "Без RuStore", bg: "#1d1d1f", fg: "#ffffff", icon: null, tooltip: "Имеет недостаток в виде невозможности предустановки RuStore", sort: 1 },
+  { key: "in-stock", label: "В наличии", bg: "#ffffff", fg: "#1d1d1f", icon: "check", tooltip: "", sort: 2 },
+  { key: "check-availability", label: "Уточняйте наличие", bg: "#ffffff", fg: "#1d1d1f", icon: "clock", tooltip: "", sort: 3 },
 ];
 
 export async function getProductOptions(): Promise<ProductOption[]> {

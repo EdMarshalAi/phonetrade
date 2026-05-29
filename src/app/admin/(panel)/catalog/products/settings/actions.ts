@@ -31,6 +31,7 @@ export async function saveProductRegistry(
           label: b.label.trim(),
           bg: b.bg || "#1d1d1f",
           fg: b.fg || "#ffffff",
+          icon: b.icon ?? null,
           tooltip: (b.tooltip ?? "").trim(),
           sort: i,
         }));
