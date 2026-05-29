@@ -180,14 +180,9 @@ export function ProductForm({
               <TextInput placeholder="IP17PRO-256-ORANGE" {...register("sku")} />
             </Field>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Модель" hint="Линейка для фильтра (напр. iPhone 17 Pro)">
-              <TextInput placeholder="iPhone 17 Pro" {...register("model")} />
-            </Field>
-            <div className="flex items-end pb-1 text-[12.5px] text-ink-subtle">
-              Цвет, память, SIM, состояние и бейджи — на вкладке «Опции и Бейджи».
-            </div>
-          </div>
+          <Field label="Модель" hint="Линейка для фильтра (напр. iPhone 17 Pro)">
+            <TextInput placeholder="iPhone 17 Pro" {...register("model")} />
+          </Field>
           <Field label="Краткое описание" hint="1–2 строки для карточки в списке">
             <Textarea {...register("short_description")} />
           </Field>
