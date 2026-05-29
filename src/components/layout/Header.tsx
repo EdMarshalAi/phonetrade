@@ -94,12 +94,19 @@ const MOBILE_SECTIONS: MobileSection[] = [
 
 export function Header({
   contacts,
+  categories,
 }: {
   contacts?: import("@/lib/content").ShopContacts | null;
+  categories?: { slug: string; title: string }[];
 }) {
   const phone = contacts?.phone || "+7 (904) 098-88-77";
   const phoneTel = `tel:+${phone.replace(/\D/g, "")}`;
   const hours = contacts?.working_hours || "Ежедневно 10:00–20:00";
+  // Реальные категории из БД (если переданы) — иначе встроенный дефолт.
+  const catItems: CategoryMenuItem[] =
+    categories && categories.length > 0
+      ? categories.map((c) => ({ href: `/category/${c.slug}`, label: c.title, slug: c.slug as CategorySlug }))
+      : ALL_CATEGORIES;
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [contactOpen, setContactOpen] = React.useState(false);
@@ -255,7 +262,7 @@ export function Header({
                       "transition-[opacity,transform] duration-150 origin-top-left"
                     )}
                   >
-                    {ALL_CATEGORIES.map((item) => {
+                    {catItems.map((item) => {
                       const subs = item.slug
                         ? CATEGORY_SUBCATEGORIES[item.slug] ?? []
                         : [];

@@ -21,6 +21,7 @@ import {
   getBlogPosts,
   getBentoTiles,
   getHomeBlocksVisibility,
+  getHomeCategoryRails,
 } from "@/lib/content";
 
 /**
@@ -75,7 +76,7 @@ const HERO_SLIDES: HeroSlide[] = [
 ];
 
 export default async function HomePage() {
-  const [categories, iphones, catalog, used, heroRows, advantageRows, brandRows, tiBlock, tiSteps, blogRows, bentoRows, blocks] =
+  const [categories, iphones, catalog, used, heroRows, advantageRows, brandRows, tiBlock, tiSteps, blogRows, bentoRows, blocks, categoryRails] =
     await Promise.all([
       getCategories(),
       getFeaturedIphones(),
@@ -89,6 +90,7 @@ export default async function HomePage() {
       getBlogPosts(6),
       getBentoTiles(),
       getHomeBlocksVisibility(),
+      getHomeCategoryRails(),
     ]);
 
   const features =
@@ -142,25 +144,24 @@ export default async function HomePage() {
     <>
       <Hero slides={heroSlides} />
       {blocks.bento ? <BentoCategories categories={categories} tiles={bentoRows} /> : null}
-      <ProductRail
-        eyebrow="Свежее в магазине"
-        title="Новинки iPhone"
-        href="/category/iphone"
-        products={iphones}
-      />
-      <ProductRail
-        eyebrow="Каталог техники"
-        title="iPad, Mac, Watch"
-        href="/catalog"
-        products={catalog}
-        bg="surface"
-      />
-      <ProductRail
-        eyebrow="Доступнее"
-        title="Б/У техника Apple"
-        href="/used"
-        products={used}
-      />
+      {categoryRails.length > 0 ? (
+        categoryRails.map((rail, i) => (
+          <ProductRail
+            key={rail.slug}
+            eyebrow="Категория"
+            title={rail.title}
+            href={`/category/${rail.slug}`}
+            products={rail.products}
+            bg={i % 2 === 1 ? "surface" : undefined}
+          />
+        ))
+      ) : (
+        <>
+          <ProductRail eyebrow="Свежее в магазине" title="Новинки iPhone" href="/category/iphone" products={iphones} />
+          <ProductRail eyebrow="Каталог техники" title="iPad, Mac, Watch" href="/catalog" products={catalog} bg="surface" />
+          <ProductRail eyebrow="Доступнее" title="Б/У техника Apple" href="/used" products={used} />
+        </>
+      )}
       {blocks.trade_in ? (
         <>
           <TradeInPromo block={tradeInBlock} />

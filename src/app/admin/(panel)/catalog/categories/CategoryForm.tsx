@@ -21,7 +21,10 @@ export interface CategoryValue {
   icon_url: string | null;
   meta_title: string | null;
   meta_description: string | null;
+  seo_text: string | null;
   sort: number;
+  show_on_home: boolean;
+  home_limit: number;
   is_published: boolean;
 }
 
@@ -55,7 +58,10 @@ export function CategoryForm({
       icon_url: category?.icon_url ?? "",
       meta_title: category?.meta_title ?? "",
       meta_description: category?.meta_description ?? "",
+      seo_text: category?.seo_text ?? "",
       sort: category?.sort ?? 0,
+      show_on_home: category?.show_on_home ?? false,
+      home_limit: category?.home_limit ?? 8,
       is_published: category?.is_published ?? true,
     },
   });
@@ -127,7 +133,7 @@ export function CategoryForm({
 
       <Panel className="p-5">
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Изображение (bento на главной)">
+          <Field label="Изображение" hint="Картинка для bento-плитки в блоке «Каталог Apple» на главной">
             <Controller
               control={control}
               name="image"
@@ -142,7 +148,7 @@ export function CategoryForm({
               )}
             />
           </Field>
-          <Field label="Иконка (промо-лента)">
+          <Field label="Иконка" hint="Маленькая иконка рядом с названием на странице категории (/category/slug)">
             <Controller
               control={control}
               name="icon_url"
@@ -155,12 +161,31 @@ export function CategoryForm({
       </Panel>
 
       <Panel className="space-y-4 p-5">
+        <PanelTitle>Вывод на главной</PanelTitle>
+        <div className="flex flex-wrap items-end gap-6">
+          <Controller
+            control={control}
+            name="show_on_home"
+            render={({ field }) => (
+              <Switch checked={!!field.value} onChange={field.onChange} label="Показывать блок этой категории на главной" />
+            )}
+          />
+          <Field label="Сколько товаров на главной" hint="Лимит карточек в ряду (1–24)">
+            <TextInput type="number" min={1} max={24} className="w-40" {...register("home_limit")} />
+          </Field>
+        </div>
+      </Panel>
+
+      <Panel className="space-y-4 p-5">
         <PanelTitle>SEO</PanelTitle>
         <Field label="Meta title">
           <TextInput {...register("meta_title")} />
         </Field>
         <Field label="Meta description">
           <Textarea {...register("meta_description")} />
+        </Field>
+        <Field label="SEO-текст (внизу страницы категории)" hint="Развёрнутый текст для поисковиков — показывается под списком товаров">
+          <Textarea className="min-h-[120px]" {...register("seo_text")} />
         </Field>
         <Controller
           control={control}

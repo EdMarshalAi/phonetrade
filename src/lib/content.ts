@@ -1,4 +1,36 @@
 import { supabase } from "@/lib/supabase/client";
+import { getProductsByCategory } from "@/lib/products";
+import type { CategorySlug, Product } from "@/lib/data/products";
+
+export interface HomeCategoryRail {
+  slug: string;
+  title: string;
+  products: Product[];
+}
+
+/**
+ * Ряды товаров на главной по категориям с флагом show_on_home (лимит home_limit).
+ * Если ни одна категория не помечена — возвращает [] (главная покажет дефолтные ряды).
+ */
+export async function getHomeCategoryRails(): Promise<HomeCategoryRail[]> {
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("categories")
+    .select("slug,title,home_limit,sort")
+    .eq("show_on_home", true)
+    .eq("is_published", true)
+    .order("sort", { ascending: true });
+  if (!data || data.length === 0) return [];
+  const cats = data as { slug: string; title: string; home_limit: number }[];
+  const rails = await Promise.all(
+    cats.map(async (c) => ({
+      slug: c.slug,
+      title: c.title,
+      products: (await getProductsByCategory(c.slug as CategorySlug)).slice(0, c.home_limit ?? 8),
+    }))
+  );
+  return rails.filter((r) => r.products.length > 0);
+}
 
 /**
  * Геттеры контента, управляемого из админки (hero, преимущества, бренды,
@@ -6,6 +38,19 @@ import { supabase } from "@/lib/supabase/client";
  * из Supabase через anon-клиент (RLS). При отсутствии env/строк возвращают
  * пустое — вызывающий код подставляет свои дефолты (сайт не ломается).
  */
+
+export interface CategoryMeta {
+  title: string;
+  icon_url: string | null;
+  seo_text: string | null;
+}
+
+/** Мета категории из БД (иконка + SEO-текст внизу страницы). */
+export async function getCategoryMeta(slug: string): Promise<CategoryMeta | null> {
+  if (!supabase) return null;
+  const { data } = await supabase.from("categories").select("title,icon_url,seo_text").eq("slug", slug).maybeSingle();
+  return (data as CategoryMeta) ?? null;
+}
 
 export interface HeroSlideRow {
   id: string;

@@ -17,7 +17,10 @@ function normalize(input: CategoryInput) {
     icon_url: input.icon_url || null,
     meta_title: input.meta_title || null,
     meta_description: input.meta_description || null,
+    seo_text: input.seo_text || null,
     sort: input.sort ?? 0,
+    show_on_home: input.show_on_home ?? false,
+    home_limit: input.home_limit ?? 8,
     is_published: input.is_published ?? true,
     updated_at: new Date().toISOString(),
   };

@@ -37,7 +37,10 @@ export const categorySchema = z.object({
   icon_url: z.string().trim().nullable().optional(),
   meta_title: z.string().trim().nullable().optional(),
   meta_description: z.string().trim().nullable().optional(),
+  seo_text: z.string().nullable().optional(),
   sort: z.coerce.number().int().min(0).default(0),
+  show_on_home: z.boolean().default(false),
+  home_limit: z.coerce.number().int().min(1).max(24).default(8),
   is_published: z.boolean().default(true),
 });
 export type CategoryInput = z.infer<typeof categorySchema>;
