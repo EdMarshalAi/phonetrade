@@ -1,0 +1,236 @@
+"use client";
+
+import * as React from "react";
+import { Check, Heart, ShoppingBag } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { formatPrice } from "@/lib/utils/format-price";
+import { cn } from "@/lib/utils/cn";
+import type { Product } from "@/lib/data/products";
+
+type Props = {
+  product: Product;
+  variants: { colors: Product[]; memories: Product[] };
+};
+
+function colorSwatchClass(colorName: string): string {
+  const k = colorName.toLowerCase();
+  if (k.includes("чёрн") || k.includes("black") || k.includes("midnight"))
+    return "bg-[#1a1a1d]";
+  if (k.includes("бел") || k.includes("white"))
+    return "bg-white border border-border";
+  if (k.includes("серебр") || k.includes("silver")) return "bg-[#e3e4e6]";
+  if (k.includes("сер") || k.includes("space")) return "bg-[#5b5e62]";
+  if (k.includes("золот") || k.includes("gold")) return "bg-[#d6c4a4]";
+  if (k.includes("оранж") || k.includes("orange")) return "bg-[#dd5b2a]";
+  if (k.includes("красн") || k.includes("red")) return "bg-[#c41d3d]";
+  if (k.includes("син") || k.includes("blue")) return "bg-[#3a5b78]";
+  if (k.includes("зелён") || k.includes("sage") || k.includes("green"))
+    return "bg-[#7f8d75]";
+  if (k.includes("розов") || k.includes("pink")) return "bg-[#d8a8b4]";
+  if (k.includes("лаванд") || k.includes("сирен")) return "bg-[#b6aed8]";
+  if (k.includes("жёлт") || k.includes("yellow")) return "bg-[#f0d36a]";
+  if (k.includes("титан") || k.includes("titanium")) return "bg-[#867e74]";
+  return "bg-surface border border-border";
+}
+
+export function ProductBuyPanel({ product, variants }: Props) {
+  const [favorited, setFavorited] = React.useState(false);
+  const [added, setAdded] = React.useState(false);
+
+  const handleAdd = () => {
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 1800);
+  };
+
+  const colorOptions = React.useMemo(() => {
+    const seen = new Set<string>();
+    return variants.colors
+      .filter((v) => (seen.has(v.color) ? false : (seen.add(v.color), true)))
+      .sort((a, b) => a.color.localeCompare(b.color, "ru"));
+  }, [variants.colors]);
+
+  const memoryOptions = React.useMemo(() => {
+    const seen = new Set<string>();
+    return variants.memories
+      .filter((v) =>
+        v.memory && !seen.has(v.memory) ? (seen.add(v.memory), true) : false
+      )
+      .sort((a, b) => {
+        const order = ["64GB", "128GB", "256GB", "512GB", "1TB"];
+        return order.indexOf(a.memory ?? "") - order.indexOf(b.memory ?? "");
+      });
+  }, [variants.memories]);
+
+  const limitedHighlights = (product.highlights ?? []).slice(0, 3);
+
+  return (
+    <div className="flex flex-col gap-6 lg:sticky lg:top-[140px]">
+      <div>
+        <div className="flex items-baseline justify-between gap-3 mb-1">
+          <div className="flex items-baseline gap-2 min-w-0">
+            <span className="text-xs uppercase tracking-[0.16em] text-ink-subtle">
+              {product.model}
+            </span>
+            {product.isNew && (
+              <span className="text-xs uppercase tracking-wider text-sale">
+                Новинка
+              </span>
+            )}
+          </div>
+          <span
+            aria-label="Артикул"
+            className="text-[11px] tabular-nums tracking-wider text-ink-subtle/60 shrink-0"
+          >
+            #{product.id.toUpperCase()}
+          </span>
+        </div>
+      </div>
+
+      {colorOptions.length > 1 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs uppercase tracking-[0.16em] text-ink-subtle">
+              Цвет
+            </span>
+            <span className="text-sm text-ink-muted">{product.color}</span>
+          </div>
+          <ul className="flex flex-wrap gap-2">
+            {colorOptions.map((v) => {
+              const active = v.id === product.id;
+              return (
+                <li key={v.id}>
+                  <a
+                    href={`/product/${v.id}`}
+                    aria-label={v.color}
+                    title={v.color}
+                    className={cn(
+                      "block size-10 rounded-full p-0.5 transition-all",
+                      active
+                        ? "ring-2 ring-ink ring-offset-2 ring-offset-bg"
+                        : "hover:ring-2 hover:ring-border hover:ring-offset-2 hover:ring-offset-bg"
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "block w-full h-full rounded-full",
+                        colorSwatchClass(v.color)
+                      )}
+                    />
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {memoryOptions.length > 1 && (
+        <div>
+          <span className="block text-xs uppercase tracking-[0.16em] text-ink-subtle mb-3">
+            Память
+          </span>
+          <ul className="flex flex-wrap gap-2">
+            {memoryOptions.map((v) => {
+              const active = v.id === product.id;
+              return (
+                <li key={v.id}>
+                  <a
+                    href={`/product/${v.id}`}
+                    className={cn(
+                      "inline-flex items-center h-10 px-4 rounded-xl text-sm font-medium transition-colors border",
+                      active
+                        ? "bg-ink text-white border-ink"
+                        : "bg-white border-border text-ink hover:border-ink/30"
+                    )}
+                  >
+                    {v.memory}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      <div className="rounded-3xl bg-white border border-border/60 p-6">
+        <div className="grid grid-cols-2 gap-4 mb-5">
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-ink-subtle mb-1">
+              Наличные
+            </div>
+            <div className="text-3xl md:text-[34px] font-bold text-sale tracking-tight tabular-nums leading-none">
+              {formatPrice(product.priceCash)}
+            </div>
+            <div className="mt-1 text-[11px] text-ink-subtle">
+              от {formatPrice(Math.round(product.priceCash / 24))}/мес
+            </div>
+          </div>
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-ink-subtle mb-1">
+              Картой
+            </div>
+            <div className="text-3xl md:text-[34px] font-bold text-ink tracking-tight tabular-nums leading-none">
+              {formatPrice(product.priceCard)}
+            </div>
+            <div className="mt-1 text-[11px] text-ink-subtle">
+              или в кредит 0-0-24
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={handleAdd}
+            className="flex-1 rounded-2xl"
+          >
+            {added ? (
+              <>
+                <Check className="size-4" aria-hidden />В корзине
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="size-4" aria-hidden />В корзину
+              </>
+            )}
+          </Button>
+          <button
+            type="button"
+            aria-label="В избранное"
+            onClick={() => setFavorited((v) => !v)}
+            className={cn(
+              "inline-flex size-12 shrink-0 items-center justify-center rounded-2xl transition-colors border",
+              favorited
+                ? "bg-ink text-white border-ink"
+                : "bg-surface text-ink-muted hover:text-ink border-transparent"
+            )}
+          >
+            <Heart
+              className={cn("size-5", favorited && "fill-current")}
+              aria-hidden
+            />
+          </button>
+        </div>
+      </div>
+
+      {limitedHighlights.length > 0 && (
+        <ul className="space-y-2.5">
+          {limitedHighlights.map((h) => (
+            <li
+              key={h}
+              className="flex items-start gap-3 text-[14px] text-ink"
+            >
+              <span
+                aria-hidden
+                className="mt-[7px] inline-flex size-1.5 shrink-0 rounded-full bg-ink"
+              />
+              <span className="leading-relaxed">{h}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

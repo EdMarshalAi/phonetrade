@@ -1,0 +1,271 @@
+"use client";
+
+import * as React from "react";
+import { HeartHandshake, RefreshCw, ShieldCheck, X } from "lucide-react";
+import { formatPrice } from "@/lib/utils/format-price";
+import { pluralizeItems } from "@/lib/utils/plural";
+import type { CartItem, CheckoutState } from "@/lib/cart/types";
+import { cn } from "@/lib/utils/cn";
+
+type Props = {
+  items: CartItem[];
+  state: CheckoutState;
+  onSubmit: () => void;
+  attempted: boolean;
+  errorCount: number;
+};
+
+const DELIVERY_PRICE: Record<string, number> = {
+  pickup: 0,
+  courier: 0,
+};
+
+const DELIVERY_LABEL: Record<string, string> = {
+  pickup: "Самовывоз",
+  courier: "Курьер по Белгороду",
+};
+
+const PROMO_CODES: Record<string, number> = {
+  PHONE10: 0.1,
+  BELGOROD5: 0.05,
+};
+
+const CREDIT_MONTHS = 24;
+
+export function OrderSummary({
+  items,
+  state,
+  onSubmit,
+  attempted,
+  errorCount,
+}: Props) {
+  const [promoOpen, setPromoOpen] = React.useState(false);
+  const [promoInput, setPromoInput] = React.useState("");
+  const [promo, setPromo] = React.useState<{ code: string; rate: number } | null>(
+    null
+  );
+  const [promoError, setPromoError] = React.useState<string | null>(null);
+
+  const totalQty = items.reduce((acc, i) => acc + i.qty, 0);
+  const subtotalCash = items.reduce(
+    (acc, i) => acc + i.product.priceCash * i.qty,
+    0
+  );
+  const subtotalCard = items.reduce(
+    (acc, i) => acc + i.product.priceCard * i.qty,
+    0
+  );
+  const discount = subtotalCard - subtotalCash;
+  const deliveryPrice = DELIVERY_PRICE[state.delivery] ?? 0;
+  const promoDiscount = promo ? Math.round(subtotalCash * promo.rate) : 0;
+  const total = Math.max(0, subtotalCash + deliveryPrice - promoDiscount);
+  const monthly = Math.ceil(total / CREDIT_MONTHS);
+
+  const applyPromo = () => {
+    const code = promoInput.trim().toUpperCase();
+    if (!code) return;
+    const rate = PROMO_CODES[code];
+    if (!rate) {
+      setPromo(null);
+      setPromoError("Промокод не найден");
+      return;
+    }
+    setPromo({ code, rate });
+    setPromoError(null);
+  };
+
+  const clearPromo = () => {
+    setPromo(null);
+    setPromoInput("");
+    setPromoError(null);
+  };
+
+  return (
+    <div className="lg:sticky lg:top-[88px] flex flex-col gap-4">
+      <div className="rounded-3xl bg-white border border-border/60 p-6">
+        <div className="flex items-baseline justify-between mb-1">
+          <h2 className="text-lg font-semibold text-ink">Ваш заказ</h2>
+          <span className="text-sm text-ink-muted">
+            {totalQty} {pluralizeItems(totalQty)}
+          </span>
+        </div>
+
+        {!promoOpen && !promo && (
+          <button
+            type="button"
+            onClick={() => setPromoOpen(true)}
+            className="text-[13px] text-ink underline-offset-4 hover:underline mb-5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+          >
+            Использовать промокод
+          </button>
+        )}
+
+        {promoOpen && !promo && (
+          <div className="mb-5">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={promoInput}
+                onChange={(e) => {
+                  setPromoInput(e.target.value);
+                  setPromoError(null);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && applyPromo()}
+                placeholder="Промокод"
+                aria-label="Промокод"
+                className={cn(
+                  "flex-1 h-10 px-3 rounded-xl bg-surface text-sm text-ink uppercase placeholder:normal-case placeholder:text-ink-subtle outline-none focus:bg-white focus:ring-2 transition-colors",
+                  promoError
+                    ? "ring-2 ring-sale/50 focus:ring-sale/60"
+                    : "focus:ring-ink/15"
+                )}
+              />
+              <button
+                type="button"
+                onClick={applyPromo}
+                className="h-10 px-4 rounded-xl bg-ink text-white text-sm font-medium hover:bg-ink/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+              >
+                Применить
+              </button>
+            </div>
+            {promoError && (
+              <p className="mt-1.5 text-[12px] text-sale">{promoError}</p>
+            )}
+          </div>
+        )}
+
+        {promo && (
+          <div className="flex items-center justify-between gap-2 mb-5 rounded-xl bg-surface px-3 py-2">
+            <span className="text-[13px] text-ink">
+              Промокод{" "}
+              <span className="font-semibold">{promo.code}</span> применён
+            </span>
+            <button
+              type="button"
+              onClick={clearPromo}
+              aria-label="Убрать промокод"
+              className="inline-flex size-7 items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        )}
+
+        <dl className="space-y-2.5 text-sm pb-5 border-b border-dashed border-border/70">
+          <div className="flex justify-between gap-3">
+            <dt className="text-ink-muted">Товары</dt>
+            <dd className="text-ink tabular-nums">{formatPrice(subtotalCard)}</dd>
+          </div>
+          {discount > 0 && (
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-muted">Скидка за наличные</dt>
+              <dd className="text-sale tabular-nums">− {formatPrice(discount)}</dd>
+            </div>
+          )}
+          {promoDiscount > 0 && (
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-muted">Промокод {promo?.code}</dt>
+              <dd className="text-sale tabular-nums">
+                − {formatPrice(promoDiscount)}
+              </dd>
+            </div>
+          )}
+          <div className="flex justify-between gap-3">
+            <dt className="text-ink-muted">
+              {DELIVERY_LABEL[state.delivery] ?? "Доставка"}
+            </dt>
+            <dd
+              className={
+                deliveryPrice === 0
+                  ? "text-emerald-700 font-medium"
+                  : "text-ink tabular-nums"
+              }
+            >
+              {deliveryPrice === 0 ? "Бесплатно" : formatPrice(deliveryPrice)}
+            </dd>
+          </div>
+        </dl>
+
+        <div className="flex items-baseline justify-between mt-5 mb-1">
+          <span className="text-sm text-ink-muted">Итого к оплате</span>
+          <span
+            aria-live="polite"
+            className="text-[28px] font-bold text-ink tracking-tight tabular-nums leading-none"
+          >
+            {formatPrice(total)}
+          </span>
+        </div>
+        {state.payment === "credit" ? (
+          <p className="text-right text-[12px] text-ink-muted mb-6">
+            ≈ {formatPrice(monthly)}/мес на {CREDIT_MONTHS} мес
+          </p>
+        ) : (
+          <div className="mb-6" />
+        )}
+
+        <button
+          type="button"
+          onClick={onSubmit}
+          className="inline-flex w-full items-center justify-center gap-2 h-12 px-7 rounded-2xl bg-ink text-white text-sm font-medium hover:bg-ink/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 focus-visible:ring-offset-2"
+        >
+          Подтвердить заказ
+        </button>
+
+        {attempted && errorCount > 0 && (
+          <p className="mt-2 text-[12px] text-sale text-center" role="alert">
+            Заполните выделенные поля, чтобы продолжить
+          </p>
+        )}
+      </div>
+
+      <ul className="rounded-3xl bg-white border border-border/60 divide-y divide-border/60">
+        <li className="flex items-start gap-3 p-4">
+          <span
+            aria-hidden
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink"
+          >
+            <ShieldCheck className="size-[16px]" />
+          </span>
+          <div>
+            <p className="text-[13px] font-semibold text-ink">
+              Безопасная оплата
+            </p>
+            <p className="text-[12px] text-ink-muted leading-snug">
+              Защищённый канал, без сохранения карты
+            </p>
+          </div>
+        </li>
+        <li className="flex items-start gap-3 p-4">
+          <span
+            aria-hidden
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink"
+          >
+            <RefreshCw className="size-[16px]" />
+          </span>
+          <div>
+            <p className="text-[13px] font-semibold text-ink">Лёгкий возврат</p>
+            <p className="text-[12px] text-ink-muted leading-snug">
+              14 дней на возврат без объяснений
+            </p>
+          </div>
+        </li>
+        <li className="flex items-start gap-3 p-4">
+          <span
+            aria-hidden
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink"
+          >
+            <HeartHandshake className="size-[16px]" />
+          </span>
+          <div>
+            <p className="text-[13px] font-semibold text-ink">
+              Поддержка после покупки
+            </p>
+            <p className="text-[12px] text-ink-muted leading-snug">
+              Настроим Apple ID и перенесём данные бесплатно
+            </p>
+          </div>
+        </li>
+      </ul>
+    </div>
+  );
+}
