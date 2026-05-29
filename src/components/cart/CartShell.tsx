@@ -32,7 +32,6 @@ const INITIAL_STATE: CheckoutState = {
 export function CartShell() {
   const { items, setQty: ctxSetQty, remove: ctxRemove, add: ctxAdd, clear: ctxClear } = useCart();
   const [state, setState] = React.useState<CheckoutState>(INITIAL_STATE);
-  const [favorites, setFavorites] = React.useState<Set<string>>(new Set());
   const [attempted, setAttempted] = React.useState(false);
   const [order, setOrder] = React.useState<{ id: string } | null>(null);
   const [submitPending, setSubmitPending] = React.useState(false);
@@ -63,15 +62,6 @@ export function CartShell() {
     void ctxAdd(undo.item.product, undo.item.qty);
     setUndo(null);
     if (undoTimer.current) window.clearTimeout(undoTimer.current);
-  };
-
-  const toggleFavorite = (productId: string) => {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(productId)) next.delete(productId);
-      else next.add(productId);
-      return next;
-    });
   };
 
   React.useEffect(() => {
@@ -245,13 +235,7 @@ export function CartShell() {
                   : "Пока пусто"
               }
             >
-              <CartItemsSection
-                items={items}
-                favorites={favorites}
-                onQty={setQty}
-                onRemove={remove}
-                onToggleFavorite={toggleFavorite}
-              />
+              <CartItemsSection items={items} onQty={setQty} onRemove={remove} />
             </SectionStep>
 
             {items.length > 0 && (

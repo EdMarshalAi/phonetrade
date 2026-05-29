@@ -194,9 +194,7 @@ export function Header({
             aria-label="PhoneTrade — главная"
             className="shrink-0 inline-flex items-center gap-2.5"
           >
-            <span className="inline-flex size-8 items-center justify-center rounded-lg bg-white p-1">
-              <Image src="/brand/logo-mark-black.png" alt="PhoneTrade" width={28} height={28} className="h-full w-full object-contain" priority />
-            </span>
+            <Image src="/brand/logo-mark-white.png" alt="PhoneTrade" width={32} height={32} className="size-8 object-contain" priority />
             <span className="text-lg font-semibold tracking-tight text-white">
               PhoneTrade
             </span>
@@ -241,9 +239,7 @@ export function Header({
                 aria-label="PhoneTrade — главная"
                 className="shrink-0 animate-in fade-in slide-in-from-left-2 duration-300"
               >
-                <span className="inline-flex size-9 items-center justify-center rounded-lg bg-ink p-1.5">
-                  <Image src="/brand/logo-mark-white.png" alt="PhoneTrade" width={28} height={28} className="h-full w-full object-contain" />
-                </span>
+                <Image src="/brand/logo-mark-black.png" alt="PhoneTrade" width={36} height={36} className="size-9 object-contain" />
               </a>
             )}
 
@@ -457,9 +453,7 @@ export function Header({
               aria-label="PhoneTrade — главная"
               className="inline-flex items-center gap-2"
             >
-              <span className="inline-flex size-7 items-center justify-center rounded-md bg-white p-0.5">
-                <Image src="/brand/logo-mark-black.png" alt="PhoneTrade" width={24} height={24} className="h-full w-full object-contain" />
-              </span>
+              <Image src="/brand/logo-mark-white.png" alt="PhoneTrade" width={28} height={28} className="size-7 object-contain" />
               <span className="text-[15px] font-semibold tracking-tight text-white">
                 PhoneTrade
               </span>

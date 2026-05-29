@@ -49,7 +49,7 @@ export function IconPicker({
       {open ? (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-72 rounded-md border border-border/70 bg-white p-2 shadow-lg">
+          <div className="absolute left-0 top-[calc(100%+6px)] z-50 max-h-72 w-72 overflow-auto rounded-md border border-border/70 bg-white p-2 shadow-lg">
             <div className="grid grid-cols-7 gap-1">
               {ICON_SET.map(({ name, Icon }) => (
                 <button

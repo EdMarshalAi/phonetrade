@@ -6,23 +6,17 @@ import { Heart, Minus, Plus, Trash2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils/format-price";
 import { MAX_QTY } from "@/lib/cart/constants";
 import type { CartItem } from "@/lib/cart/types";
+import { useFavorites } from "@/components/providers/FavoritesProvider";
 import { cn } from "@/lib/utils/cn";
 
 type Props = {
   items: CartItem[];
-  favorites: Set<string>;
   onQty: (productId: string, qty: number) => void;
   onRemove: (productId: string) => void;
-  onToggleFavorite: (productId: string) => void;
 };
 
-export function CartItemsSection({
-  items,
-  favorites,
-  onQty,
-  onRemove,
-  onToggleFavorite,
-}: Props) {
+export function CartItemsSection({ items, onQty, onRemove }: Props) {
+  const { enabled: favEnabled, has: favHas, toggle: favToggle } = useFavorites();
   if (items.length === 0) {
     return (
       <div className="py-8 text-center">
@@ -44,7 +38,7 @@ export function CartItemsSection({
     <ul className="-mx-5 md:-mx-7 -mb-5 md:-mb-7 divide-y divide-border/60">
       {items.map(({ product, qty }) => {
         const lineCash = product.priceCash * qty;
-        const isFavorite = favorites.has(product.id);
+        const isFavorite = favHas(product.id);
         return (
           <li
             key={product.id}
@@ -144,22 +138,22 @@ export function CartItemsSection({
                 </div>
 
                 <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    aria-label={
-                      isFavorite ? "Убрать из избранного" : "В избранное"
-                    }
-                    aria-pressed={isFavorite}
-                    onClick={() => onToggleFavorite(product.id)}
-                    className="inline-flex size-11 items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-                  >
-                    <Heart
-                      className={cn(
-                        "size-4 transition-colors",
-                        isFavorite && "fill-sale text-sale"
-                      )}
-                    />
-                  </button>
+                  {favEnabled && (
+                    <button
+                      type="button"
+                      aria-label={isFavorite ? "Убрать из избранного" : "В избранное"}
+                      aria-pressed={isFavorite}
+                      onClick={() => void favToggle(product)}
+                      className="inline-flex size-11 items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                    >
+                      <Heart
+                        className={cn(
+                          "size-4 transition-colors",
+                          isFavorite && "fill-sale text-sale"
+                        )}
+                      />
+                    </button>
+                  )}
                   <button
                     type="button"
                     aria-label="Удалить из корзины"
