@@ -115,7 +115,7 @@ export default async function AdminDashboardPage() {
         </PanelHeader>
         <div className="p-4">
           {hasSales ? (
-            <TimeSeriesChart data={salesSeries} valueFormatter={(v) => `${Math.round(v / 1000)}к`} />
+            <TimeSeriesChart data={salesSeries} format="thousands" />
           ) : (
             <div className="flex h-44 items-center justify-center gap-2 text-ink-subtle">
               <BarChart3 className="h-5 w-5" strokeWidth={1.5} />

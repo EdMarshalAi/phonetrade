@@ -329,7 +329,7 @@ export default async function OrdersAnalyticsPage({
           ) : (
             <TimeSeriesChart
               data={revenueSeries}
-              valueFormatter={(v) => `${Math.round(v / 1000)}к`}
+              format="thousands"
             />
           )}
         </div>
@@ -347,7 +347,7 @@ export default async function OrdersAnalyticsPage({
             ) : (
               <DonutChart
                 data={categoryData}
-                valueFormatter={(v) => rub(v)}
+                format="ruble"
               />
             )}
           </div>
@@ -363,7 +363,7 @@ export default async function OrdersAnalyticsPage({
             ) : (
               <DonutChart
                 data={paymentData}
-                valueFormatter={(v) => String(v) + " заказов"}
+                format="number"
               />
             )}
           </div>
@@ -447,7 +447,7 @@ export default async function OrdersAnalyticsPage({
                 data={statusData}
                 horizontal
                 height={Math.max(200, statusData.length * 38)}
-                valueFormatter={(v) => String(v)}
+                format="number"
               />
             </div>
           )}

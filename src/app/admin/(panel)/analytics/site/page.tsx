@@ -351,7 +351,7 @@ export default async function SiteAnalyticsPage({
           {totalPageViews === 0 ? (
             <ChartEmpty />
           ) : (
-            <TimeSeriesChart data={viewsByDay} valueFormatter={fmt} />
+            <TimeSeriesChart data={viewsByDay} format="number" />
           )}
         </div>
       </Panel>
@@ -401,7 +401,7 @@ export default async function SiteAnalyticsPage({
             {sourceData.length === 0 ? (
               <ChartEmpty />
             ) : (
-              <DonutChart data={sourceData} valueFormatter={fmt} />
+              <DonutChart data={sourceData} format="number" />
             )}
           </div>
         </Panel>
@@ -447,7 +447,7 @@ export default async function SiteAnalyticsPage({
             {deviceData.length === 0 ? (
               <ChartEmpty />
             ) : (
-              <DonutChart data={deviceData} valueFormatter={fmt} />
+              <DonutChart data={deviceData} format="number" />
             )}
           </div>
         </Panel>
