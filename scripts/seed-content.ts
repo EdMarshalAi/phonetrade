@@ -136,7 +136,7 @@ async function main() {
       name: "PhoneTrade",
       address: "Белгород, ул. Попова, 36 (Универмаг Белгород, 1 этаж)",
       working_hours: "Ежедневно 10:00–20:00",
-      phone: "+7 (4722) 00-00-00",
+      phone: "+7 (904) 098-88-77",
       email: "hello@phonetrade.ru",
       vk: "", whatsapp: "", telegram: "",
     },

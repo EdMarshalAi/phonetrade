@@ -143,6 +143,24 @@ export async function getBlogPost(slug: string): Promise<BlogPostCard | null> {
   return (data as BlogPostCard) ?? null;
 }
 
+export interface ShopContacts {
+  name?: string;
+  address?: string;
+  working_hours?: string;
+  phone?: string;
+  email?: string;
+  vk?: string;
+  whatsapp?: string;
+  telegram?: string;
+}
+
+/** Контакты магазина из настроек (shop_settings key='general'). */
+export async function getShopContacts(): Promise<ShopContacts | null> {
+  if (!supabase) return null;
+  const { data } = await supabase.from("shop_settings").select("value").eq("key", "general").maybeSingle();
+  return ((data?.value as ShopContacts) ?? null) || null;
+}
+
 export interface StaticPageRow {
   slug: string;
   title: string;

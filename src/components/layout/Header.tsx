@@ -92,7 +92,14 @@ const MOBILE_SECTIONS: MobileSection[] = [
   },
 ];
 
-export function Header() {
+export function Header({
+  contacts,
+}: {
+  contacts?: import("@/lib/content").ShopContacts | null;
+}) {
+  const phone = contacts?.phone || "+7 (904) 098-88-77";
+  const phoneTel = `tel:+${phone.replace(/\D/g, "")}`;
+  const hours = contacts?.working_hours || "Ежедневно 10:00–20:00";
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [contactOpen, setContactOpen] = React.useState(false);
@@ -158,10 +165,10 @@ export function Header() {
                 <Send className="size-3.5" aria-hidden />
               </a>
               <a
-                href="tel:+79040988877"
+                href={phoneTel}
                 className="font-medium text-white hover:text-onDark transition-colors tabular-nums"
               >
-                +7 (904) 098-88-77
+                {phone}
               </a>
             </div>
           </div>
@@ -483,7 +490,7 @@ export function Header() {
                 Свяжитесь с нами
               </span>
               <a
-                href="tel:+79040988877"
+                href={phoneTel}
                 onClick={() => setContactOpen(false)}
                 className="flex items-center gap-3 py-3 border-b border-white/5"
               >
@@ -495,11 +502,9 @@ export function Header() {
                 </span>
                 <div className="min-w-0">
                   <p className="text-[15px] font-semibold text-white tabular-nums">
-                    +7 (904) 098-88-77
+                    {phone}
                   </p>
-                  <p className="text-[12px] text-onDark-muted">
-                    Пн–Вс · 10:00–20:00
-                  </p>
+                  <p className="text-[12px] text-onDark-muted">{hours}</p>
                 </div>
               </a>
               <a

@@ -36,7 +36,13 @@ const MAP_SRC =
 const MAP_LINK =
   "https://yandex.ru/maps/?text=%D0%91%D0%B5%D0%BB%D0%B3%D0%BE%D1%80%D0%BE%D0%B4%2C%20%D1%83%D0%BB.%20%D0%9F%D0%BE%D0%BF%D0%BE%D0%B2%D0%B0%2C%2036";
 
-export function Footer() {
+import type { ShopContacts } from "@/lib/content";
+
+export function Footer({ contacts }: { contacts?: ShopContacts | null }) {
+  const hours = contacts?.working_hours || "Ежедневно 10:00–20:00";
+  const address = contacts?.address || "Белгород, ул. Попова, 36 (Ун-г Белгород, 1 этаж)";
+  const phone = contacts?.phone || "+7 (904) 098-88-77";
+  const phoneTel = `tel:+${phone.replace(/\D/g, "")}`;
   return (
     <footer className="bg-ink text-onDark">
       <div className="container-page pt-14 md:pt-20 pb-10 md:pb-14">
@@ -59,9 +65,7 @@ export function Footer() {
                 >
                   <Clock className="size-4" />
                 </span>
-                <span className="pt-1.5">
-                  Работаем ежедневно с 10:00 до 20:00
-                </span>
+                <span className="pt-1.5">{hours}</span>
               </li>
               <li className="flex items-start gap-4">
                 <span
@@ -70,12 +74,7 @@ export function Footer() {
                 >
                   <MapPin className="size-4" />
                 </span>
-                <span className="pt-1.5">
-                  Белгород, ул. Попова, 36{" "}
-                  <span className="text-onDark-muted">
-                    (Ун-г Белгород, 1 этаж)
-                  </span>
-                </span>
+                <span className="pt-1.5">{address}</span>
               </li>
             </ul>
 
@@ -83,7 +82,7 @@ export function Footer() {
 
             <div className="flex flex-wrap items-center gap-x-10 gap-y-5">
               <a
-                href="tel:+79040988877"
+                href={phoneTel}
                 className="group inline-flex items-center gap-3 text-[15px] font-medium text-white hover:text-onDark transition-colors"
               >
                 <span
@@ -92,7 +91,7 @@ export function Footer() {
                 >
                   <Phone className="size-4" />
                 </span>
-                +7 (904) 098-88-77
+                {phone}
               </a>
 
               <ul className="flex items-center gap-2.5">
