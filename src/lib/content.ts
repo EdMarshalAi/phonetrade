@@ -145,6 +145,89 @@ export async function getProductBadges(): Promise<ProductBadge[]> {
   return [...arr].sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 }
 
+// ── Информационные блоки (иконка + заголовок + текст) ────────────────────────
+
+/** Универсальный инфоблок: под товаром и под кнопкой заказа. */
+export interface InfoBlock {
+  icon: string | null;
+  title: string;
+  text: string;
+  href?: string;
+}
+
+/** Блоки под товаром (страница товара): самовывоз/доставка/гарантия/trade-in. */
+export const DEFAULT_PRODUCT_BLOCKS: InfoBlock[] = [
+  { icon: "map-pin", title: "Самовывоз", text: "В Универмаге Белгород · ул. Попова, 36" },
+  { icon: "truck", title: "Доставка по Белгороду", text: "Сегодня или завтра — курьер привезёт в удобное время" },
+  { icon: "shield-check", title: "Гарантия 12 + 12 месяцев", text: "Магазинная PhoneTrade плюс гарантия производителя Apple" },
+  { icon: "refresh-cw", title: "Trade-in сразу", text: "Сдайте старое устройство Apple и вычтем его сумму из цены", href: "/trade-in" },
+];
+
+/** Блоки под кнопкой «Подтвердить заказ» в корзине. */
+export const DEFAULT_CHECKOUT_BLOCKS: InfoBlock[] = [
+  { icon: "shield-check", title: "Безопасная оплата", text: "Защищённый канал, без сохранения карты" },
+  { icon: "refresh-cw", title: "Лёгкий возврат", text: "14 дней на возврат без объяснений" },
+  { icon: "heart-handshake", title: "Поддержка после покупки", text: "Настроим Apple ID и перенесём данные бесплатно" },
+];
+
+async function getBlocks(key: string, fallback: InfoBlock[]): Promise<InfoBlock[]> {
+  if (!supabase) return fallback;
+  const { data } = await supabase.from("shop_settings").select("value").eq("key", key).maybeSingle();
+  const arr = data?.value as InfoBlock[] | undefined;
+  return arr && arr.length > 0 ? arr : fallback;
+}
+
+export const getProductBlocks = () => getBlocks("product_blocks", DEFAULT_PRODUCT_BLOCKS);
+export const getCheckoutBlocks = () => getBlocks("checkout_blocks", DEFAULT_CHECKOUT_BLOCKS);
+
+// ── Настройки корзины: оплата, доставка ──────────────────────────────────────
+
+export type PaymentKey = "sbp" | "card" | "cash" | "credit";
+export type DeliveryKey = "pickup" | "courier";
+
+export interface CartPaymentMethod {
+  key: PaymentKey;
+  enabled: boolean;
+  label: string;
+  note: string;
+}
+export interface CartDeliveryOption {
+  key: DeliveryKey;
+  enabled: boolean;
+  label: string;
+  note: string;
+  price: number; // цена доставки (для курьера); 0 — бесплатно
+  freeFrom: number; // бесплатно от суммы (0 — всегда бесплатно)
+}
+export interface CartSettings {
+  payments: CartPaymentMethod[];
+  delivery: CartDeliveryOption[];
+}
+
+export const DEFAULT_CART_SETTINGS: CartSettings = {
+  payments: [
+    { key: "sbp", enabled: true, label: "СБП", note: "Без комиссии, мгновенно" },
+    { key: "card", enabled: true, label: "Банковская карта", note: "Visa, Mastercard, Мир" },
+    { key: "cash", enabled: true, label: "При получении", note: "Наличные или картой курьеру" },
+    { key: "credit", enabled: true, label: "Кредит / Рассрочка", note: "Решение банка за 5 минут" },
+  ],
+  delivery: [
+    { key: "pickup", enabled: true, label: "Самовывоз", note: "Бесплатно · сегодня", price: 0, freeFrom: 0 },
+    { key: "courier", enabled: true, label: "Курьер", note: "Завтра, в удобное время", price: 0, freeFrom: 0 },
+  ],
+};
+
+export async function getCartSettings(): Promise<CartSettings> {
+  if (!supabase) return DEFAULT_CART_SETTINGS;
+  const { data } = await supabase.from("shop_settings").select("value").eq("key", "cart").maybeSingle();
+  const v = data?.value as Partial<CartSettings> | undefined;
+  if (!v) return DEFAULT_CART_SETTINGS;
+  return {
+    payments: v.payments?.length ? v.payments : DEFAULT_CART_SETTINGS.payments,
+    delivery: v.delivery?.length ? v.delivery : DEFAULT_CART_SETTINGS.delivery,
+  };
+}
+
 export interface HeroSlideRow {
   id: string;
   overline: string | null;

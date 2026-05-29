@@ -9,13 +9,15 @@ import { Panel } from "@/components/admin/ui";
 import { TextInput, Textarea, AdminButton } from "@/components/admin/form";
 import { Modal } from "@/components/admin/Modal";
 import { IconPicker } from "@/components/admin/IconPicker";
+import { BlocksEditor } from "@/components/admin/BlocksEditor";
 import { resolveIcon } from "@/lib/admin/icons";
-import type { ProductOption, ProductBadge } from "@/lib/content";
+import type { ProductOption, ProductBadge, InfoBlock } from "@/lib/content";
 import { saveProductRegistry } from "./actions";
 
 const TABS = [
   { key: "options", label: "Опции" },
   { key: "badges", label: "Бейджики" },
+  { key: "blocks", label: "Блоки под товаром" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
@@ -44,21 +46,24 @@ const iconBtn =
 export function ProductSettingsForm({
   initialOptions,
   initialBadges,
+  initialBlocks,
 }: {
   initialOptions: ProductOption[];
   initialBadges: ProductBadge[];
+  initialBlocks: InfoBlock[];
 }) {
   const router = useRouter();
   const [tab, setTab] = React.useState<Tab>("options");
   const [options, setOptions] = React.useState<ProductOption[]>(initialOptions);
   const [badges, setBadges] = React.useState<ProductBadge[]>(initialBadges);
+  const [blocks, setBlocks] = React.useState<InfoBlock[]>(initialBlocks);
   const [saving, setSaving] = React.useState(false);
   const [editOption, setEditOption] = React.useState<number | null>(null);
   const [editBadge, setEditBadge] = React.useState<number | null>(null);
 
   const save = async () => {
     setSaving(true);
-    const res = await saveProductRegistry(options, badges);
+    const res = await saveProductRegistry(options, badges, blocks);
     setSaving(false);
     if (res.error) {
       toast.error(res.error);
@@ -128,7 +133,7 @@ export function ProductSettingsForm({
             </AdminButton>
           </div>
         </Panel>
-      ) : (
+      ) : tab === "badges" ? (
         <Panel className="divide-y divide-border/60">
           {badges.length === 0 ? (
             <p className="px-5 py-8 text-center text-[14px] text-ink-muted">Бейджей пока нет.</p>
@@ -152,6 +157,13 @@ export function ProductSettingsForm({
             </AdminButton>
           </div>
         </Panel>
+      ) : (
+        <div>
+          <p className="mb-3 text-[13px] text-ink-muted">
+            Блоки на странице товара (самовывоз, доставка, гарантия, trade-in). Блок со ссылкой выделяется тёмной плашкой.
+          </p>
+          <BlocksEditor value={blocks} onChange={setBlocks} withHref />
+        </div>
       )}
 
       <div className="sticky bottom-0 -mx-1 flex items-center gap-2 border-t border-border/60 bg-bg/85 py-3 backdrop-blur-sm">

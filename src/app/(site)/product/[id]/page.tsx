@@ -5,6 +5,7 @@ import {
   getRelatedProducts,
   getVariantsForProduct,
 } from "@/lib/products";
+import { getProductBlocks } from "@/lib/content";
 import { ProductDetailShell } from "@/components/product-detail/ProductDetailShell";
 
 type RouteParams = { id: string };
@@ -32,9 +33,10 @@ export default async function ProductPage({
   const product = await getProductById(id);
   if (!product) notFound();
 
-  const [related, variants] = await Promise.all([
+  const [related, variants, productBlocks] = await Promise.all([
     getRelatedProducts(product, 8),
     getVariantsForProduct(product),
+    getProductBlocks(),
   ]);
 
   return (
@@ -42,6 +44,7 @@ export default async function ProductPage({
       product={product}
       related={related}
       variants={variants}
+      productBlocks={productBlocks}
     />
   );
 }

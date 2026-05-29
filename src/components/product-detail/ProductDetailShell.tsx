@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { Product } from "@/lib/data/products";
+import type { InfoBlock } from "@/lib/content";
 import { ProductBreadcrumbs } from "@/components/product-detail/ProductBreadcrumbs";
 import { ProductGallery } from "@/components/product-detail/ProductGallery";
 import { ProductBuyPanel } from "@/components/product-detail/ProductBuyPanel";
@@ -11,9 +12,10 @@ type Props = {
   product: Product;
   related: Product[];
   variants: { colors: Product[]; memories: Product[] };
+  productBlocks: InfoBlock[];
 };
 
-export function ProductDetailShell({ product, related, variants }: Props) {
+export function ProductDetailShell({ product, related, variants, productBlocks }: Props) {
   return (
     <>
       <section className="bg-bg">
@@ -34,7 +36,7 @@ export function ProductDetailShell({ product, related, variants }: Props) {
           </div>
 
           <div className="mt-10 md:mt-14">
-            <ProductTrust product={product} />
+            <ProductTrust blocks={productBlocks} />
           </div>
         </div>
       </section>

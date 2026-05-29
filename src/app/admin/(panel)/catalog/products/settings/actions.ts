@@ -1,14 +1,15 @@
 "use server";
 
 import { adminMutation } from "@/lib/admin/mutations";
-import type { ProductOption, ProductBadge } from "@/lib/content";
+import type { ProductOption, ProductBadge, InfoBlock } from "@/lib/content";
 
 const STAFF = ["admin", "manager", "content"] as const;
 
-/** Сохраняет реестр опций и бейджей товаров (shop_settings). */
+/** Сохраняет реестр опций, бейджей и блоков под товаром (shop_settings). */
 export async function saveProductRegistry(
   options: ProductOption[],
-  badges: ProductBadge[]
+  badges: ProductBadge[],
+  productBlocks: InfoBlock[] = []
 ): Promise<{ error?: string }> {
   try {
     await adminMutation({
@@ -35,6 +36,12 @@ export async function saveProductRegistry(
           tooltip: (b.tooltip ?? "").trim(),
           sort: i,
         }));
+        const normBlocks = productBlocks.map((b) => ({
+          icon: b.icon ?? null,
+          title: b.title.trim(),
+          text: b.text.trim(),
+          ...(b.href ? { href: b.href.trim() } : {}),
+        }));
         const { error: e1 } = await db
           .from("shop_settings")
           .upsert({ key: "product_options", value: normOptions }, { onConflict: "key" });
@@ -43,6 +50,10 @@ export async function saveProductRegistry(
           .from("shop_settings")
           .upsert({ key: "product_badges", value: normBadges }, { onConflict: "key" });
         if (e2) throw e2;
+        const { error: e3 } = await db
+          .from("shop_settings")
+          .upsert({ key: "product_blocks", value: normBlocks }, { onConflict: "key" });
+        if (e3) throw e3;
       },
     });
     return {};

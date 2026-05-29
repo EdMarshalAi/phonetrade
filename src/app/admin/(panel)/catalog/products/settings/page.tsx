@@ -4,14 +4,18 @@ import { ArrowLeft } from "lucide-react";
 import { requireAdmin } from "@/lib/admin/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminButton } from "@/components/admin/form";
-import { getProductOptions, getProductBadges } from "@/lib/content";
+import { getProductOptions, getProductBadges, getProductBlocks } from "@/lib/content";
 import { ProductSettingsForm } from "./ProductSettingsForm";
 
 export const metadata: Metadata = { title: "Настройки товаров" };
 
 export default async function ProductSettingsPage() {
   await requireAdmin(["admin", "manager", "content"]);
-  const [optionDefs, badgeDefs] = await Promise.all([getProductOptions(), getProductBadges()]);
+  const [optionDefs, badgeDefs, blockDefs] = await Promise.all([
+    getProductOptions(),
+    getProductBadges(),
+    getProductBlocks(),
+  ]);
 
   return (
     <>
@@ -26,7 +30,7 @@ export default async function ProductSettingsPage() {
           </Link>
         }
       />
-      <ProductSettingsForm initialOptions={optionDefs} initialBadges={badgeDefs} />
+      <ProductSettingsForm initialOptions={optionDefs} initialBadges={badgeDefs} initialBlocks={blockDefs} />
     </>
   );
 }

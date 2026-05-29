@@ -8,6 +8,7 @@ import type {
   DeliveryMethod,
   DeliveryTime,
 } from "@/lib/cart/types";
+import type { CartDeliveryOption, DeliveryKey } from "@/lib/content";
 import type { CheckoutErrors } from "@/lib/cart/validate";
 import { cn } from "@/lib/utils/cn";
 
@@ -16,27 +17,13 @@ type Props = {
   onChange: (next: Partial<CheckoutState>) => void;
   errors: CheckoutErrors;
   showErrors: boolean;
+  options: CartDeliveryOption[];
 };
 
-const TABS: {
-  value: DeliveryMethod;
-  label: string;
-  hint: string;
-  icon: React.ComponentType<{ className?: string }>;
-}[] = [
-  {
-    value: "pickup",
-    label: "Самовывоз",
-    hint: "Бесплатно · сегодня",
-    icon: MapPin,
-  },
-  {
-    value: "courier",
-    label: "Курьер",
-    hint: "Бесплатно · завтра",
-    icon: Truck,
-  },
-];
+const DELIVERY_ICON: Record<DeliveryKey, React.ComponentType<{ className?: string }>> = {
+  pickup: MapPin,
+  courier: Truck,
+};
 
 const TIME_OPTIONS: { value: DeliveryTime; label: string }[] = [
   { value: "any", label: "Любое (10:00–20:00)" },
@@ -45,19 +32,21 @@ const TIME_OPTIONS: { value: DeliveryTime; label: string }[] = [
   { value: "evening", label: "Вечер (17:00–20:00)" },
 ];
 
-export function DeliverySection({ state, onChange, errors, showErrors }: Props) {
+export function DeliverySection({ state, onChange, errors, showErrors, options }: Props) {
   const addressError = showErrors ? errors.deliveryAddress : undefined;
+  const enabled = options.filter((o) => o.enabled);
 
   return (
     <SectionStep step={3} title="Способ получения" hint="г. Белгород">
       <div className="grid sm:grid-cols-2 gap-2 mb-5">
-        {TABS.map((t) => {
-          const active = state.delivery === t.value;
+        {enabled.map((t) => {
+          const active = state.delivery === t.key;
+          const Icon = DELIVERY_ICON[t.key];
           return (
             <button
-              key={t.value}
+              key={t.key}
               type="button"
-              onClick={() => onChange({ delivery: t.value })}
+              onClick={() => onChange({ delivery: t.key as DeliveryMethod })}
               className={cn(
                 "text-left rounded-2xl border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40",
                 active
@@ -72,10 +61,10 @@ export function DeliverySection({ state, onChange, errors, showErrors }: Props) 
                   active ? "bg-ink text-white" : "bg-surface text-ink"
                 )}
               >
-                <t.icon className="size-4" />
+                <Icon className="size-4" />
               </span>
               <p className="text-sm font-semibold text-ink">{t.label}</p>
-              <p className="text-[12px] text-ink-muted mt-0.5">{t.hint}</p>
+              <p className="text-[12px] text-ink-muted mt-0.5">{t.note}</p>
             </button>
           );
         })}

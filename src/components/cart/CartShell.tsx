@@ -16,22 +16,29 @@ import { placeOrder } from "@/lib/cart/order-actions";
 import { trackFunnel } from "@/lib/analytics/track";
 import { saveOrder } from "@/lib/account/orders";
 import { useCart } from "@/components/providers/CartProvider";
+import type { CartSettings, InfoBlock } from "@/lib/content";
 
-const INITIAL_STATE: CheckoutState = {
-  customerType: "person",
-  mode: "guest",
-  phone: "+7 ",
-  email: "",
-  name: "",
-  delivery: "pickup",
-  deliveryTime: "any",
-  payment: "sbp",
-  agreement: true,
-};
-
-export function CartShell() {
+export function CartShell({
+  settings,
+  checkoutBlocks,
+}: {
+  settings: CartSettings;
+  checkoutBlocks: InfoBlock[];
+}) {
   const { items, setQty: ctxSetQty, remove: ctxRemove, add: ctxAdd, clear: ctxClear } = useCart();
-  const [state, setState] = React.useState<CheckoutState>(INITIAL_STATE);
+  const firstPayment = (settings.payments.find((p) => p.enabled)?.key ?? "sbp") as CheckoutState["payment"];
+  const firstDelivery = (settings.delivery.find((d) => d.enabled)?.key ?? "pickup") as CheckoutState["delivery"];
+  const [state, setState] = React.useState<CheckoutState>({
+    customerType: "person",
+    mode: "guest",
+    phone: "+7 ",
+    email: "",
+    name: "",
+    delivery: firstDelivery,
+    deliveryTime: "any",
+    payment: firstPayment,
+    agreement: true,
+  });
   const [attempted, setAttempted] = React.useState(false);
   const [order, setOrder] = React.useState<{ id: string } | null>(null);
   const [submitPending, setSubmitPending] = React.useState(false);
@@ -251,8 +258,9 @@ export function CartShell() {
                   onChange={update}
                   errors={errors}
                   showErrors={attempted}
+                  options={settings.delivery}
                 />
-                <PaymentSection state={state} onChange={update} />
+                <PaymentSection state={state} onChange={update} methods={settings.payments} />
               </>
             )}
           </div>
@@ -264,6 +272,8 @@ export function CartShell() {
               attempted={attempted}
               errorCount={errorCount}
               onSubmit={handleSubmit}
+              blocks={checkoutBlocks}
+              delivery={settings.delivery}
             />
             {submitPending && (
               <p className="text-[13px] text-ink-muted text-center animate-pulse px-2">

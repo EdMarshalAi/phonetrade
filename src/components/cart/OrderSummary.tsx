@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { HeartHandshake, RefreshCw, ShieldCheck, X } from "lucide-react";
+import { X } from "lucide-react";
 import { formatPrice } from "@/lib/utils/format-price";
 import { pluralizeItems } from "@/lib/utils/plural";
+import { resolveIcon } from "@/lib/admin/icons";
 import type { CartItem, CheckoutState } from "@/lib/cart/types";
+import type { InfoBlock, CartDeliveryOption } from "@/lib/content";
 import { cn } from "@/lib/utils/cn";
 
 type Props = {
@@ -13,16 +15,8 @@ type Props = {
   onSubmit: () => void;
   attempted: boolean;
   errorCount: number;
-};
-
-const DELIVERY_PRICE: Record<string, number> = {
-  pickup: 0,
-  courier: 0,
-};
-
-const DELIVERY_LABEL: Record<string, string> = {
-  pickup: "Самовывоз",
-  courier: "Курьер по Белгороду",
+  blocks: InfoBlock[];
+  delivery: CartDeliveryOption[];
 };
 
 const PROMO_CODES: Record<string, number> = {
@@ -38,7 +32,13 @@ export function OrderSummary({
   onSubmit,
   attempted,
   errorCount,
+  blocks,
+  delivery,
 }: Props) {
+  const deliveryOpt = delivery.find((d) => d.key === state.delivery);
+  const DELIVERY_LABEL: Record<string, string> = Object.fromEntries(
+    delivery.map((d) => [d.key, d.label])
+  );
   const [promoOpen, setPromoOpen] = React.useState(false);
   const [promoInput, setPromoInput] = React.useState("");
   const [promo, setPromo] = React.useState<{ code: string; rate: number } | null>(
@@ -56,7 +56,10 @@ export function OrderSummary({
     0
   );
   const discount = subtotalCard - subtotalCash;
-  const deliveryPrice = DELIVERY_PRICE[state.delivery] ?? 0;
+  const deliveryPrice =
+    deliveryOpt && deliveryOpt.price > 0 && !(deliveryOpt.freeFrom > 0 && subtotalCash >= deliveryOpt.freeFrom)
+      ? deliveryOpt.price
+      : 0;
   const promoDiscount = promo ? Math.round(subtotalCash * promo.rate) : 0;
   const total = Math.max(0, subtotalCash + deliveryPrice - promoDiscount);
   const monthly = Math.ceil(total / CREDIT_MONTHS);
@@ -218,54 +221,27 @@ export function OrderSummary({
         )}
       </div>
 
-      <ul className="rounded-3xl bg-white border border-border/60 divide-y divide-border/60">
-        <li className="flex items-start gap-3 p-4">
-          <span
-            aria-hidden
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink"
-          >
-            <ShieldCheck className="size-[16px]" />
-          </span>
-          <div>
-            <p className="text-[13px] font-semibold text-ink">
-              Безопасная оплата
-            </p>
-            <p className="text-[12px] text-ink-muted leading-snug">
-              Защищённый канал, без сохранения карты
-            </p>
-          </div>
-        </li>
-        <li className="flex items-start gap-3 p-4">
-          <span
-            aria-hidden
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink"
-          >
-            <RefreshCw className="size-[16px]" />
-          </span>
-          <div>
-            <p className="text-[13px] font-semibold text-ink">Лёгкий возврат</p>
-            <p className="text-[12px] text-ink-muted leading-snug">
-              14 дней на возврат без объяснений
-            </p>
-          </div>
-        </li>
-        <li className="flex items-start gap-3 p-4">
-          <span
-            aria-hidden
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink"
-          >
-            <HeartHandshake className="size-[16px]" />
-          </span>
-          <div>
-            <p className="text-[13px] font-semibold text-ink">
-              Поддержка после покупки
-            </p>
-            <p className="text-[12px] text-ink-muted leading-snug">
-              Настроим Apple ID и перенесём данные бесплатно
-            </p>
-          </div>
-        </li>
-      </ul>
+      {blocks.length > 0 && (
+        <ul className="rounded-3xl bg-white border border-border/60 divide-y divide-border/60">
+          {blocks.map((b, i) => {
+            const Icon = resolveIcon(b.icon);
+            return (
+              <li key={`${b.title}-${i}`} className="flex items-start gap-3 p-4">
+                <span
+                  aria-hidden
+                  className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface text-ink"
+                >
+                  <Icon className="size-[16px]" />
+                </span>
+                <div>
+                  <p className="text-[13px] font-semibold text-ink">{b.title}</p>
+                  <p className="text-[12px] text-ink-muted leading-snug">{b.text}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
 }

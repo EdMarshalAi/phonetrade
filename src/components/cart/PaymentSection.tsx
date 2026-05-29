@@ -4,46 +4,24 @@ import * as React from "react";
 import { Banknote, CreditCard, Smartphone, Wallet } from "lucide-react";
 import { SectionStep } from "@/components/cart/SectionStep";
 import type { CheckoutState, PaymentMethod } from "@/lib/cart/types";
+import type { CartPaymentMethod, PaymentKey } from "@/lib/content";
 import { cn } from "@/lib/utils/cn";
 
 type Props = {
   state: CheckoutState;
   onChange: (next: Partial<CheckoutState>) => void;
+  methods: CartPaymentMethod[];
 };
 
-const METHODS: {
-  value: PaymentMethod;
-  label: string;
-  hint: string;
-  icon: React.ComponentType<{ className?: string }>;
-}[] = [
-  {
-    value: "sbp",
-    label: "СБП",
-    hint: "Без комиссии, мгновенно",
-    icon: Smartphone,
-  },
-  {
-    value: "card",
-    label: "Банковская карта",
-    hint: "Visa, Mastercard, Мир",
-    icon: CreditCard,
-  },
-  {
-    value: "cash",
-    label: "При получении",
-    hint: "Наличные или картой курьеру",
-    icon: Banknote,
-  },
-  {
-    value: "credit",
-    label: "Кредит / Рассрочка",
-    hint: "Решение банка за 5 минут",
-    icon: Wallet,
-  },
-];
+const PAYMENT_ICON: Record<PaymentKey, React.ComponentType<{ className?: string }>> = {
+  sbp: Smartphone,
+  card: CreditCard,
+  cash: Banknote,
+  credit: Wallet,
+};
 
-export function PaymentSection({ state, onChange }: Props) {
+export function PaymentSection({ state, onChange, methods }: Props) {
+  const enabled = methods.filter((m) => m.enabled);
   return (
     <SectionStep
       step={4}
@@ -51,13 +29,14 @@ export function PaymentSection({ state, onChange }: Props) {
       hint="Все способы безопасны и защищены SSL"
     >
       <ul className="grid sm:grid-cols-2 gap-2">
-        {METHODS.map((m) => {
-          const active = state.payment === m.value;
+        {enabled.map((m) => {
+          const active = state.payment === m.key;
+          const Icon = PAYMENT_ICON[m.key];
           return (
-            <li key={m.value}>
+            <li key={m.key}>
               <button
                 type="button"
-                onClick={() => onChange({ payment: m.value })}
+                onClick={() => onChange({ payment: m.key as PaymentMethod })}
                 aria-pressed={active}
                 className={cn(
                   "w-full text-left rounded-2xl border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40",
@@ -74,12 +53,12 @@ export function PaymentSection({ state, onChange }: Props) {
                       active ? "bg-ink text-white" : "bg-surface text-ink"
                     )}
                   >
-                    <m.icon className="size-[18px]" />
+                    <Icon className="size-[18px]" />
                   </span>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-ink">{m.label}</p>
                     <p className="text-[12px] text-ink-muted mt-0.5">
-                      {m.hint}
+                      {m.note}
                     </p>
                   </div>
                   <span
