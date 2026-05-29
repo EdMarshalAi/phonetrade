@@ -16,6 +16,7 @@ import { placeOrder } from "@/lib/cart/order-actions";
 import { trackFunnel } from "@/lib/analytics/track";
 import { saveOrder } from "@/lib/account/orders";
 import { useCart } from "@/components/providers/CartProvider";
+import { useAuth } from "@/components/providers/AuthProvider";
 import type { CartSettings, InfoBlock } from "@/lib/content";
 
 export function CartShell({
@@ -39,11 +40,28 @@ export function CartShell({
     payment: firstPayment,
     agreement: true,
   });
+  const { user, ready: authReady, updateProfile } = useAuth();
   const [attempted, setAttempted] = React.useState(false);
   const [order, setOrder] = React.useState<{ id: string } | null>(null);
   const [submitPending, setSubmitPending] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [undo, setUndo] = React.useState<{ item: CartItem } | null>(null);
+  const prefilled = React.useRef(false);
+
+  // Автоподстановка данных покупателя из профиля (один раз после загрузки сессии).
+  React.useEffect(() => {
+    if (!authReady || prefilled.current) return;
+    if (user) {
+      prefilled.current = true;
+      setState((s) => ({
+        ...s,
+        name: s.name || user.name || "",
+        phone: !s.phone || s.phone.trim() === "+7" ? user.phone || s.phone : s.phone,
+        email: s.email || user.email || "",
+        deliveryAddress: s.deliveryAddress || user.address || "",
+      }));
+    }
+  }, [authReady, user]);
   const undoTimer = React.useRef<number | null>(null);
 
   const update = React.useCallback((next: Partial<CheckoutState>) => {
@@ -160,6 +178,14 @@ export function CartShell({
       });
 
       trackFunnel("pay_order", { order: displayId, total });
+      // Сохраняем данные покупателя в профиль (если вошёл).
+      if (user) {
+        updateProfile({
+          name: state.name || user.name,
+          phone: state.phone || user.phone,
+          email: state.email || user.email,
+        });
+      }
       void ctxClear();
       setOrder({ id: displayId });
       if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
@@ -256,6 +282,8 @@ export function CartShell({
                   onChange={update}
                   errors={errors}
                   showErrors={attempted}
+                  loggedIn={!!user}
+                  userName={user?.name}
                 />
                 <DeliverySection
                   state={state}

@@ -7,6 +7,7 @@ export type AuthUser = {
   name: string;
   phone: string;
   email?: string;
+  address?: string;
   createdAt: number;
 };
 
@@ -24,7 +25,7 @@ type AuthContextValue = {
   register: (input: RegisterInput) => AuthUser;
   logout: () => void;
   updateProfile: (
-    patch: Partial<Pick<AuthUser, "name" | "email" | "phone">>
+    patch: Partial<Pick<AuthUser, "name" | "email" | "phone" | "address">>
   ) => void;
 };
 
@@ -105,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateProfile = React.useCallback(
-    (patch: Partial<Pick<AuthUser, "name" | "email" | "phone">>) => {
+    (patch: Partial<Pick<AuthUser, "name" | "email" | "phone" | "address">>) => {
       setUser((prev) => {
         if (!prev) return prev;
         const oldKey = normalizePhone(prev.phone);
@@ -118,6 +119,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             patch.email !== undefined
               ? patch.email.trim() || undefined
               : prev.email,
+          address:
+            patch.address !== undefined
+              ? patch.address.trim() || undefined
+              : prev.address,
         };
         const newKey = normalizePhone(updated.phone);
         const users = readUsers();

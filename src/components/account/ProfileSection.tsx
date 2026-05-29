@@ -21,6 +21,7 @@ export function ProfileSection() {
   const [name, setName] = React.useState(user?.name ?? "");
   const [phone, setPhone] = React.useState(user?.phone ?? "");
   const [email, setEmail] = React.useState(user?.email ?? "");
+  const [address, setAddress] = React.useState(user?.address ?? "");
   const [error, setError] = React.useState<string | null>(null);
   const [saved, setSaved] = React.useState(false);
   const savedTimer = React.useRef<number | null>(null);
@@ -36,7 +37,8 @@ export function ProfileSection() {
   const dirty =
     name !== user.name ||
     phone !== user.phone ||
-    (email || "") !== (user.email ?? "");
+    (email || "") !== (user.email ?? "") ||
+    (address || "") !== (user.address ?? "");
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +55,7 @@ export function ProfileSection() {
       setError("Проверьте формат e-mail");
       return;
     }
-    updateProfile({ name, phone, email });
+    updateProfile({ name, phone, email, address });
     setSaved(true);
     if (savedTimer.current) window.clearTimeout(savedTimer.current);
     savedTimer.current = window.setTimeout(() => setSaved(false), 2500);
@@ -97,6 +99,15 @@ export function ProfileSection() {
           placeholder="вы@почта.ру"
           value={email}
           onChange={setEmail}
+        />
+        <ProfileField
+          id="profile-address"
+          label="Адрес доставки"
+          optional
+          autoComplete="street-address"
+          placeholder="Улица, дом, квартира"
+          value={address}
+          onChange={setAddress}
         />
 
         {error && (

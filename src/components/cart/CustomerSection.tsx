@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowRight, Zap } from "lucide-react";
+import { ArrowRight, Zap, CircleUserRound } from "lucide-react";
 import { SectionStep } from "@/components/cart/SectionStep";
 import type { CheckoutMode, CheckoutState } from "@/lib/cart/types";
 import type { CheckoutErrors } from "@/lib/cart/validate";
@@ -12,6 +12,9 @@ type Props = {
   onChange: (next: Partial<CheckoutState>) => void;
   errors: CheckoutErrors;
   showErrors: boolean;
+  /** Авторизован ли пользователь — тогда прячем выбор гость/вход. */
+  loggedIn?: boolean;
+  userName?: string;
 };
 
 const MODE_TABS: { value: CheckoutMode; label: string; hint: string }[] = [
@@ -27,7 +30,7 @@ const MODE_TABS: { value: CheckoutMode; label: string; hint: string }[] = [
   },
 ];
 
-export function CustomerSection({ state, onChange, errors, showErrors }: Props) {
+export function CustomerSection({ state, onChange, errors, showErrors, loggedIn, userName }: Props) {
   const err = (field: keyof CheckoutErrors) =>
     showErrors ? errors[field] : undefined;
 
@@ -64,42 +67,43 @@ export function CustomerSection({ state, onChange, errors, showErrors }: Props) 
         </button>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-2 mb-6">
-        {MODE_TABS.map((t) => {
-          const active = state.mode === t.value;
-          return (
-            <button
-              key={t.value}
-              type="button"
-              onClick={() => onChange({ mode: t.value })}
-              className={cn(
-                "relative text-left rounded-2xl border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40",
-                active
-                  ? "border-ink bg-surface/60"
-                  : "border-border/60 bg-white hover:border-ink/30"
-              )}
-            >
-              <div className="flex items-center gap-2">
-                {t.value === "guest" && (
-                  <Zap className="size-4 text-ink" aria-hidden />
+      {loggedIn ? (
+        <div className="mb-6 flex items-center gap-3 rounded-2xl border border-border/60 bg-surface/60 p-4">
+          <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-ink text-white">
+            <CircleUserRound className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-ink">
+              Вы вошли{userName ? ` как ${userName}` : ""}
+            </p>
+            <p className="text-[12px] text-ink-muted">Данные подставлены из профиля — проверьте и при необходимости поправьте.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 gap-2 mb-6">
+          {MODE_TABS.map((t) => {
+            const active = state.mode === t.value;
+            return (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => onChange({ mode: t.value })}
+                className={cn(
+                  "relative text-left rounded-2xl border p-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40",
+                  active ? "border-ink bg-surface/60" : "border-border/60 bg-white hover:border-ink/30"
                 )}
-                <span className="text-sm font-semibold text-ink">
-                  {t.label}
-                </span>
-                {active && (
-                  <ArrowRight
-                    className="ml-auto size-4 text-ink"
-                    aria-hidden
-                  />
-                )}
-              </div>
-              <p className="mt-1 text-[12px] text-ink-muted leading-snug">
-                {t.hint}
-              </p>
-            </button>
-          );
-        })}
-      </div>
+              >
+                <div className="flex items-center gap-2">
+                  {t.value === "guest" && <Zap className="size-4 text-ink" aria-hidden />}
+                  <span className="text-sm font-semibold text-ink">{t.label}</span>
+                  {active && <ArrowRight className="ml-auto size-4 text-ink" aria-hidden />}
+                </div>
+                <p className="mt-1 text-[12px] text-ink-muted leading-snug">{t.hint}</p>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {state.customerType === "company" && (
         <div className="grid sm:grid-cols-2 gap-3 mb-3">

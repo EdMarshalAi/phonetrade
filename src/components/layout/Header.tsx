@@ -21,6 +21,7 @@ import {
 } from "@/lib/catalog/subcategories";
 import type { CategorySlug } from "@/lib/data/products";
 import { useCart } from "@/components/providers/CartProvider";
+import { useAuth } from "@/components/providers/AuthProvider";
 import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
 
@@ -105,6 +106,7 @@ export function Header({
   topLinks?: { title: string; href: string }[];
 }) {
   const { count: cartCount } = useCart();
+  const { user: authUser } = useAuth();
   const phone = contacts?.phone || "+7 (904) 098-88-77";
   const phoneTel = `tel:+${phone.replace(/\D/g, "")}`;
   const hours = contacts?.working_hours || "Ежедневно 10:00–20:00";
@@ -218,11 +220,11 @@ export function Header({
               Корзина
             </a>
             <a
-              href="/account"
+              href={authUser ? "/account" : "/auth/login"}
               className="inline-flex items-center gap-2 h-10 px-3 rounded-xl text-sm font-medium text-white hover:bg-white/8 transition-colors"
             >
               <User className="size-[18px]" aria-hidden />
-              Войти
+              {authUser ? authUser.name?.split(" ")[0] || "Кабинет" : "Войти"}
             </a>
           </div>
         </div>
@@ -434,8 +436,8 @@ export function Header({
                   )}
                 </a>
                 <a
-                  href="/account"
-                  aria-label="Личный кабинет"
+                  href={authUser ? "/account" : "/auth/login"}
+                  aria-label={authUser ? "Личный кабинет" : "Войти"}
                   className="inline-flex size-10 items-center justify-center rounded-full text-ink hover:bg-surface transition-colors"
                 >
                   <User className="size-[18px]" />

@@ -19,7 +19,7 @@ const NAV = [
   { href: "/account/favorites", label: "Избранное", icon: Heart },
 ];
 
-const SOON = [{ label: "Адреса", icon: MapPin }];
+const SOON: { label: string; icon: typeof MapPin }[] = [];
 
 export function AccountSidebar() {
   const pathname = usePathname();
