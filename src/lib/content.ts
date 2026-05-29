@@ -65,6 +65,43 @@ export async function getBrands(): Promise<BrandRow[]> {
   return data as BrandRow[];
 }
 
+export interface BentoTileRow {
+  id: string;
+  category_slug: string | null;
+  custom_title: string | null;
+  subtitle: string | null;
+  custom_image_url: string | null;
+  size: "large" | "medium" | "small";
+  theme: "dark" | "light";
+  category_title: string | null;
+  category_image: string | null;
+}
+
+/** Bento-плитки блока «Каталог Apple» (с подтянутыми title/image категории). */
+export async function getBentoTiles(): Promise<BentoTileRow[]> {
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("bento_tiles")
+    .select("id,category_slug,custom_title,subtitle,custom_image_url,size,theme,sort_order,categories(title,image)")
+    .eq("is_published", true)
+    .order("sort_order", { ascending: true });
+  if (!data) return [];
+  return (data as Record<string, unknown>[]).map((r) => {
+    const cat = r.categories as { title?: string; image?: string } | null;
+    return {
+      id: r.id as string,
+      category_slug: (r.category_slug as string) ?? null,
+      custom_title: (r.custom_title as string) ?? null,
+      subtitle: (r.subtitle as string) ?? null,
+      custom_image_url: (r.custom_image_url as string) ?? null,
+      size: (r.size as BentoTileRow["size"]) ?? "medium",
+      theme: (r.theme as BentoTileRow["theme"]) ?? "light",
+      category_title: cat?.title ?? null,
+      category_image: cat?.image ?? null,
+    };
+  });
+}
+
 export interface TradeInBlockRow {
   block_title: string;
   block_description: string | null;

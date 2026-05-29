@@ -19,6 +19,7 @@ import {
   getTradeInBlock,
   getTradeInSteps,
   getBlogPosts,
+  getBentoTiles,
 } from "@/lib/content";
 
 /**
@@ -73,7 +74,7 @@ const HERO_SLIDES: HeroSlide[] = [
 ];
 
 export default async function HomePage() {
-  const [categories, iphones, catalog, used, heroRows, advantageRows, brandRows, tiBlock, tiSteps, blogRows] =
+  const [categories, iphones, catalog, used, heroRows, advantageRows, brandRows, tiBlock, tiSteps, blogRows, bentoRows] =
     await Promise.all([
       getCategories(),
       getFeaturedIphones(),
@@ -85,6 +86,7 @@ export default async function HomePage() {
       getTradeInBlock(),
       getTradeInSteps(),
       getBlogPosts(6),
+      getBentoTiles(),
     ]);
 
   const features =
@@ -137,7 +139,7 @@ export default async function HomePage() {
   return (
     <>
       <Hero slides={heroSlides} />
-      <BentoCategories categories={categories} />
+      <BentoCategories categories={categories} tiles={bentoRows} />
       <ProductRail
         eyebrow="Свежее в магазине"
         title="Новинки iPhone"
