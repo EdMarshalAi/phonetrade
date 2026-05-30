@@ -59,9 +59,14 @@ export function ProductCard({ product, className }: Props) {
 
   const [index, setIndex] = React.useState(0);
 
-  const showNext = () => setIndex((i) => (i + 1) % images.length);
-  const showPrev = () =>
-    setIndex((i) => (i - 1 + images.length) % images.length);
+  // Скраб по фото при движении мыши: позиция курсора по ширине → номер фото.
+  const scrub = (e: React.MouseEvent<HTMLElement>) => {
+    if (!hasGallery) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const i = Math.min(images.length - 1, Math.max(0, Math.floor((x / r.width) * images.length)));
+    setIndex(i);
+  };
 
   const handleCardClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest("[data-stop-card]")) return;
@@ -118,20 +123,13 @@ export function ProductCard({ product, className }: Props) {
         ))}
 
         {hasGallery && (
-          <>
-            {/* Hover halves swap photos on hover but DON'T stop card click — */}
-            {/* user can hover to preview angles, click anywhere → product page. */}
-            <div
-              aria-hidden
-              onMouseEnter={showPrev}
-              className="absolute inset-y-0 left-0 z-10 w-1/2 pointer-events-auto"
-            />
-            <div
-              aria-hidden
-              onMouseEnter={showNext}
-              className="absolute inset-y-0 right-0 z-10 w-1/2 pointer-events-auto"
-            />
-          </>
+          // Плавный скраб по всем фото при движении мыши; клик проходит к карточке.
+          <div
+            aria-hidden
+            onMouseMove={scrub}
+            onMouseLeave={() => setIndex(0)}
+            className="absolute inset-0 z-10"
+          />
         )}
       </div>
 
