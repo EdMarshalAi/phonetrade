@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -26,8 +27,20 @@ export function SearchInput({ tone = "dark" }: { tone?: "dark" | "light" }) {
     "typing"
   );
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const router = useRouter();
 
   const animationActive = !focused && value.length === 0;
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = value.trim();
+    if (!q) {
+      inputRef.current?.focus();
+      return;
+    }
+    inputRef.current?.blur();
+    router.push(`/search?q=${encodeURIComponent(q)}`);
+  };
 
   React.useEffect(() => {
     if (!animationActive) return;
@@ -83,8 +96,9 @@ export function SearchInput({ tone = "dark" }: { tone?: "dark" | "light" }) {
     <form
       role="search"
       action="/search"
+      method="get"
       className="flex-1 min-w-0"
-      onSubmit={(e) => e.preventDefault()}
+      onSubmit={submit}
     >
       <label
         className={cn(
@@ -103,7 +117,7 @@ export function SearchInput({ tone = "dark" }: { tone?: "dark" | "light" }) {
         <input
           ref={inputRef}
           type="search"
-          name="catalog-search"
+          name="q"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onFocus={() => setFocused(true)}

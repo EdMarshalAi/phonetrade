@@ -125,6 +125,58 @@ export async function getRelatedProducts(
   return (data as ProductRow[]).map(rowToProduct);
 }
 
+const CATEGORY_SEARCH_LABEL: Record<string, string> = {
+  iphone: "iphone айфон", ipad: "ipad айпад", mac: "mac macbook мак макбук",
+  watch: "apple watch часы вотч", airpods: "airpods наушники эирподс",
+  accessories: "аксессуары", used: "бу б/у",
+};
+
+/** Строка для матчинга товара по запросу (все значимые поля). */
+function searchHaystack(p: Product): string {
+  return [p.title, p.model, p.color, p.memory, p.sim, p.condition, CATEGORY_SEARCH_LABEL[p.categorySlug]]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+/**
+ * Поиск по каталогу. Каталог небольшой — тянем опубликованные товары и
+ * фильтруем по вхождению ВСЕХ слов запроса (без зависимости от экранирования
+ * пользовательского ввода в PostgREST). Сортировка: совпадение в начале title → выше.
+ */
+export async function searchProducts(query: string): Promise<Product[]> {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const terms = q.split(/\s+/).filter(Boolean);
+
+  let pool: Product[];
+  if (!supabase) {
+    pool = ALL_PRODUCTS;
+  } else {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("status", "published")
+      .is("deleted_at", null)
+      .limit(1000);
+    pool = error || !data ? ALL_PRODUCTS : (data as ProductRow[]).map(rowToProduct);
+  }
+
+  const matched = pool.filter((p) => {
+    const hay = searchHaystack(p);
+    return terms.every((t) => hay.includes(t));
+  });
+
+  return matched.sort((a, b) => {
+    const at = a.title.toLowerCase();
+    const bt = b.title.toLowerCase();
+    const aStarts = at.startsWith(q) ? 0 : at.includes(q) ? 1 : 2;
+    const bStarts = bt.startsWith(q) ? 0 : bt.includes(q) ? 1 : 2;
+    if (aStarts !== bStarts) return aStarts - bStarts;
+    return b.priceCash - a.priceCash;
+  });
+}
+
 export async function getVariantsForProduct(product: Product): Promise<{
   colors: Product[];
   memories: Product[];
