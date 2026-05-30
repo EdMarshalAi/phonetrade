@@ -73,6 +73,12 @@ npm run seed     # залить каталог из моков в Supabase (tsx 
 
 **SEO.** `src/app/sitemap.ts` (ISR `revalidate=3600`) собирает главную, `/catalog`, `/new`, `/used`, `/blog`, все категории, опубликованные товары, **все опубликованные `static_pages`** и посты блога — новая страница из админки попадает в карту автоматически (в течение часа). `src/app/robots.ts` — allow всё, disallow `/admin /account /cart /auth /search`. Базовый URL — `NEXT_PUBLIC_SITE_URL` (фолбэк `http://31.129.97.8`).
 
+## Прайс (ценообразование)
+
+**Единый источник цен — раздел `Каталог → Прайс` (`/admin/catalog/pricing`).** Менеджер вводит в товаре закупку (`cost_rub`) + курс закупа (`cost_rate`) → БД считает `cost_usd` (generated). Цены (`price_cash/price_card`, `credit_6m/12m/24m_total+monthly`) пересчитываются **только server-side** по формуле от неокруглённой базы (без каскадных округлений): Postgres-функция `recalculate_all_prices(reason,user,ids?)` и зеркальная `src/lib/pricing/calculate.ts`. Витрина читает готовые поля, ничего не считает. Настройки формулы — синглтон `pricing_settings` (наценки FX/карта/кредиты, округление, мин.маржа, автокурс). `price_override=true` фиксирует цену вручную (формула не трогает). Триггеры пересчёта: сохранение товара (`applyPricing` в `catalog/products/actions.ts`), drawer «Формула»/inline-правка/bulk/импорт (`catalog/pricing/actions.ts` + `io-actions.ts`). История — `product_price_history`. Б/У (`type='used'`) и архив в формулу не входят.
+
+**Курс ЦБ.** `src/lib/pricing/cbr.ts` (cbr-xml-daily JSON + фолбэк cbr.ru XML) → таблица `currency_rates`. Роут `/api/cron/cbr-rate` (защита `CRON_SECRET`) + GitHub Actions `cbr-rate.yml` (ежечасно). Авто-обновление рабочего курса — только при `use_cbr_auto` и скачке ≤5%. **Чтобы включить авто-курс: добавить `CRON_SECRET` в GitHub Secrets и env сервера.** Telegram-триггеры: `pricing_recalc_done`, `pricing_import_done`, `pricing_below_margin`, `cbr_rate_big_change`, `cbr_rate_fetch_failed`. Импорт/экспорт XLSX·CSV — `xlsx`+`papaparse` (server-only). Полная спека — `docs/pricing-module.md`.
+
 ## Не реализовано
 
 Персистентность корзины между сессиями; нормальный домен + HTTPS (сейчас по IP на :80). Реальный Supabase Auth, запись заказов из корзины в БД и поиск — **сделаны** (оформление чинилось: лишняя колонка `customer_phone` в insert рушила все заказы). Детальный статус — в `README.md` → «Статус реализации».
