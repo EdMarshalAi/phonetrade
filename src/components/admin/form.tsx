@@ -163,10 +163,11 @@ export function Select({
       {open && mounted && rect
         ? createPortal(
             <>
-              <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} aria-hidden />
+              {/* z выше модалки (z-[80]) — иначе список открывается ПОД модалкой и его не выбрать */}
+              <div className="fixed inset-0 z-[90]" onClick={() => setOpen(false)} aria-hidden />
               <div
                 ref={menuRef}
-                className="fixed z-[61] max-h-64 overflow-auto overscroll-contain rounded-sm border border-border/70 bg-white py-1 shadow-lg"
+                className="fixed z-[91] max-h-64 overflow-auto overscroll-contain rounded-sm border border-border/70 bg-white py-1 shadow-lg"
                 style={{ top: rect.top, left: rect.left, width: rect.width }}
               >
                 {opts.map((o) => (
