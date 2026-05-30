@@ -51,8 +51,15 @@ export function TradeInPromo({ block }: { block?: TradeInPromoBlock | null }) {
               </div>
               <div className="md:col-span-5">
                 {b.imageUrl ? (
-                  <div className="relative aspect-square overflow-hidden rounded-2xl bg-white/5">
-                    <Image src={b.imageUrl} alt={b.title} fill className="object-cover" sizes="(max-width:768px) 100vw, 40vw" />
+                  <div className="relative aspect-square">
+                    <Image
+                      src={b.imageUrl}
+                      alt={b.title}
+                      fill
+                      unoptimized
+                      sizes="(max-width:768px) 100vw, 40vw"
+                      className="object-contain object-bottom-right drop-shadow-[0_18px_30px_rgba(0,0,0,0.18)]"
+                    />
                   </div>
                 ) : (
                   <ImagePlaceholder
