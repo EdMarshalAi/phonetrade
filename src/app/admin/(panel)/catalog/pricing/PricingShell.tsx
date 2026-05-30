@@ -3,16 +3,15 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { toast } from "sonner";
-import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2, Check, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
+import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2, Check, ArrowUpRight, Download, Upload, Info, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format-price";
 import { Modal } from "@/components/admin/Modal";
 import { AdminButton, Field, TextInput, Switch } from "@/components/admin/form";
-import { Download, Upload } from "lucide-react";
 import { calculatePrices, margin, type PricingSettings } from "@/lib/pricing/calculate";
-import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, recalcSelected, updateProductCost, setProductOverride, type PricingSettingsInput } from "./actions";
+import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, recalcSelected, type PricingSettingsInput } from "./actions";
 import { exportPricing, parsePricingFile, applyPricingImport, bulkUpdateCost, type ImportPreviewRow, type BulkOp } from "./io-actions";
 
 function downloadBase64(filename: string, base64: string, mime: string) {
@@ -28,6 +27,18 @@ function downloadBase64(filename: string, base64: string, mime: string) {
 }
 
 export type CourseInfo = { usd: number | null; eur: number | null; prevUsd: number | null; prevEur: number | null; date: string | null; fetchedAt: string | null };
+export type PricingRow = {
+  id: string; sku: string | null; title: string; color: string | null; memory: string | null;
+  category_slug: string | null; image: string | null; status: string | null; is_used: boolean;
+  cost_rub: number | null; cost_rate: number | null; cost_usd: number | null;
+  price_cash: number | null; price_card: number | null;
+  credit_6m_monthly: number | null; credit_12m_monthly: number | null; credit_24m_monthly: number | null;
+  price_override: boolean;
+};
+
+const MARKUPS = [0, 1, 1.5, 2, 3];
+const CATEGORY_LABEL: Record<string, string> = { iphone: "iPhone", ipad: "iPad", mac: "Mac", watch: "Apple Watch", airpods: "AirPods", accessories: "Аксессуары", used: "Б/У" };
+const CATEGORY_ORDER = ["iphone", "ipad", "mac", "watch", "airpods", "accessories"];
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "";
@@ -39,21 +50,11 @@ function relativeTime(iso: string | null): string {
   if (h < 24) return `${h} ч назад`;
   return `${Math.round(h / 24)} дн назад`;
 }
-export type PricingRow = {
-  id: string; sku: string | null; title: string; color: string | null; memory: string | null;
-  category_slug: string | null; image: string | null; status: string | null;
-  cost_rub: number | null; cost_rate: number | null; cost_usd: number | null;
-  price_cash: number | null; price_card: number | null;
-  credit_6m_monthly: number | null; credit_12m_monthly: number | null; credit_24m_monthly: number | null;
-  price_override: boolean;
-};
-
-const MARKUPS = [0, 1, 1.5, 2, 3];
 
 export function PricingShell({
   settings,
   course,
-  rows: initialRows,
+  rows,
   categories,
 }: {
   settings: PricingSettingsInput;
@@ -62,29 +63,25 @@ export function PricingShell({
   categories: { slug: string; title: string }[];
 }) {
   const router = useRouter();
-  const [rows, setRows] = React.useState<PricingRow[]>(initialRows);
-  React.useEffect(() => setRows(initialRows), [initialRows]);
-
   const [working, setWorking] = React.useState(String(settings.working_usd_rate));
+  React.useEffect(() => setWorking(String(settings.working_usd_rate)), [settings.working_usd_rate]);
   const [busy, setBusy] = React.useState(false);
   const [formulaOpen, setFormulaOpen] = React.useState(false);
   const [markupOpen, setMarkupOpen] = React.useState(false);
+  const [importOpen, setImportOpen] = React.useState(false);
+  const [exportOpen, setExportOpen] = React.useState(false);
 
-  // фильтры
   const [cat, setCat] = React.useState("");
   const [q, setQ] = React.useState("");
   const [hideFixed, setHideFixed] = React.useState(false);
   const [lowOnly, setLowOnly] = React.useState(false);
-
-  // выбор + экспорт/импорт
   const [sel, setSel] = React.useState<Set<string>>(new Set());
-  const [exportOpen, setExportOpen] = React.useState(false);
-  const [importOpen, setImportOpen] = React.useState(false);
 
   const settingsForCalc: PricingSettings = settings;
-
+  const min = settings.min_margin_percent;
   const delta = course.usd && course.prevUsd ? ((course.usd - course.prevUsd) / course.prevUsd) * 100 : null;
   const deltaEur = course.eur && course.prevEur ? ((course.eur - course.prevEur) / course.prevEur) * 100 : null;
+  const dirtyRate = Math.abs(Number(working.replace(",", ".")) - settings.working_usd_rate) > 1e-6 && Number(working.replace(",", ".")) > 0;
 
   const filtered = rows.filter((r) => {
     if (cat && r.category_slug !== cat) return false;
@@ -95,14 +92,30 @@ export function PricingShell({
     }
     if (lowOnly) {
       const m = margin(r.price_cash ?? 0, r.cost_rub);
-      if (!m || m.percent >= settings.min_margin_percent) return false;
+      if (!m || m.percent >= min) return false;
     }
     return true;
   });
 
-  // ── действия с курсом/формулой ──
-  // Сохранение курса НЕ пересчитывает цены — это делает отдельная кнопка «Пересчитать всё».
-  const applyWorking = async (rate: number) => {
+  // группировка по категории (в фиксированном порядке)
+  const groups = React.useMemo(() => {
+    const map = new Map<string, PricingRow[]>();
+    for (const r of filtered) {
+      const key = r.category_slug ?? "other";
+      (map.get(key) ?? map.set(key, []).get(key)!).push(r);
+    }
+    const keys = [...map.keys()].sort((a, b) => {
+      const ia = CATEGORY_ORDER.indexOf(a), ib = CATEGORY_ORDER.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+    return keys.map((k) => ({ key: k, label: CATEGORY_LABEL[k] ?? k, items: map.get(k)! }));
+  }, [filtered]);
+
+  const withoutCost = rows.filter((r) => !r.is_used && r.cost_rub == null).length;
+
+  /* ── курс / пересчёт ── */
+  const applyWorking = async () => {
+    const rate = Number(working.replace(",", "."));
     setBusy(true);
     const res = await setWorkingRate(rate);
     setBusy(false);
@@ -110,21 +123,17 @@ export function PricingShell({
     toast.success("Рабочий курс сохранён. Нажмите «Пересчитать всё», чтобы применить к ценам.");
     router.refresh();
   };
-  // Одна кнопка «Из ЦБ +%»: берёт свежий курс ЦБ и ставит рабочий = ЦБ × (1+%). Без пересчёта.
   const applyFromCbr = async (markup: number) => {
     setMarkupOpen(false);
     setBusy(true);
     const r = await refreshCbrRate();
-    if (r.error || r.usd == null) {
-      setBusy(false);
-      return toast.error(`Не удалось получить курс ЦБ: ${r.error ?? ""}`);
-    }
+    if (r.error || r.usd == null) { setBusy(false); return toast.error(`Не удалось получить курс ЦБ: ${r.error ?? ""}`); }
     const value = +(r.usd * (1 + markup / 100)).toFixed(4);
     const res = await setWorkingRate(value);
     setBusy(false);
     if (res.error) return toast.error(res.error);
     setWorking(String(value));
-    toast.success(`Рабочий курс: ${value} ₽ (ЦБ ${r.usd.toFixed(2)} + ${markup}%). Нажмите «Пересчитать всё», чтобы применить.`);
+    toast.success(`Рабочий курс: ${value} ₽ (ЦБ ${r.usd.toFixed(2)} + ${markup}%). Нажмите «Пересчитать всё».`);
     router.refresh();
   };
   const onRecalcAll = async () => {
@@ -137,44 +146,33 @@ export function PricingShell({
     router.refresh();
   };
 
-  // ── inline-правка закупки ──
-  const saveCost = async (row: PricingRow, costRub: number | null, costRate: number | null) => {
-    // оптимистично пересчитываем по формуле локально
-    const costUsd = costRub && costRate ? costRub / costRate : null;
-    const calc = costUsd && !row.price_override ? calculatePrices({ cost_usd: costUsd, price_override: false }, settingsForCalc) : null;
-    setRows((rs) => rs.map((r) => (r.id === row.id ? {
-      ...r, cost_rub: costRub, cost_rate: costRate, cost_usd: costUsd,
-      ...(calc ? { price_cash: calc.price_cash, price_card: calc.price_card, credit_6m_monthly: calc.credit_6m_monthly, credit_12m_monthly: calc.credit_12m_monthly, credit_24m_monthly: calc.credit_24m_monthly } : {}),
-    } : r)));
-    const res = await updateProductCost(row.id, costRub, costRate);
-    if (res.error) { toast.error(res.error); router.refresh(); }
-  };
-
-  const onToggleOverride = async (row: PricingRow) => {
-    const next = !row.price_override;
-    setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, price_override: next } : r)));
-    const res = await setProductOverride(row.id, next);
-    if (res.error) { toast.error(res.error); }
-    router.refresh();
-  };
-
-  // ── экспорт ──
+  /* ── экспорт ── */
   const onExport = async (format: "xlsx" | "csv", onlyVisible: boolean) => {
     setExportOpen(false);
     setBusy(true);
-    const ids = onlyVisible ? filtered.map((r) => r.id) : null;
-    const res = await exportPricing(ids, format);
+    const res = await exportPricing(onlyVisible ? filtered.map((r) => r.id) : null, format);
     setBusy(false);
     if ("error" in res) return toast.error(res.error);
     downloadBase64(res.filename, res.base64, res.mime);
     toast.success("Файл сформирован");
   };
 
-  // ── выбор ──
+  /* ── выбор / bulk ── */
   const toggleSel = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const allVisibleSelected = filtered.length > 0 && filtered.every((r) => sel.has(r.id));
   const toggleAll = () => setSel((s) => { const n = new Set(s); if (allVisibleSelected) filtered.forEach((r) => n.delete(r.id)); else filtered.forEach((r) => n.add(r.id)); return n; });
-
+  const runBulk = async (op: BulkOp, label: string) => {
+    const ids = [...sel];
+    if (!ids.length) return;
+    if (!confirm(`${label}\nИзменит ${ids.length} тов. Продолжить?`)) return;
+    setBusy(true);
+    const res = await bulkUpdateCost(ids, op);
+    setBusy(false);
+    if (res.error) return toast.error(res.error);
+    toast.success(`Изменено: ${res.updated ?? 0}`);
+    setSel(new Set());
+    router.refresh();
+  };
   const onRecalcSelected = async () => {
     const ids = [...sel];
     if (!ids.length) return;
@@ -187,69 +185,70 @@ export function PricingShell({
     router.refresh();
   };
 
-  const runBulk = async (op: BulkOp, label: string) => {
-    const ids = [...sel];
-    if (!ids.length) return;
-    if (!confirm(`${label}\nЭто изменит ${ids.length} тов. Продолжить?`)) return;
-    setBusy(true);
-    const res = await bulkUpdateCost(ids, op);
-    setBusy(false);
-    if (res.error) return toast.error(res.error);
-    toast.success(`Изменено: ${res.updated ?? 0}`);
-    setSel(new Set());
-    router.refresh();
-  };
-
   return (
     <div className="space-y-5">
-      {/* ── Шапка с курсами ── */}
-      <div className="sticky top-14 z-20 -mx-4 border-b border-border/60 bg-bg/90 px-4 py-3 backdrop-blur-sm lg:-mx-8 lg:px-8">
-        <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
-          <Tile label="USD ЦБ" value={course.usd ? `${course.usd.toFixed(2)} ₽` : "—"} delta={delta} sub={course.fetchedAt ? `обновлено ${relativeTime(course.fetchedAt)}` : undefined} />
-          <Tile label="EUR ЦБ" value={course.eur ? `${course.eur.toFixed(2)} ₽` : "—"} delta={deltaEur} />
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-ink-subtle">Рабочий курс USD</p>
-            <div className="mt-1 flex items-center gap-2">
-              <input
-                value={working}
-                onChange={(e) => setWorking(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") applyWorking(Number(working)); }}
-                inputMode="decimal"
-                className="h-9 w-28 rounded-sm border border-border bg-white px-2.5 text-[15px] font-semibold tabular-nums text-ink outline-none focus:border-ink/40"
-              />
-              <AdminButton type="button" size="sm" onClick={() => applyWorking(Number(working))} loading={busy}>Применить</AdminButton>
-              <div className="relative">
-                <AdminButton type="button" size="sm" variant="outline" onClick={() => setMarkupOpen((o) => !o)}>Из ЦБ ▾</AdminButton>
-                {markupOpen ? (
-                  <div className="absolute left-0 top-full z-30 mt-1 w-44 rounded-lg border border-border/70 bg-white py-1 shadow-lg">
-                    <p className="px-3 py-1 text-[11px] text-ink-subtle">Свежий курс ЦБ + поправка:</p>
-                    {MARKUPS.map((m) => (
-                      <button key={m} type="button" onClick={() => applyFromCbr(m)} className="block w-full px-3 py-1.5 text-left text-[13px] text-ink hover:bg-surface">
-                        ЦБ + {m}%
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-            {course.usd ? <p className="mt-1 text-[11px] text-ink-subtle">{course.usd.toFixed(2)} (ЦБ) {settings.use_cbr_auto ? "· 🔄 автообновление" : ""}</p> : null}
+      {/* ── Статус-бар курсов ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface px-4 py-2.5 text-[12.5px]">
+        <span className="text-ink-muted">
+          Курс ЦБ{course.date ? ` за ${course.date.split("-").reverse().join(".")}` : ""}
+          {course.fetchedAt ? ` · обновлён ${relativeTime(course.fetchedAt)}` : ""}
+        </span>
+        <div className="flex items-center gap-4">
+          <CourseChip label="USD" value={course.usd} delta={delta} />
+          <CourseChip label="EUR" value={course.eur} delta={deltaEur} />
+        </div>
+      </div>
+
+      {/* ── Главный блок: рабочий курс ── */}
+      <div className="rounded-2xl border border-border/60 bg-white p-6">
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-subtle">Рабочий курс USD</p>
+        <div className="mt-2 flex flex-wrap items-end gap-x-6 gap-y-4">
+          <div className="flex items-baseline gap-2">
+            <input
+              value={working}
+              onChange={(e) => setWorking(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && dirtyRate) applyWorking(); }}
+              inputMode="decimal"
+              className="w-44 border-0 border-b-2 border-transparent bg-transparent p-0 text-5xl font-semibold tabular-nums tracking-tight text-ink outline-none focus:border-ink/30"
+            />
+            <span className="text-2xl font-medium text-ink-subtle">₽</span>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <AdminButton type="button" variant="outline" size="sm" onClick={() => setFormulaOpen(true)}><SlidersHorizontal className="h-4 w-4" strokeWidth={1.75} /> Формула</AdminButton>
-            <AdminButton type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4" strokeWidth={1.75} /> Импорт</AdminButton>
+          <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
-              <AdminButton type="button" variant="outline" size="sm" onClick={() => setExportOpen((o) => !o)}><Download className="h-4 w-4" strokeWidth={1.75} /> Экспорт ▾</AdminButton>
-              {exportOpen ? (
-                <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-lg border border-border/70 bg-white py-1 shadow-lg">
-                  <button type="button" onClick={() => onExport("xlsx", false)} className="block w-full px-3 py-1.5 text-left text-[13px] text-ink hover:bg-surface">XLSX — все товары</button>
-                  <button type="button" onClick={() => onExport("csv", false)} className="block w-full px-3 py-1.5 text-left text-[13px] text-ink hover:bg-surface">CSV — все товары</button>
-                  <div className="my-1 border-t border-border/50" />
-                  <button type="button" onClick={() => onExport("xlsx", true)} className="block w-full px-3 py-1.5 text-left text-[13px] text-ink hover:bg-surface">XLSX — только видимые ({filtered.length})</button>
+              <AdminButton type="button" variant="outline" size="sm" onClick={() => setMarkupOpen((o) => !o)}>Из ЦБ +%▾</AdminButton>
+              {markupOpen ? (
+                <div className="absolute left-0 top-full z-30 mt-1 w-48 rounded-lg border border-border/70 bg-white py-1 shadow-lg">
+                  <p className="px-3 py-1 text-[11px] text-ink-subtle">Свежий курс ЦБ + поправка:</p>
+                  {MARKUPS.map((m) => (
+                    <button key={m} type="button" onClick={() => applyFromCbr(m)} className="block w-full px-3 py-1.5 text-left text-[13px] text-ink hover:bg-surface">ЦБ + {m}%</button>
+                  ))}
                 </div>
               ) : null}
             </div>
+            <AdminButton type="button" variant="outline" size="sm" onClick={applyWorking} disabled={!dirtyRate} loading={busy}>Сохранить курс</AdminButton>
             <AdminButton type="button" size="sm" onClick={onRecalcAll} loading={busy}><RefreshCw className="h-4 w-4" strokeWidth={1.75} /> Пересчитать всё</AdminButton>
           </div>
+        </div>
+        <p className="mt-3 text-[12px] text-ink-subtle">
+          {settings.use_cbr_auto ? "Автообновление курса включено" : "Автообновление выключено"} · поправка +{settings.cbr_markup_percent}%
+          {dirtyRate ? " · курс изменён — сохраните и пересчитайте, чтобы применить" : ""}
+        </p>
+      </div>
+
+      {/* ── Тулбар действий ── */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <ActionTile icon={<SlidersHorizontal className="h-5 w-5" strokeWidth={1.5} />} title="Формула" hint="Наценки и округление" onClick={() => setFormulaOpen(true)} />
+        <ActionTile icon={<Upload className="h-5 w-5" strokeWidth={1.5} />} title="Импорт прайса" hint="XLSX или CSV" onClick={() => setImportOpen(true)} />
+        <div className="relative">
+          <ActionTile icon={<Download className="h-5 w-5" strokeWidth={1.5} />} title="Экспорт" hint="XLSX · CSV" onClick={() => setExportOpen((o) => !o)} />
+          {exportOpen ? (
+            <div className="absolute right-0 top-full z-30 mt-1 w-60 rounded-lg border border-border/70 bg-white py-1 shadow-lg">
+              <button type="button" onClick={() => onExport("xlsx", false)} className="block w-full px-3 py-2 text-left text-[13px] text-ink hover:bg-surface">XLSX — все товары</button>
+              <button type="button" onClick={() => onExport("csv", false)} className="block w-full px-3 py-2 text-left text-[13px] text-ink hover:bg-surface">CSV — все товары</button>
+              <div className="my-1 border-t border-border/50" />
+              <button type="button" onClick={() => onExport("xlsx", true)} className="block w-full px-3 py-2 text-left text-[13px] text-ink hover:bg-surface">XLSX — только видимые ({filtered.length})</button>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -265,221 +264,220 @@ export function PricingShell({
         <span className="ml-auto text-[12px] text-ink-subtle">Показано: {filtered.length} из {rows.length}</span>
       </div>
 
-      {/* ── Таблица (десктоп) ── */}
-      <div className="hidden overflow-x-auto rounded-lg border border-border/60 bg-white lg:block">
-        <table className="w-full min-w-[1100px] text-[13px]">
-          <thead className="bg-surface/60 text-ink-subtle">
-            <tr className="[&>th]:px-3 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-medium">
-              <th className="w-8"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAll} aria-label="Выбрать все" /></th>
-              <th className="w-10"></th>
-              <th>Товар</th>
-              <th className="text-right">Закупка ₽</th>
-              <th className="text-right">Курс</th>
-              <th className="text-right">$ зак.</th>
-              <th className="text-right">Нал</th>
-              <th className="text-right">Карта</th>
-              <th className="text-right">6 / 12 / 24 мес</th>
-              <th className="text-right">Маржа</th>
-              <th className="w-10 text-center">🔒</th>
-              <th className="w-10"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/50">
-            {filtered.length === 0 ? (
-              <tr><td colSpan={12} className="px-4 py-10 text-center text-ink-muted">Нет товаров по фильтру.</td></tr>
-            ) : filtered.map((r) => {
-              const m = margin(r.price_cash ?? 0, r.cost_rub);
-              const low = m != null && m.percent < settings.min_margin_percent;
-              return (
-                <tr key={r.id} className={cn("[&>td]:px-3 [&>td]:py-2 align-middle", sel.has(r.id) && "bg-ink/[0.03]")}>
-                  <td><input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} aria-label="Выбрать" /></td>
-                  <td>
-                    <span className="inline-flex size-9 items-center justify-center overflow-hidden rounded-md border border-border bg-white">
-                      {r.image ? <Image src={r.image} alt="" width={32} height={32} unoptimized className="size-8 object-contain" /> : null}
-                    </span>
-                  </td>
-                  <td>
-                    <Link href={`/admin/catalog/products/${r.id}/edit`} className="font-medium text-ink hover:underline">{r.title}</Link>
-                    <div className="text-[11.5px] text-ink-subtle">{[r.sku, r.color, r.memory].filter(Boolean).join(" · ") || "—"}</div>
-                  </td>
-                  <td className="text-right"><EditableNum value={r.cost_rub} disabled={r.price_override} onSave={(v) => saveCost(r, v, r.cost_rate)} /></td>
-                  <td className="text-right"><EditableNum value={r.cost_rate} step="0.0001" disabled={r.price_override} onSave={(v) => saveCost(r, r.cost_rub, v)} /></td>
-                  <td className="text-right text-ink-muted tabular-nums">{r.cost_usd ? `$${r.cost_usd.toFixed(2)}` : "—"}</td>
-                  <td className="text-right font-semibold text-sale tabular-nums">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</td>
-                  <td className="text-right tabular-nums">{r.price_card != null ? formatPrice(r.price_card) : "—"}</td>
-                  <td className="text-right text-[11.5px] text-ink-muted tabular-nums">
-                    {[r.credit_6m_monthly, r.credit_12m_monthly, r.credit_24m_monthly].every((x) => x == null)
-                      ? "—"
-                      : `${fmtShort(r.credit_6m_monthly)} / ${fmtShort(r.credit_12m_monthly)} / ${fmtShort(r.credit_24m_monthly)}`}
-                  </td>
-                  <td className={cn("text-right tabular-nums", low ? "font-semibold text-sale" : "text-ink-muted")}>{m ? `${m.percent.toFixed(0)}%` : "—"}</td>
-                  <td className="text-center">
-                    <button type="button" onClick={() => onToggleOverride(r)} title={r.price_override ? "Снять фиксацию" : "Зафиксировать"} className={cn("inline-flex size-7 items-center justify-center rounded-sm border", r.price_override ? "border-ink/30 bg-ink text-white" : "border-border bg-white text-ink-subtle hover:bg-surface")}>
-                      <Lock className="h-3.5 w-3.5" strokeWidth={1.75} />
-                    </button>
-                  </td>
-                  <td className="text-center">
-                    <Link href={`/product/${r.id}`} target="_blank" className="inline-flex size-7 items-center justify-center rounded-sm border border-border bg-white text-ink-subtle hover:bg-surface" title="На сайте"><ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} /></Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ── Карточки (мобильные) ── */}
-      <div className="space-y-3 lg:hidden">
-        {filtered.length === 0 ? (
-          <div className="rounded-lg border border-border/60 bg-white px-4 py-10 text-center text-ink-muted">Нет товаров по фильтру.</div>
-        ) : filtered.map((r) => {
-          const m = margin(r.price_cash ?? 0, r.cost_rub);
-          const low = m != null && m.percent < settings.min_margin_percent;
-          return (
-            <div key={r.id} className={cn("rounded-xl border border-border/60 bg-white p-3", sel.has(r.id) && "ring-1 ring-ink/30")}>
-              <div className="flex items-start gap-3">
-                <input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} className="mt-1.5" aria-label="Выбрать" />
-                <span className="inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-white">
-                  {r.image ? <Image src={r.image} alt="" width={36} height={36} unoptimized className="size-9 object-contain" /> : null}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <Link href={`/admin/catalog/products/${r.id}/edit`} className="block truncate text-[14px] font-medium text-ink hover:underline">{r.title}</Link>
-                  <div className="truncate text-[11.5px] text-ink-subtle">{[r.sku, r.color, r.memory].filter(Boolean).join(" · ") || "—"}</div>
-                </div>
-                <button type="button" onClick={() => onToggleOverride(r)} className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded-sm border", r.price_override ? "border-ink/30 bg-ink text-white" : "border-border bg-white text-ink-subtle")} title={r.price_override ? "Снять фиксацию" : "Зафиксировать"}>
-                  <Lock className="h-4 w-4" strokeWidth={1.75} />
-                </button>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
-                <label className="flex items-center justify-between gap-2">
-                  <span className="text-ink-subtle">Закупка ₽</span>
-                  <EditableNum value={r.cost_rub} disabled={r.price_override} onSave={(v) => saveCost(r, v, r.cost_rate)} />
-                </label>
-                <label className="flex items-center justify-between gap-2">
-                  <span className="text-ink-subtle">Курс</span>
-                  <EditableNum value={r.cost_rate} step="0.0001" disabled={r.price_override} onSave={(v) => saveCost(r, r.cost_rub, v)} />
-                </label>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-ink-subtle">Нал</span>
-                  <span className="font-semibold text-sale tabular-nums">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-ink-subtle">Картой</span>
-                  <span className="tabular-nums">{r.price_card != null ? formatPrice(r.price_card) : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-ink-subtle">$ зак.</span>
-                  <span className="tabular-nums text-ink-muted">{r.cost_usd ? `$${r.cost_usd.toFixed(2)}` : "—"}</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-ink-subtle">Маржа</span>
-                  <span className={cn("tabular-nums", low ? "font-semibold text-sale" : "text-ink-muted")}>{m ? `${m.percent.toFixed(0)}%` : "—"}</span>
-                </div>
-                <div className="col-span-2 flex items-center justify-between gap-2 border-t border-border/50 pt-2 text-[12px] text-ink-muted">
-                  <span>Кредит 6/12/24</span>
-                  <span className="tabular-nums">{[r.credit_6m_monthly, r.credit_12m_monthly, r.credit_24m_monthly].every((x) => x == null) ? "—" : `${fmtShort(r.credit_6m_monthly)} / ${fmtShort(r.credit_12m_monthly)} / ${fmtShort(r.credit_24m_monthly)}`}</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <p className="text-[12px] text-ink-subtle">Закупка/курс редактируются прямо здесь — цены пересчитываются автоматически. Б/У товары в прайс не входят.</p>
-
-      {/* ── Массовые действия ── */}
+      {/* ── Bulk-плашка (тёмная, сверху) ── */}
       {sel.size > 0 ? (
-        <div className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center gap-2 border-t border-border/60 bg-bg/95 px-4 py-3 backdrop-blur-sm lg:-mx-8 lg:px-8">
-          <span className="text-[13px] font-medium text-ink">Выбрано: {sel.size}</span>
-          <span className="mx-1 h-5 w-px bg-border" />
-          <BulkBtn label="+ %" onClick={() => { const v = numPrompt("Наценить закупку на, %"); if (v != null) runBulk({ type: "markup_pct", value: v }, `Наценка +${v}%`); }} />
-          <BulkBtn label="+ ₽" onClick={() => { const v = numPrompt("Наценить закупку на, ₽"); if (v != null) runBulk({ type: "markup_rub", value: v }, `Наценка +${v} ₽`); }} />
-          <BulkBtn label="− %" onClick={() => { const v = numPrompt("Скинуть с закупки, %"); if (v != null) runBulk({ type: "discount_pct", value: v }, `Скидка −${v}%`); }} />
-          <BulkBtn label="− ₽" onClick={() => { const v = numPrompt("Скинуть с закупки, ₽"); if (v != null) runBulk({ type: "discount_rub", value: v }, `Скидка −${v} ₽`); }} />
-          <BulkBtn label="Округлить" onClick={() => { const v = numPrompt("Округлить закупку до, ₽ (1000/500/100)", 1000); if (v != null && v > 0) runBulk({ type: "round", value: v }, `Округление до ${v}`); }} />
-          <BulkBtn label="Курс закупа" onClick={() => { const v = numPrompt("Курс закупа для выбранных"); if (v != null && v > 0) runBulk({ type: "set_rate", value: v }, `Курс закупа = ${v}`); }} />
-          <BulkBtn label="Сбросить к формуле" onClick={() => runBulk({ type: "reset_formula" }, "Сброс ручной фиксации")} />
-          <BulkBtn label="Пересчитать выбранные" onClick={onRecalcSelected} />
-          <AdminButton type="button" variant="outline" size="sm" onClick={() => setSel(new Set())}>Отмена</AdminButton>
+        <div className="sticky top-14 z-20 flex flex-wrap items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-white shadow-lg">
+          <span className="text-[13px] font-medium">Выбрано: {sel.size}</span>
+          <button type="button" onClick={() => setSel(new Set())} className="rounded p-0.5 text-white/70 hover:text-white"><X className="h-4 w-4" /></button>
+          <span className="mx-1 h-5 w-px bg-white/20" />
+          <DarkBtn label="+ %" onClick={() => { const v = numPrompt("Наценить закупку на, %"); if (v != null) runBulk({ type: "markup_pct", value: v }, `Наценка +${v}%`); }} />
+          <DarkBtn label="+ ₽" onClick={() => { const v = numPrompt("Наценить закупку на, ₽"); if (v != null) runBulk({ type: "markup_rub", value: v }, `Наценка +${v} ₽`); }} />
+          <DarkBtn label="− %" onClick={() => { const v = numPrompt("Скинуть с закупки, %"); if (v != null) runBulk({ type: "discount_pct", value: v }, `Скидка −${v}%`); }} />
+          <DarkBtn label="Курс закупа" onClick={() => { const v = numPrompt("Курс закупа для выбранных"); if (v != null && v > 0) runBulk({ type: "set_rate", value: v }, `Курс закупа = ${v}`); }} />
+          <DarkBtn label="Сбросить к формуле" onClick={() => runBulk({ type: "reset_formula" }, "Сброс ручной фиксации")} />
+          <DarkBtn label="Пересчитать" onClick={onRecalcSelected} />
+          <DarkBtn label="Экспорт" onClick={() => onExport("xlsx", false)} />
         </div>
       ) : null}
 
-      {/* ── Drawer «Формула» ── */}
-      <FormulaModal open={formulaOpen} onClose={() => setFormulaOpen(false)} initial={settings} course={course} onSaved={() => { setFormulaOpen(false); router.refresh(); }} />
+      {/* ── Таблица (десктоп) ── */}
+      {rows.length === 0 ? (
+        <EmptyBox title="В каталоге пока нет товаров" hint="Добавьте товары в разделе «Товары»." href="/admin/catalog/products" cta="Перейти в каталог" />
+      ) : withoutCost === rows.filter((r) => !r.is_used).length && withoutCost > 0 ? (
+        <EmptyBox title="Закупочные цены не заполнены" hint={`У ${withoutCost} товаров не указана закупка. Без неё формула не работает.`} href="/admin/catalog/products" cta="Заполнить вручную" extra={<AdminButton type="button" variant="outline" onClick={() => setImportOpen(true)}>Импортировать прайс</AdminButton>} />
+      ) : (
+        <>
+          <div className="hidden overflow-x-auto rounded-xl border border-border/60 bg-white lg:block">
+            <table className="w-full min-w-[980px] text-[13px]">
+              <thead className="sticky top-0 z-10 bg-surface/90 text-ink-subtle backdrop-blur-sm">
+                <tr className="[&>th]:px-3 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-medium">
+                  <th className="w-8"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAll} aria-label="Выбрать все" /></th>
+                  <th className="w-12"></th>
+                  <th>Товар</th>
+                  <th className="w-28 text-right">Закупка</th>
+                  <th className="w-28 text-right">Нал</th>
+                  <th className="w-28 text-right">Карта</th>
+                  <th className="w-32 text-right">Кредит</th>
+                  <th className="w-20 text-right">Маржа</th>
+                  <th className="w-28">Статус</th>
+                  <th className="w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {groups.map((g) => (
+                  <React.Fragment key={g.key}>
+                    <tr className="bg-surface/40">
+                      <td colSpan={10} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">{g.label} · {g.items.length}</td>
+                    </tr>
+                    {g.items.map((r) => {
+                      const m = margin(r.price_cash ?? 0, r.cost_rub);
+                      return (
+                        <tr key={r.id} className={cn("border-t border-border/40 align-middle transition-colors hover:bg-surface/50 [&>td]:px-3 [&>td]:py-2", sel.has(r.id) && "bg-ink/[0.03]")}>
+                          <td><input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} aria-label="Выбрать" /></td>
+                          <td>
+                            <span className="inline-flex size-10 items-center justify-center overflow-hidden rounded-md border border-border bg-white">
+                              {r.image ? <Image src={r.image} alt="" width={36} height={36} unoptimized className="size-9 object-contain" /> : null}
+                            </span>
+                          </td>
+                          <td>
+                            <Link href={`/admin/catalog/products/${r.id}/edit`} className="font-medium text-ink hover:underline">{r.title}</Link>
+                            <div className="text-[11.5px] text-ink-subtle">{[r.sku, r.color, r.memory].filter(Boolean).join(" · ") || "—"}{r.is_used ? " · Б/У" : ""}</div>
+                          </td>
+                          <td className="text-right tabular-nums">
+                            {r.cost_rub != null ? <>{r.cost_rub.toLocaleString("ru-RU")} ₽<div className="text-[11px] text-ink-subtle">{r.cost_usd ? `$${r.cost_usd.toFixed(0)}` : ""}</div></> : <span className="text-ink-subtle">—</span>}
+                          </td>
+                          <td className="text-right font-semibold text-sale tabular-nums">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</td>
+                          <td className="text-right tabular-nums text-ink-muted">{r.price_card != null ? formatPrice(r.price_card) : "—"}</td>
+                          <td className="text-right tabular-nums text-ink-muted">
+                            {r.credit_24m_monthly != null ? <>от {formatPrice(r.credit_24m_monthly)}<div className="text-[11px] text-ink-subtle">за 24 мес</div></> : "—"}
+                          </td>
+                          <td className="text-right"><MarginPill m={m} min={min} /></td>
+                          <td>
+                            <span className="inline-flex items-center gap-1.5">
+                              <StatusPill status={r.status} />
+                              {r.price_override ? <span className="inline-flex items-center gap-0.5 rounded-full bg-ink px-1.5 py-0.5 text-[10px] font-medium text-white"><Lock className="h-2.5 w-2.5" />фикс</span> : null}
+                            </span>
+                          </td>
+                          <td className="text-center">
+                            <Link href={`/admin/catalog/products/${r.id}/edit`} className="inline-flex size-7 items-center justify-center rounded-sm border border-border bg-white text-ink-subtle hover:bg-surface hover:text-ink" title="Открыть карточку"><ArrowUpRight className="h-4 w-4" strokeWidth={1.75} /></Link>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+                {filtered.length === 0 ? <tr><td colSpan={10} className="px-4 py-10 text-center text-ink-muted">Нет товаров по фильтру.</td></tr> : null}
+              </tbody>
+            </table>
+          </div>
 
-      {/* ── Импорт ── */}
+          {/* ── Карточки (мобильные) ── */}
+          <div className="space-y-3 lg:hidden">
+            {filtered.length === 0 ? <div className="rounded-lg border border-border/60 bg-white px-4 py-8 text-center text-ink-muted">Нет товаров по фильтру.</div> : filtered.map((r) => {
+              const m = margin(r.price_cash ?? 0, r.cost_rub);
+              return (
+                <div key={r.id} className={cn("rounded-xl border border-border/60 bg-white p-3", sel.has(r.id) && "ring-1 ring-ink/30")}>
+                  <div className="flex items-start gap-3">
+                    <input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} className="mt-1.5" />
+                    <span className="inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-white">{r.image ? <Image src={r.image} alt="" width={36} height={36} unoptimized className="size-9 object-contain" /> : null}</span>
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/admin/catalog/products/${r.id}/edit`} className="block truncate text-[14px] font-medium text-ink">{r.title}</Link>
+                      <div className="truncate text-[11.5px] text-ink-subtle">{[r.sku, r.color, r.memory].filter(Boolean).join(" · ") || "—"}{r.is_used ? " · Б/У" : ""}</div>
+                    </div>
+                    <Link href={`/admin/catalog/products/${r.id}/edit`} className="inline-flex size-8 shrink-0 items-center justify-center rounded-sm border border-border text-ink-subtle"><ArrowUpRight className="h-4 w-4" /></Link>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[13px]">
+                    <Cell label="Нал"><span className="font-semibold text-sale">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</span></Cell>
+                    <Cell label="Карта">{r.price_card != null ? formatPrice(r.price_card) : "—"}</Cell>
+                    <Cell label="Закупка">{r.cost_rub != null ? `${r.cost_rub.toLocaleString("ru-RU")} ₽` : "—"}</Cell>
+                    <Cell label="24 мес">{r.credit_24m_monthly != null ? `${formatPrice(r.credit_24m_monthly)}` : "—"}</Cell>
+                    <Cell label="Маржа"><MarginPill m={m} min={min} /></Cell>
+                    <Cell label="">{r.price_override ? <span className="inline-flex items-center gap-0.5 rounded-full bg-ink px-1.5 py-0.5 text-[10px] text-white"><Lock className="h-2.5 w-2.5" />фикс</span> : null}</Cell>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      <p className="text-[12px] text-ink-subtle">Цены меняются в карточке товара (кнопка «Открыть») или массовыми операциями. Б/У в формулу не входят.</p>
+
+      <FormulaModal open={formulaOpen} onClose={() => setFormulaOpen(false)} initial={settings} course={course} affected={rows.filter((r) => !r.is_used && !r.price_override && r.cost_rub != null).length} onSaved={() => { setFormulaOpen(false); router.refresh(); }} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onDone={() => { setImportOpen(false); router.refresh(); }} />
     </div>
   );
 }
 
-function fmtShort(n: number | null): string {
-  if (n == null) return "—";
-  return n >= 1000 ? `${(n / 1000).toFixed(1).replace(".", ",")}т` : String(n);
+/* ── мелкие компоненты ── */
+function CourseChip({ label, value, delta }: { label: string; value: number | null; delta: number | null }) {
+  const up = delta != null && delta > 0.01, down = delta != null && delta < -0.01;
+  return (
+    <span className="inline-flex items-center gap-1.5 tabular-nums text-ink">
+      <span className="text-ink-subtle">{label}</span>
+      <span className="font-semibold">{value != null ? `${value.toFixed(2)} ₽` : "—"}</span>
+      {delta != null ? (
+        <span className={cn("inline-flex items-center", up ? "text-[#0a7d3e]" : down ? "text-sale" : "text-ink-subtle")}>
+          {up ? <ArrowUp className="h-3 w-3" /> : down ? <ArrowDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}{Math.abs(delta).toFixed(1)}%
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
-function Tile({ label, value, delta, sub }: { label: string; value: string; delta?: number | null; sub?: string }) {
-  const up = delta != null && delta > 0.01;
-  const down = delta != null && delta < -0.01;
+function ActionTile({ icon, title, hint, onClick }: { icon: React.ReactNode; title: string; hint: string; onClick: () => void }) {
   return (
-    <div>
-      <p className="text-[11px] uppercase tracking-wide text-ink-subtle">{label}</p>
-      <p className="mt-1 flex items-center gap-1.5 text-[15px] font-semibold tabular-nums text-ink">
-        {value}
-        {delta != null ? (
-          <span className={cn("inline-flex items-center text-[12px]", up ? "text-[#0a7d3e]" : down ? "text-sale" : "text-ink-subtle")}>
-            {up ? <ArrowUp className="h-3 w-3" /> : down ? <ArrowDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
-            {Math.abs(delta).toFixed(1)}%
-          </span>
-        ) : null}
-      </p>
-      {sub ? <p className="mt-0.5 text-[11px] text-ink-subtle">{sub}</p> : null}
+    <button type="button" onClick={onClick} className="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-white px-4 py-3 text-left transition-all hover:-translate-y-0.5 hover:border-ink/25 hover:shadow-[0_8px_24px_-16px_rgba(0,0,0,0.18)]">
+      <span className="inline-flex size-9 items-center justify-center rounded-lg bg-surface text-ink">{icon}</span>
+      <span className="min-w-0">
+        <span className="block text-[14px] font-medium text-ink">{title}</span>
+        <span className="block text-[12px] text-ink-subtle">{hint}</span>
+      </span>
+    </button>
+  );
+}
+
+function MarginPill({ m, min }: { m: { percent: number; rub: number } | null; min: number }) {
+  if (!m) return null;
+  const cls = m.percent < min ? "bg-sale/10 text-sale" : m.percent >= 15 ? "bg-[#e7f6ee] text-[#0a7d3e]" : "bg-surface text-ink-muted";
+  return <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[12px] font-medium tabular-nums", cls)}>{m.percent.toFixed(0)}%</span>;
+}
+
+function StatusPill({ status }: { status: string | null }) {
+  if (status === "draft") return <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] text-ink-muted">Черновик</span>;
+  if (status === "archived") return <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] text-ink-subtle">Архив</span>;
+  return <span className="rounded-full bg-ink/[0.06] px-2 py-0.5 text-[11px] text-ink">Опубликован</span>;
+}
+
+function Cell({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="flex items-center justify-between gap-2"><span className="text-ink-subtle">{label}</span><span className="tabular-nums">{children}</span></div>;
+}
+
+function EmptyBox({ title, hint, href, cta, extra }: { title: string; hint: string; href: string; cta: string; extra?: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-border/60 bg-white px-6 py-16 text-center">
+      <span className="inline-flex size-12 items-center justify-center rounded-full bg-surface text-ink-muted"><Upload className="h-5 w-5" strokeWidth={1.5} /></span>
+      <p className="mt-4 text-base font-medium text-ink">{title}</p>
+      <p className="mt-1.5 max-w-md text-sm text-ink-muted">{hint}</p>
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        {extra}
+        <Link href={href}><AdminButton type="button">{cta}</AdminButton></Link>
+      </div>
     </div>
   );
 }
 
-function EditableNum({ value, onSave, disabled, step }: { value: number | null; onSave: (v: number | null) => void; disabled?: boolean; step?: string }) {
-  const [editing, setEditing] = React.useState(false);
-  const [draft, setDraft] = React.useState("");
-  const [saved, setSaved] = React.useState(false);
-  if (disabled) return <span className="text-ink-subtle tabular-nums">{value != null ? value.toLocaleString("ru-RU") : "—"}</span>;
-  if (!editing) {
-    return (
-      <button type="button" onClick={() => { setDraft(value != null ? String(value) : ""); setEditing(true); }} className="inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 tabular-nums hover:bg-surface">
-        {value != null ? value.toLocaleString("ru-RU") : <span className="text-ink-subtle">—</span>}
-        {saved ? <Check className="h-3.5 w-3.5 text-[#0a7d3e]" /> : null}
-      </button>
-    );
-  }
-  const commit = () => {
-    const v = draft.trim() === "" ? null : Number(draft.replace(",", "."));
-    setEditing(false);
-    if (v != null && !Number.isFinite(v)) return;
-    if (v !== value) { onSave(v); setSaved(true); setTimeout(() => setSaved(false), 1500); }
-  };
-  return (
-    <input
-      autoFocus
-      value={draft}
-      step={step}
-      inputMode="decimal"
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
-      className="h-7 w-24 rounded-sm border border-ink/40 bg-white px-1.5 text-right text-[13px] tabular-nums outline-none"
-    />
-  );
+function numPrompt(label: string, def?: number): number | null {
+  const raw = typeof window !== "undefined" ? window.prompt(label, def != null ? String(def) : "") : null;
+  if (raw == null) return null;
+  const v = Number(raw.replace(",", "."));
+  return Number.isFinite(v) ? v : null;
+}
+
+function DarkBtn({ label, onClick }: { label: string; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className="inline-flex h-8 items-center rounded-md bg-white/10 px-3 text-[13px] text-white transition-colors hover:bg-white/20">{label}</button>;
 }
 
 /* ── Модалка формулы ── */
-function FormulaModal({ open, onClose, initial, course, onSaved }: { open: boolean; onClose: () => void; initial: PricingSettingsInput; course: CourseInfo; onSaved: () => void }) {
+const TOOLTIPS: Record<string, string> = {
+  fx_markup_percent: "Накручивается на курс ЦБ. Например, ЦБ 71 → рабочий курс 78,1. Закладывайте сюда конвертацию и колебания.",
+  card_markup_percent: "На сколько цена картой выше наличных. Закладывайте комиссию эквайринга (1.5–3.5%) и маржу за безнал.",
+  credit_6m_markup_percent: "Удорожание для рассрочки 6 мес. Покрывает комиссию банка-партнёра и риск.",
+  credit_12m_markup_percent: "Удорожание для рассрочки 12 мес.",
+  credit_24m_markup_percent: "Удорожание для рассрочки 24 мес. Стандарт рынка: 23/28/37%.",
+  price_rounding: "До какой суммы округляются итоговые цены. Психологически выгоднее круглые числа.",
+  min_margin_percent: "Порог для алёрта. Если после формулы маржа товара ниже — придёт уведомление в Telegram.",
+  working_usd_rate: "Курс, по которому считаются цены. Можно тянуть из ЦБ с поправкой.",
+  cbr_markup_percent: "Поправка к курсу ЦБ при автообновлении (на конвертацию у эквайринга).",
+};
+
+function FormulaModal({ open, onClose, initial, course, affected, onSaved }: { open: boolean; onClose: () => void; initial: PricingSettingsInput; course: CourseInfo; affected: number; onSaved: () => void }) {
   const [v, setV] = React.useState<PricingSettingsInput>(initial);
   const [saving, setSaving] = React.useState(false);
   React.useEffect(() => { if (open) setV(initial); }, [open, initial]);
   const set = (patch: Partial<PricingSettingsInput>) => setV((s) => ({ ...s, ...patch }));
 
-  // превью: закупка $1000 при текущих настройках
-  const preview = calculatePrices({ cost_usd: 1000, price_override: false }, v as PricingSettings);
+  const previewFor = (usd: number) => calculatePrices({ cost_usd: usd, price_override: false }, v as PricingSettings);
 
   const save = async () => {
     setSaving(true);
@@ -491,18 +489,23 @@ function FormulaModal({ open, onClose, initial, course, onSaved }: { open: boole
   };
 
   const numField = (label: string, key: keyof PricingSettingsInput, hint?: string) => (
-    <Field label={label} hint={hint}>
+    <label className="block">
+      <span className="mb-1.5 flex items-center gap-1 text-[13px] font-medium text-ink">
+        {label}
+        {TOOLTIPS[key] ? <span title={TOOLTIPS[key]} className="cursor-help"><Info className="h-3.5 w-3.5 text-ink-subtle" /></span> : null}
+      </span>
       <TextInput type="number" step="0.01" value={String(v[key] ?? "")} onChange={(e) => set({ [key]: e.target.value === "" ? 0 : Number(e.target.value) } as Partial<PricingSettingsInput>)} />
-    </Field>
+      {hint ? <span className="mt-1 block text-[12px] text-ink-subtle">{hint}</span> : null}
+    </label>
   );
 
   return (
-    <Modal open={open} onClose={onClose} title="Формула расчёта цен" className="max-w-2xl"
-      footer={<div className="flex items-center gap-3"><span className="text-[12px] text-ink-subtle">Сохраняет формулу. Цены не меняются, пока не нажмёте «Пересчитать всё».</span><AdminButton type="button" loading={saving} onClick={save}>Сохранить</AdminButton></div>}>
+    <Modal open={open} onClose={onClose} title="Формула расчёта цен" className="max-w-3xl"
+      footer={<div className="flex items-center gap-3"><span className="text-[12px] text-ink-subtle">Сохраняет формулу. Затронет {affected} товаров после «Пересчитать всё».</span><AdminButton type="button" loading={saving} onClick={save}>Сохранить</AdminButton></div>}>
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-3">
           {numField("Рабочий курс USD", "working_usd_rate", course.usd ? `ЦБ: ${course.usd.toFixed(2)}` : undefined)}
-          {numField("Наценка FX, %", "fx_markup_percent", "к курсу")}
+          {numField("Наценка FX, %", "fx_markup_percent")}
           {numField("Округление, ₽", "price_rounding")}
         </div>
         <div className="grid gap-4 sm:grid-cols-4">
@@ -512,38 +515,36 @@ function FormulaModal({ open, onClose, initial, course, onSaved }: { open: boole
           {numField("24 мес, %", "credit_24m_markup_percent")}
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
-          {numField("Мин. маржа, %", "min_margin_percent", "для алёртов")}
-          {numField("Поправка к курсу ЦБ, %", "cbr_markup_percent", "для автообновления")}
+          {numField("Мин. маржа, %", "min_margin_percent")}
+          {numField("Поправка к курсу ЦБ, %", "cbr_markup_percent")}
           <Field label="Автообновление курса ЦБ">
             <div className="flex h-9 items-center"><Switch checked={v.use_cbr_auto} onChange={(on) => set({ use_cbr_auto: on })} label={v.use_cbr_auto ? "Включено" : "Выключено"} /></div>
           </Field>
         </div>
-        {preview ? (
-          <div className="rounded-lg border border-border/60 bg-surface/40 p-3 text-[13px] text-ink-muted">
-            При закупке <span className="font-medium text-ink">$1000</span> и текущей формуле: нал <span className="font-semibold text-sale">{formatPrice(preview.price_cash)}</span>, картой {formatPrice(preview.price_card)}, 24 мес — {formatPrice(preview.credit_24m_monthly)}/мес.
-          </div>
-        ) : null}
+
+        {/* 3-колоночное превью */}
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[500, 1000, 2000].map((usd) => {
+            const p = previewFor(usd);
+            return (
+              <div key={usd} className="rounded-lg border border-border/60 bg-surface/40 p-3 text-[12.5px]">
+                <p className="mb-1.5 font-medium text-ink">Закупка ${usd}</p>
+                {p ? (
+                  <dl className="space-y-0.5 text-ink-muted">
+                    <div className="flex justify-between"><dt>Нал</dt><dd className="font-semibold text-sale tabular-nums">{formatPrice(p.price_cash)}</dd></div>
+                    <div className="flex justify-between"><dt>Карта</dt><dd className="tabular-nums">{formatPrice(p.price_card)}</dd></div>
+                    <div className="flex justify-between"><dt>24 мес</dt><dd className="tabular-nums">{formatPrice(p.credit_24m_monthly)}/мес</dd></div>
+                  </dl>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </Modal>
   );
 }
 
-function numPrompt(label: string, def?: number): number | null {
-  const raw = typeof window !== "undefined" ? window.prompt(label, def != null ? String(def) : "") : null;
-  if (raw == null) return null;
-  const v = Number(raw.replace(",", "."));
-  return Number.isFinite(v) ? v : null;
-}
-
-function BulkBtn({ label, onClick }: { label: string; onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} className="inline-flex h-8 items-center rounded-sm border border-border bg-white px-3 text-[13px] text-ink transition-colors hover:bg-surface">
-      {label}
-    </button>
-  );
-}
-
-/* ── Модалка импорта прайса ── */
 function ImportModal({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
   const [idBy, setIdBy] = React.useState<"sku" | "id">("sku");
   const [preview, setPreview] = React.useState<ImportPreviewRow[] | null>(null);
@@ -588,9 +589,7 @@ function ImportModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
       ) : undefined}>
       {!preview ? (
         <div className="space-y-4">
-          <p className="text-[13px] text-ink-muted">
-            Файл XLSX или CSV с колонками <b>SKU</b>, <b>Закупка ₽</b>, <b>Курс закупа</b>. До 5 МБ / 5000 строк.
-          </p>
+          <p className="text-[13px] text-ink-muted">Файл XLSX или CSV с колонками <b>SKU</b>, <b>Закупка ₽</b>, <b>Курс закупа</b>. До 5 МБ / 5000 строк.</p>
           <label className="flex items-center gap-2 text-[13px] text-ink">
             Идентификатор:
             <select value={idBy} onChange={(e) => setIdBy(e.target.value as "sku" | "id")} className="h-9 rounded-sm border border-border bg-white px-2.5 text-[13px]">
@@ -614,9 +613,7 @@ function ImportModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
           <div className="max-h-80 overflow-y-auto rounded-lg border border-border/60">
             <table className="w-full text-[13px]">
               <thead className="sticky top-0 bg-surface/80 text-ink-subtle">
-                <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-medium">
-                  <th>SKU</th><th>Товар</th><th className="text-right">Закупка ₽</th><th className="text-right">Курс</th><th></th>
-                </tr>
+                <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-medium"><th>SKU</th><th>Товар</th><th className="text-right">Закупка ₽</th><th className="text-right">Курс</th><th></th></tr>
               </thead>
               <tbody className="divide-y divide-border/50">
                 {preview.slice(0, 500).map((r, i) => (

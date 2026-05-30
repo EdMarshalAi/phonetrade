@@ -22,7 +22,7 @@ export default async function PricingPage() {
     db.from("currency_rates").select("date,usd,eur,fetched_at").order("date", { ascending: false }).limit(2),
     db
       .from("products")
-      .select("id,sku,title,color,memory,category_slug,image,type,status,cost_rub,cost_rate,cost_usd,price_cash,price_card,credit_6m_monthly,credit_12m_monthly,credit_24m_monthly,price_override")
+      .select("id,sku,title,color,memory,category_slug,image,type,is_used,status,cost_rub,cost_rate,cost_usd,price_cash,price_card,credit_6m_monthly,credit_12m_monthly,credit_24m_monthly,price_override")
       .is("deleted_at", null)
       .neq("type", "used")
       .order("category_slug")
@@ -64,6 +64,7 @@ export default async function PricingPage() {
     category_slug: (p.category_slug as string | null) ?? null,
     image: (p.image as string | null) ?? null,
     status: (p.status as string | null) ?? null,
+    is_used: !!p.is_used,
     cost_rub: num(p.cost_rub),
     cost_rate: num(p.cost_rate),
     cost_usd: num(p.cost_usd),
