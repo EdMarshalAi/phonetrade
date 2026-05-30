@@ -83,6 +83,45 @@ export function FilterSelect({
   );
 }
 
+/** Фильтр категория + зависимая подкатегория (URL: category, subcategory). */
+export function CategoryFilter({
+  tree,
+}: {
+  tree: { slug: string; title: string; children: { slug: string; title: string }[] }[];
+}) {
+  const params = useSearchParams();
+  const setParam = useSetParam();
+  const cat = params.get("category") ?? "";
+  const sub = params.get("subcategory") ?? "";
+  const children = tree.find((t) => t.slug === cat)?.children ?? [];
+  return (
+    <>
+      <Select
+        className="w-48"
+        value={cat}
+        onChange={(e) => setParam({ category: e.target.value || null, subcategory: null })}
+      >
+        <option value="">Все категории</option>
+        {tree.map((t) => (
+          <option key={t.slug} value={t.slug}>{t.title}</option>
+        ))}
+      </Select>
+      {children.length > 0 ? (
+        <Select
+          className="w-48"
+          value={sub}
+          onChange={(e) => setParam({ subcategory: e.target.value || null })}
+        >
+          <option value="">Все подкатегории</option>
+          {children.map((c) => (
+            <option key={c.slug} value={c.slug}>{c.title}</option>
+          ))}
+        </Select>
+      ) : null}
+    </>
+  );
+}
+
 /** Пагинация по URL-параметру page. */
 export function Pagination({ page, pages }: { page: number; pages: number }) {
   const setParam = useSetParam();

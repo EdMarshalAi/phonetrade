@@ -8,7 +8,7 @@ import { PageHeader, StatusBadge } from "@/components/admin/ui";
 import { Table, THead, TH, TBody, TR, TD, EmptyState } from "@/components/admin/table";
 import { AdminButton } from "@/components/admin/form";
 import { DeleteButton } from "@/components/admin/DeleteButton";
-import { SearchBox, FilterSelect, Pagination } from "@/components/admin/ListControls";
+import { SearchBox, FilterSelect, CategoryFilter, Pagination } from "@/components/admin/ListControls";
 import { deleteProduct } from "./actions";
 
 export const metadata: Metadata = { title: "Товары" };
@@ -29,21 +29,36 @@ export default async function ProductsPage({
   const page = Math.max(1, Number(sp.page) || 1);
   const db = createSupabaseAdminClient();
 
+  const { data: cats } = await db.from("categories").select("slug,title,parent_slug").order("sort");
+  const categories = (cats ?? []) as { slug: string; title: string; parent_slug: string | null }[];
+  // Дерево для фильтра: родители + их подкатегории.
+  const categoryTree = categories
+    .filter((c) => !c.parent_slug)
+    .map((p) => ({
+      slug: p.slug,
+      title: p.title,
+      children: categories.filter((c) => c.parent_slug === p.slug).map((c) => ({ slug: c.slug, title: c.title })),
+    }));
+  const childrenOf = (slug: string) => categories.filter((c) => c.parent_slug === slug).map((c) => c.slug);
+
   let query = db
     .from("products")
     .select("id,title,category_slug,image,price_cash,price_card,stock,status,type,badge", { count: "exact" })
     .is("deleted_at", null);
 
-  if (sp.category) query = query.eq("category_slug", sp.category);
+  // Категория-родитель агрегирует подкатегории; точная подкатегория — точный фильтр.
+  if (sp.subcategory) {
+    query = query.eq("category_slug", sp.subcategory);
+  } else if (sp.category) {
+    const kids = childrenOf(sp.category);
+    query = kids.length > 0 ? query.in("category_slug", [sp.category, ...kids]) : query.eq("category_slug", sp.category);
+  }
   if (sp.status) query = query.eq("status", sp.status);
   if (sp.type) query = query.eq("type", sp.type);
   if (sp.q) query = query.or(`title.ilike.%${sp.q}%,sku.ilike.%${sp.q}%,model.ilike.%${sp.q}%`);
 
   const [from, to] = rangeFor(page, PAGE_SIZE);
   const { data, count } = await query.order("created_at", { ascending: false }).range(from, to);
-
-  const { data: cats } = await db.from("categories").select("slug,title").order("sort");
-  const categories = (cats ?? []) as { slug: string; title: string }[];
 
   const rows = (data ?? []) as {
     id: string;
@@ -59,7 +74,7 @@ export default async function ProductsPage({
   }[];
   const total = count ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasFilters = !!(sp.q || sp.category || sp.status || sp.type);
+  const hasFilters = !!(sp.q || sp.category || sp.subcategory || sp.status || sp.type);
 
   return (
     <>
@@ -89,7 +104,7 @@ export default async function ProductsPage({
 
       <div className="flex flex-wrap items-center gap-2">
         <SearchBox placeholder="Поиск по названию, SKU, модели…" />
-        <FilterSelect param="category" allLabel="Все категории" options={categories.map((c) => ({ value: c.slug, label: c.title }))} />
+        <CategoryFilter tree={categoryTree} />
         <FilterSelect param="status" allLabel="Все статусы" options={[{ value: "published", label: "Опубликован" }, { value: "draft", label: "Черновик" }, { value: "archived", label: "Архив" }]} />
         <FilterSelect param="type" allLabel="Все типы" options={[{ value: "new", label: "Новые" }, { value: "used", label: "Б/У" }]} />
       </div>
