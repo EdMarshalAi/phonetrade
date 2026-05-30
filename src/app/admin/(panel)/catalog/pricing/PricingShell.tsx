@@ -10,8 +10,22 @@ import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format-price";
 import { Modal } from "@/components/admin/Modal";
 import { AdminButton, Field, TextInput, Switch } from "@/components/admin/form";
+import { Download, Upload } from "lucide-react";
 import { calculatePrices, margin, type PricingSettings } from "@/lib/pricing/calculate";
 import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, updateProductCost, setProductOverride, type PricingSettingsInput } from "./actions";
+import { exportPricing, parsePricingFile, applyPricingImport, bulkUpdateCost, type ImportPreviewRow, type BulkOp } from "./io-actions";
+
+function downloadBase64(filename: string, base64: string, mime: string) {
+  const bytes = atob(base64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  const url = URL.createObjectURL(new Blob([arr], { type: mime }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export type CourseInfo = { usd: number | null; eur: number | null; prevUsd: number | null; date: string | null; fetchedAt: string | null };
 export type PricingRow = {
@@ -50,6 +64,11 @@ export function PricingShell({
   const [q, setQ] = React.useState("");
   const [hideFixed, setHideFixed] = React.useState(false);
   const [lowOnly, setLowOnly] = React.useState(false);
+
+  // выбор + экспорт/импорт
+  const [sel, setSel] = React.useState<Set<string>>(new Set());
+  const [exportOpen, setExportOpen] = React.useState(false);
+  const [importOpen, setImportOpen] = React.useState(false);
 
   const settingsForCalc: PricingSettings = settings;
 
@@ -116,6 +135,36 @@ export function PricingShell({
     router.refresh();
   };
 
+  // ── экспорт ──
+  const onExport = async (format: "xlsx" | "csv", onlyVisible: boolean) => {
+    setExportOpen(false);
+    setBusy(true);
+    const ids = onlyVisible ? filtered.map((r) => r.id) : null;
+    const res = await exportPricing(ids, format);
+    setBusy(false);
+    if ("error" in res) return toast.error(res.error);
+    downloadBase64(res.filename, res.base64, res.mime);
+    toast.success("Файл сформирован");
+  };
+
+  // ── выбор ──
+  const toggleSel = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const allVisibleSelected = filtered.length > 0 && filtered.every((r) => sel.has(r.id));
+  const toggleAll = () => setSel((s) => { const n = new Set(s); if (allVisibleSelected) filtered.forEach((r) => n.delete(r.id)); else filtered.forEach((r) => n.add(r.id)); return n; });
+
+  const runBulk = async (op: BulkOp, label: string) => {
+    const ids = [...sel];
+    if (!ids.length) return;
+    if (!confirm(`${label}\nЭто изменит ${ids.length} тов. Продолжить?`)) return;
+    setBusy(true);
+    const res = await bulkUpdateCost(ids, op);
+    setBusy(false);
+    if (res.error) return toast.error(res.error);
+    toast.success(`Изменено: ${res.updated ?? 0}`);
+    setSel(new Set());
+    router.refresh();
+  };
+
   return (
     <div className="space-y-5">
       {/* ── Шапка с курсами ── */}
@@ -151,6 +200,18 @@ export function PricingShell({
           </div>
           <div className="ml-auto flex items-center gap-2">
             <AdminButton type="button" variant="outline" size="sm" onClick={() => setFormulaOpen(true)}><SlidersHorizontal className="h-4 w-4" strokeWidth={1.75} /> Формула</AdminButton>
+            <AdminButton type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4" strokeWidth={1.75} /> Импорт</AdminButton>
+            <div className="relative">
+              <AdminButton type="button" variant="outline" size="sm" onClick={() => setExportOpen((o) => !o)}><Download className="h-4 w-4" strokeWidth={1.75} /> Экспорт ▾</AdminButton>
+              {exportOpen ? (
+                <div className="absolute right-0 top-full z-30 mt-1 w-56 rounded-lg border border-border/70 bg-white py-1 shadow-lg">
+                  <button type="button" onClick={() => onExport("xlsx", false)} className="block w-full px-3 py-1.5 text-left text-[13px] text-ink hover:bg-surface">XLSX — все товары</button>
+                  <button type="button" onClick={() => onExport("csv", false)} className="block w-full px-3 py-1.5 text-left text-[13px] text-ink hover:bg-surface">CSV — все товары</button>
+                  <div className="my-1 border-t border-border/50" />
+                  <button type="button" onClick={() => onExport("xlsx", true)} className="block w-full px-3 py-1.5 text-left text-[13px] text-ink hover:bg-surface">XLSX — только видимые ({filtered.length})</button>
+                </div>
+              ) : null}
+            </div>
             <AdminButton type="button" variant="outline" size="sm" onClick={onRefreshCbr} loading={busy}><RefreshCw className="h-4 w-4" strokeWidth={1.75} /> Курс ЦБ</AdminButton>
             <AdminButton type="button" size="sm" onClick={onRecalcAll} loading={busy}>Пересчитать всё</AdminButton>
           </div>
@@ -174,6 +235,7 @@ export function PricingShell({
         <table className="w-full min-w-[1100px] text-[13px]">
           <thead className="bg-surface/60 text-ink-subtle">
             <tr className="[&>th]:px-3 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-medium">
+              <th className="w-8"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAll} aria-label="Выбрать все" /></th>
               <th className="w-10"></th>
               <th>Товар</th>
               <th className="text-right">Закупка ₽</th>
@@ -189,12 +251,13 @@ export function PricingShell({
           </thead>
           <tbody className="divide-y divide-border/50">
             {filtered.length === 0 ? (
-              <tr><td colSpan={11} className="px-4 py-10 text-center text-ink-muted">Нет товаров по фильтру.</td></tr>
+              <tr><td colSpan={12} className="px-4 py-10 text-center text-ink-muted">Нет товаров по фильтру.</td></tr>
             ) : filtered.map((r) => {
               const m = margin(r.price_cash ?? 0, r.cost_rub);
               const low = m != null && m.percent < settings.min_margin_percent;
               return (
-                <tr key={r.id} className="[&>td]:px-3 [&>td]:py-2 align-middle">
+                <tr key={r.id} className={cn("[&>td]:px-3 [&>td]:py-2 align-middle", sel.has(r.id) && "bg-ink/[0.03]")}>
+                  <td><input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} aria-label="Выбрать" /></td>
                   <td>
                     <span className="inline-flex size-9 items-center justify-center overflow-hidden rounded-md border border-border bg-white">
                       {r.image ? <Image src={r.image} alt="" width={32} height={32} unoptimized className="size-8 object-contain" /> : null}
@@ -232,8 +295,27 @@ export function PricingShell({
 
       <p className="text-[12px] text-ink-subtle">Закупка/курс редактируются прямо в таблице — цены пересчитываются автоматически. Б/У товары в прайс не входят. Массовые операции и импорт/экспорт — в следующем обновлении.</p>
 
+      {/* ── Массовые действия ── */}
+      {sel.size > 0 ? (
+        <div className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center gap-2 border-t border-border/60 bg-bg/95 px-4 py-3 backdrop-blur-sm lg:-mx-8 lg:px-8">
+          <span className="text-[13px] font-medium text-ink">Выбрано: {sel.size}</span>
+          <span className="mx-1 h-5 w-px bg-border" />
+          <BulkBtn label="+ %" onClick={() => { const v = numPrompt("Наценить закупку на, %"); if (v != null) runBulk({ type: "markup_pct", value: v }, `Наценка +${v}%`); }} />
+          <BulkBtn label="+ ₽" onClick={() => { const v = numPrompt("Наценить закупку на, ₽"); if (v != null) runBulk({ type: "markup_rub", value: v }, `Наценка +${v} ₽`); }} />
+          <BulkBtn label="− %" onClick={() => { const v = numPrompt("Скинуть с закупки, %"); if (v != null) runBulk({ type: "discount_pct", value: v }, `Скидка −${v}%`); }} />
+          <BulkBtn label="− ₽" onClick={() => { const v = numPrompt("Скинуть с закупки, ₽"); if (v != null) runBulk({ type: "discount_rub", value: v }, `Скидка −${v} ₽`); }} />
+          <BulkBtn label="Округлить" onClick={() => { const v = numPrompt("Округлить закупку до, ₽ (1000/500/100)", 1000); if (v != null && v > 0) runBulk({ type: "round", value: v }, `Округление до ${v}`); }} />
+          <BulkBtn label="Курс закупа" onClick={() => { const v = numPrompt("Курс закупа для выбранных"); if (v != null && v > 0) runBulk({ type: "set_rate", value: v }, `Курс закупа = ${v}`); }} />
+          <BulkBtn label="Сбросить к формуле" onClick={() => runBulk({ type: "reset_formula" }, "Сброс ручной фиксации")} />
+          <AdminButton type="button" variant="outline" size="sm" onClick={() => setSel(new Set())}>Отмена</AdminButton>
+        </div>
+      ) : null}
+
       {/* ── Drawer «Формула» ── */}
       <FormulaModal open={formulaOpen} onClose={() => setFormulaOpen(false)} initial={settings} course={course} onSaved={() => { setFormulaOpen(false); router.refresh(); }} />
+
+      {/* ── Импорт ── */}
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onDone={() => { setImportOpen(false); router.refresh(); }} />
     </div>
   );
 }
@@ -348,6 +430,115 @@ function FormulaModal({ open, onClose, initial, course, onSaved }: { open: boole
           </div>
         ) : null}
       </div>
+    </Modal>
+  );
+}
+
+function numPrompt(label: string, def?: number): number | null {
+  const raw = typeof window !== "undefined" ? window.prompt(label, def != null ? String(def) : "") : null;
+  if (raw == null) return null;
+  const v = Number(raw.replace(",", "."));
+  return Number.isFinite(v) ? v : null;
+}
+
+function BulkBtn({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="inline-flex h-8 items-center rounded-sm border border-border bg-white px-3 text-[13px] text-ink transition-colors hover:bg-surface">
+      {label}
+    </button>
+  );
+}
+
+/* ── Модалка импорта прайса ── */
+function ImportModal({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => void }) {
+  const [idBy, setIdBy] = React.useState<"sku" | "id">("sku");
+  const [preview, setPreview] = React.useState<ImportPreviewRow[] | null>(null);
+  const [busy, setBusy] = React.useState(false);
+  const fileRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => { if (!open) { setPreview(null); } }, [open]);
+
+  const onFile = async (file: File) => {
+    setBusy(true);
+    const fd = new FormData();
+    fd.set("file", file);
+    fd.set("idBy", idBy);
+    const res = await parsePricingFile(fd);
+    setBusy(false);
+    if (res.error) return toast.error(res.error);
+    setPreview(res.preview ?? []);
+  };
+
+  const willUpdate = (preview ?? []).filter((r) => r.found && r.changed);
+  const notFound = (preview ?? []).filter((r) => !r.found);
+  const noChange = (preview ?? []).filter((r) => r.found && !r.changed);
+
+  const apply = async () => {
+    setBusy(true);
+    const items = willUpdate.map((r) => ({ id: r.id as string, cost_rub: r.newCostRub ?? r.oldCostRub, cost_rate: r.newRate ?? r.oldRate }));
+    const res = await applyPricingImport(items);
+    setBusy(false);
+    if (res.error) return toast.error(res.error);
+    toast.success(`Импорт завершён: обновлено ${res.updated ?? 0}, не найдено ${notFound.length}`);
+    onDone();
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Импорт прайса" className="max-w-3xl"
+      footer={preview ? (
+        <div className="flex items-center gap-3">
+          <span className="text-[12px] text-ink-subtle">Обновится {willUpdate.length}, не найдено {notFound.length}, без изменений {noChange.length}</span>
+          <AdminButton type="button" variant="outline" onClick={() => setPreview(null)}>Назад</AdminButton>
+          <AdminButton type="button" loading={busy} onClick={apply} disabled={willUpdate.length === 0}>Применить ({willUpdate.length})</AdminButton>
+        </div>
+      ) : undefined}>
+      {!preview ? (
+        <div className="space-y-4">
+          <p className="text-[13px] text-ink-muted">
+            Файл XLSX или CSV с колонками <b>SKU</b>, <b>Закупка ₽</b>, <b>Курс закупа</b>. До 5 МБ / 5000 строк.
+          </p>
+          <label className="flex items-center gap-2 text-[13px] text-ink">
+            Идентификатор:
+            <select value={idBy} onChange={(e) => setIdBy(e.target.value as "sku" | "id")} className="h-9 rounded-sm border border-border bg-white px-2.5 text-[13px]">
+              <option value="sku">по SKU</option>
+              <option value="id">по ID</option>
+            </select>
+          </label>
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-surface/40 py-10 text-ink-muted hover:border-ink/30 disabled:opacity-60">
+            {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" strokeWidth={1.5} />}
+            <span className="text-[14px]">Выбрать файл XLSX / CSV</span>
+          </button>
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }} />
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex gap-4 text-[13px]">
+            <span className="text-[#0a7d3e]">Обновится: {willUpdate.length}</span>
+            <span className="text-ink-muted">Без изменений: {noChange.length}</span>
+            <span className="text-sale">Не найдено: {notFound.length}</span>
+          </div>
+          <div className="max-h-80 overflow-y-auto rounded-lg border border-border/60">
+            <table className="w-full text-[13px]">
+              <thead className="sticky top-0 bg-surface/80 text-ink-subtle">
+                <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-medium">
+                  <th>SKU</th><th>Товар</th><th className="text-right">Закупка ₽</th><th className="text-right">Курс</th><th></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {preview.slice(0, 500).map((r, i) => (
+                  <tr key={i} className={cn("[&>td]:px-3 [&>td]:py-1.5", !r.found && "bg-sale/5")}>
+                    <td className="font-mono text-[12px]">{r.sku}</td>
+                    <td className="truncate">{r.title ?? <span className="text-sale">не найдено</span>}</td>
+                    <td className="text-right tabular-nums">{r.found && r.changed && r.newCostRub != null ? <span><span className="text-ink-subtle line-through">{r.oldCostRub ?? "—"}</span> → <b>{r.newCostRub}</b></span> : (r.newCostRub ?? r.oldCostRub ?? "—")}</td>
+                    <td className="text-right tabular-nums">{r.found && r.changed && r.newRate != null && r.newRate !== r.oldRate ? <span><span className="text-ink-subtle line-through">{r.oldRate ?? "—"}</span> → <b>{r.newRate}</b></span> : (r.newRate ?? r.oldRate ?? "—")}</td>
+                    <td>{r.found ? (r.changed ? <Check className="h-4 w-4 text-[#0a7d3e]" /> : <span className="text-[11px] text-ink-subtle">=</span>) : null}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }
