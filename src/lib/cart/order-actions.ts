@@ -105,7 +105,6 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       customer_id: customerId,
       customer_type: input.customerType,
       customer_name: input.name,
-      customer_phone: phoneDigits,
       customer_email: input.email ?? null,
       phone: phoneDigits,
       delivery_method: input.deliveryMethod,

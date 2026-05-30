@@ -139,7 +139,6 @@ export async function createManualOrder(
           customer_id,
           customer_name: input.name,
           phone: input.phone,
-          customer_phone: input.phone,
           customer_email: input.email || null,
           customer_type: input.customerType,
           delivery_method: input.deliveryMethod,
