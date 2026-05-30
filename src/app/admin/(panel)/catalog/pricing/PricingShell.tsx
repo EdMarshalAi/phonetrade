@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2, Check, ArrowUpRight, Download, Upload, Info, X } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2, Check, ArrowUpRight, Download, Upload, Info, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format-price";
 import { Modal } from "@/components/admin/Modal";
 import { AdminButton, Field, TextInput, Switch } from "@/components/admin/form";
 import { calculatePrices, margin, type PricingSettings } from "@/lib/pricing/calculate";
-import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, recalcSelected, type PricingSettingsInput } from "./actions";
+import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, recalcSelected, updateProductCost, type PricingSettingsInput } from "./actions";
 import { exportPricing, parsePricingFile, applyPricingImport, bulkUpdateCost, type ImportPreviewRow, type BulkOp } from "./io-actions";
 
 function downloadBase64(filename: string, base64: string, mime: string) {
@@ -25,6 +25,7 @@ function downloadBase64(filename: string, base64: string, mime: string) {
   a.click();
   URL.revokeObjectURL(url);
 }
+const r2 = (n: number) => Math.round(n * 100) / 100;
 
 export type CourseInfo = { usd: number | null; eur: number | null; prevUsd: number | null; prevEur: number | null; date: string | null; fetchedAt: string | null };
 export type PricingRow = {
@@ -39,6 +40,7 @@ export type PricingRow = {
 const MARKUPS = [0, 1, 1.5, 2, 3];
 const CATEGORY_LABEL: Record<string, string> = { iphone: "iPhone", ipad: "iPad", mac: "Mac", watch: "Apple Watch", airpods: "AirPods", accessories: "Аксессуары", used: "Б/У" };
 const CATEGORY_ORDER = ["iphone", "ipad", "mac", "watch", "airpods", "accessories"];
+const PAGE_SIZES = [20, 50, 100];
 
 function relativeTime(iso: string | null): string {
   if (!iso) return "";
@@ -63,8 +65,9 @@ export function PricingShell({
   categories: { slug: string; title: string }[];
 }) {
   const router = useRouter();
-  const [working, setWorking] = React.useState(String(settings.working_usd_rate));
-  React.useEffect(() => setWorking(String(settings.working_usd_rate)), [settings.working_usd_rate]);
+  const savedRate = r2(settings.working_usd_rate);
+  const [working, setWorking] = React.useState(String(savedRate));
+  React.useEffect(() => setWorking(String(savedRate)), [savedRate]);
   const [busy, setBusy] = React.useState(false);
   const [formulaOpen, setFormulaOpen] = React.useState(false);
   const [markupOpen, setMarkupOpen] = React.useState(false);
@@ -75,15 +78,34 @@ export function PricingShell({
   const [q, setQ] = React.useState("");
   const [hideFixed, setHideFixed] = React.useState(false);
   const [lowOnly, setLowOnly] = React.useState(false);
+  const [pageSize, setPageSize] = React.useState(50);
+  const [page, setPage] = React.useState(1);
+  React.useEffect(() => setPage(1), [cat, q, hideFixed, lowOnly, pageSize]);
+  const [localRows, setLocalRows] = React.useState<PricingRow[]>(rows);
+  React.useEffect(() => setLocalRows(rows), [rows]);
   const [sel, setSel] = React.useState<Set<string>>(new Set());
+  const [dialog, setDialog] = React.useState<null | { title: string; desc?: string; input?: { label: string; placeholder?: string; def?: string }; confirmLabel?: string; onConfirm: (v: number | null) => void }>(null);
+  const [dlgVal, setDlgVal] = React.useState("");
+  React.useEffect(() => { setDlgVal(dialog?.input?.def ?? ""); }, [dialog]);
+  const submitDialog = () => {
+    if (!dialog) return;
+    if (dialog.input) {
+      const v = Number(dlgVal.replace(",", "."));
+      if (!Number.isFinite(v)) return toast.error("Введите число");
+      dialog.onConfirm(v);
+    } else {
+      dialog.onConfirm(null);
+    }
+    setDialog(null);
+  };
 
   const settingsForCalc: PricingSettings = settings;
   const min = settings.min_margin_percent;
   const delta = course.usd && course.prevUsd ? ((course.usd - course.prevUsd) / course.prevUsd) * 100 : null;
   const deltaEur = course.eur && course.prevEur ? ((course.eur - course.prevEur) / course.prevEur) * 100 : null;
-  const dirtyRate = Math.abs(Number(working.replace(",", ".")) - settings.working_usd_rate) > 1e-6 && Number(working.replace(",", ".")) > 0;
+  const dirtyRate = Math.abs(Number(working.replace(",", ".")) - savedRate) > 1e-6 && Number(working.replace(",", ".")) > 0;
 
-  const filtered = rows.filter((r) => {
+  const filtered = localRows.filter((r) => {
     if (cat && r.category_slug !== cat) return false;
     if (hideFixed && r.price_override) return false;
     if (q.trim()) {
@@ -97,10 +119,13 @@ export function PricingShell({
     return true;
   });
 
-  // группировка по категории (в фиксированном порядке)
+  const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageClamped = Math.min(page, pages);
+  const paged = filtered.slice((pageClamped - 1) * pageSize, pageClamped * pageSize);
+
   const groups = React.useMemo(() => {
     const map = new Map<string, PricingRow[]>();
-    for (const r of filtered) {
+    for (const r of paged) {
       const key = r.category_slug ?? "other";
       (map.get(key) ?? map.set(key, []).get(key)!).push(r);
     }
@@ -109,13 +134,13 @@ export function PricingShell({
       return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
     });
     return keys.map((k) => ({ key: k, label: CATEGORY_LABEL[k] ?? k, items: map.get(k)! }));
-  }, [filtered]);
+  }, [paged]);
 
-  const withoutCost = rows.filter((r) => !r.is_used && r.cost_rub == null).length;
+  const withoutCost = localRows.filter((r) => !r.is_used && r.cost_rub == null).length;
 
   /* ── курс / пересчёт ── */
   const applyWorking = async () => {
-    const rate = Number(working.replace(",", "."));
+    const rate = r2(Number(working.replace(",", ".")));
     setBusy(true);
     const res = await setWorkingRate(rate);
     setBusy(false);
@@ -128,21 +153,45 @@ export function PricingShell({
     setBusy(true);
     const r = await refreshCbrRate();
     if (r.error || r.usd == null) { setBusy(false); return toast.error(`Не удалось получить курс ЦБ: ${r.error ?? ""}`); }
-    const value = +(r.usd * (1 + markup / 100)).toFixed(4);
+    const value = r2(r.usd * (1 + markup / 100));
     const res = await setWorkingRate(value);
     setBusy(false);
     if (res.error) return toast.error(res.error);
     setWorking(String(value));
-    toast.success(`Рабочий курс: ${value} ₽ (ЦБ ${r.usd.toFixed(2)} + ${markup}%). Нажмите «Пересчитать всё».`);
+    toast.success(`Рабочий курс: ${value} ₽ (ЦБ ${r2(r.usd)} + ${markup}%). Нажмите «Пересчитать всё».`);
     router.refresh();
   };
-  const onRecalcAll = async () => {
-    if (!confirm("Пересчитать цены всех товаров по текущей формуле?")) return;
+  const onRecalcAll = () => setDialog({
+    title: "Пересчитать все цены?",
+    desc: "Цены всех товаров (кроме зафиксированных и Б/У) пересчитаются по текущей формуле и курсу.",
+    confirmLabel: "Пересчитать",
+    onConfirm: async () => {
+      setBusy(true);
+      const res = await recalcAllPrices();
+      setBusy(false);
+      if (res.error) return toast.error(res.error);
+      toast.success(`Пересчитано товаров: ${res.recalculated ?? 0}`);
+      router.refresh();
+    },
+  });
+
+  /* ── inline-правка закупки + пересчёт строки ── */
+  const saveCost = async (row: PricingRow, costRub: number | null, costRate: number | null) => {
+    const costUsd = costRub && costRate ? costRub / costRate : null;
+    const calc = costUsd && !row.price_override ? calculatePrices({ cost_usd: costUsd, price_override: false }, settingsForCalc) : null;
+    setLocalRows((rs) => rs.map((r) => (r.id === row.id ? {
+      ...r, cost_rub: costRub, cost_rate: costRate, cost_usd: costUsd,
+      ...(calc ? { price_cash: calc.price_cash, price_card: calc.price_card, credit_6m_monthly: calc.credit_6m_monthly, credit_12m_monthly: calc.credit_12m_monthly, credit_24m_monthly: calc.credit_24m_monthly } : {}),
+    } : r)));
+    const res = await updateProductCost(row.id, costRub, costRate);
+    if (res.error) { toast.error(res.error); router.refresh(); }
+  };
+  const recalcOne = async (id: string) => {
     setBusy(true);
-    const res = await recalcAllPrices();
+    const res = await recalcSelected([id]);
     setBusy(false);
     if (res.error) return toast.error(res.error);
-    toast.success(`Пересчитано товаров: ${res.recalculated ?? 0}`);
+    toast.success("Цены товара пересчитаны");
     router.refresh();
   };
 
@@ -159,12 +208,11 @@ export function PricingShell({
 
   /* ── выбор / bulk ── */
   const toggleSel = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const allVisibleSelected = filtered.length > 0 && filtered.every((r) => sel.has(r.id));
-  const toggleAll = () => setSel((s) => { const n = new Set(s); if (allVisibleSelected) filtered.forEach((r) => n.delete(r.id)); else filtered.forEach((r) => n.add(r.id)); return n; });
-  const runBulk = async (op: BulkOp, label: string) => {
+  const allPageSelected = paged.length > 0 && paged.every((r) => sel.has(r.id));
+  const toggleAll = () => setSel((s) => { const n = new Set(s); if (allPageSelected) paged.forEach((r) => n.delete(r.id)); else paged.forEach((r) => n.add(r.id)); return n; });
+  const runBulkNow = async (op: BulkOp) => {
     const ids = [...sel];
     if (!ids.length) return;
-    if (!confirm(`${label}\nИзменит ${ids.length} тов. Продолжить?`)) return;
     setBusy(true);
     const res = await bulkUpdateCost(ids, op);
     setBusy(false);
@@ -173,6 +221,16 @@ export function PricingShell({
     setSel(new Set());
     router.refresh();
   };
+  // Открыть диалог для операции, требующей значения.
+  const askBulk = (cfg: { title: string; label: string; placeholder?: string; def?: string; build: (v: number) => BulkOp }) =>
+    setDialog({
+      title: cfg.title,
+      desc: `Применить к ${sel.size} выбранным товарам.`,
+      input: { label: cfg.label, placeholder: cfg.placeholder, def: cfg.def },
+      onConfirm: (v) => { if (v != null && Number.isFinite(v)) runBulkNow(cfg.build(v)); },
+    });
+  const confirmBulk = (title: string, op: BulkOp) =>
+    setDialog({ title, desc: `Применить к ${sel.size} выбранным товарам.`, confirmLabel: "Применить", onConfirm: () => runBulkNow(op) });
   const onRecalcSelected = async () => {
     const ids = [...sel];
     if (!ids.length) return;
@@ -187,31 +245,38 @@ export function PricingShell({
 
   return (
     <div className="space-y-5">
-      {/* ── Статус-бар курсов ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-surface px-4 py-2.5 text-[12.5px]">
-        <span className="text-ink-muted">
-          Курс ЦБ{course.date ? ` за ${course.date.split("-").reverse().join(".")}` : ""}
-          {course.fetchedAt ? ` · обновлён ${relativeTime(course.fetchedAt)}` : ""}
-        </span>
-        <div className="flex items-center gap-4">
-          <CourseChip label="USD" value={course.usd} delta={delta} />
-          <CourseChip label="EUR" value={course.eur} delta={deltaEur} />
+      {/* ── Единая плашка курса ── */}
+      <div className="rounded-2xl border border-border/60 bg-white p-5 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-[12.5px] text-ink-muted">
+            Курс ЦБ{course.date ? ` за ${course.date.split("-").reverse().join(".")}` : ""}
+            {course.fetchedAt ? ` · обновлён ${relativeTime(course.fetchedAt)}` : ""}
+          </span>
+          <div className="flex items-center gap-5">
+            <CourseChip label="USD" value={course.usd} delta={delta} />
+            <CourseChip label="EUR" value={course.eur} delta={deltaEur} />
+          </div>
         </div>
-      </div>
 
-      {/* ── Главный блок: рабочий курс ── */}
-      <div className="rounded-2xl border border-border/60 bg-white p-6">
-        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-subtle">Рабочий курс USD</p>
-        <div className="mt-2 flex flex-wrap items-end gap-x-6 gap-y-4">
-          <div className="flex items-baseline gap-2">
-            <input
-              value={working}
-              onChange={(e) => setWorking(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && dirtyRate) applyWorking(); }}
-              inputMode="decimal"
-              className="w-44 border-0 border-b-2 border-transparent bg-transparent p-0 text-5xl font-semibold tabular-nums tracking-tight text-ink outline-none focus:border-ink/30"
-            />
-            <span className="text-2xl font-medium text-ink-subtle">₽</span>
+        <div className="my-4 h-px bg-border/50" />
+
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <label className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-ink-subtle">
+              Рабочий курс USD <span className="font-normal normal-case tracking-normal text-ink-subtle">· можно изменить</span>
+            </label>
+            <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface/40 px-3 py-1.5 transition-colors focus-within:border-ink/40 focus-within:bg-white">
+              <input
+                value={working}
+                onChange={(e) => setWorking(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && dirtyRate) applyWorking(); }}
+                inputMode="decimal"
+                aria-label="Рабочий курс USD"
+                className="w-28 bg-transparent text-3xl font-semibold tabular-nums tracking-tight text-ink outline-none"
+              />
+              <span className="text-xl font-medium text-ink-subtle">₽</span>
+              <Pencil className="h-4 w-4 text-ink-subtle" strokeWidth={1.75} aria-hidden />
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
@@ -226,12 +291,13 @@ export function PricingShell({
               ) : null}
             </div>
             <AdminButton type="button" variant="outline" size="sm" onClick={applyWorking} disabled={!dirtyRate} loading={busy}>Сохранить курс</AdminButton>
+            <span className="mx-1 hidden h-7 w-px bg-border sm:block" />
             <AdminButton type="button" size="sm" onClick={onRecalcAll} loading={busy}><RefreshCw className="h-4 w-4" strokeWidth={1.75} /> Пересчитать всё</AdminButton>
           </div>
         </div>
         <p className="mt-3 text-[12px] text-ink-subtle">
           {settings.use_cbr_auto ? "Автообновление курса включено" : "Автообновление выключено"} · поправка +{settings.cbr_markup_percent}%
-          {dirtyRate ? " · курс изменён — сохраните и пересчитайте, чтобы применить" : ""}
+          {dirtyRate ? " · курс изменён — сохраните и нажмите «Пересчитать всё»" : ""}
         </p>
       </div>
 
@@ -252,68 +318,81 @@ export function PricingShell({
         </div>
       </div>
 
-      {/* ── Фильтры ── */}
-      <div className="flex flex-wrap items-center gap-3">
-        <select value={cat} onChange={(e) => setCat(e.target.value)} className="h-9 rounded-sm border border-border bg-white px-2.5 text-[13px] text-ink">
+      {/* ── Фильтры (тулбар) ── */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-xl border border-border/60 bg-white px-4 py-3">
+        <select value={cat} onChange={(e) => setCat(e.target.value)} className="h-9 rounded-lg border border-border bg-white px-2.5 text-[13px] text-ink">
           <option value="">Все категории</option>
           {categories.map((c) => <option key={c.slug} value={c.slug}>{c.title}</option>)}
         </select>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по названию или SKU…" className="h-9 w-64 max-w-full rounded-sm border border-border bg-white px-2.5 text-[13px] text-ink outline-none focus:border-ink/40" />
-        <label className="flex items-center gap-2 text-[13px] text-ink-muted"><input type="checkbox" checked={hideFixed} onChange={(e) => setHideFixed(e.target.checked)} /> Скрыть зафиксированные</label>
-        <label className="flex items-center gap-2 text-[13px] text-ink-muted"><input type="checkbox" checked={lowOnly} onChange={(e) => setLowOnly(e.target.checked)} /> Маржа ниже мин.</label>
-        <span className="ml-auto text-[12px] text-ink-subtle">Показано: {filtered.length} из {rows.length}</span>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по названию или SKU…" className="h-9 w-60 max-w-full rounded-lg border border-border bg-white px-3 text-[13px] text-ink outline-none focus:border-ink/40" />
+        <Switch checked={hideFixed} onChange={setHideFixed} label="Скрыть зафиксированные" />
+        <Switch checked={lowOnly} onChange={setLowOnly} label="Маржа ниже мин." />
+        <div className="ml-auto flex items-center gap-3 text-[12.5px] text-ink-subtle">
+          <span>На странице:</span>
+          <div className="inline-flex overflow-hidden rounded-lg border border-border">
+            {PAGE_SIZES.map((n) => (
+              <button key={n} type="button" onClick={() => setPageSize(n)} className={cn("px-2.5 py-1 text-[12.5px] transition-colors", pageSize === n ? "bg-ink text-white" : "bg-white text-ink hover:bg-surface")}>{n}</button>
+            ))}
+          </div>
+          <span className="tabular-nums">{filtered.length} тов.</span>
+        </div>
       </div>
 
-      {/* ── Bulk-плашка (тёмная, сверху) ── */}
+      {/* ── Плавающая bulk-плашка ── */}
       {sel.size > 0 ? (
-        <div className="sticky top-14 z-20 flex flex-wrap items-center gap-2 rounded-xl bg-ink px-4 py-2.5 text-white shadow-lg">
-          <span className="text-[13px] font-medium">Выбрано: {sel.size}</span>
-          <button type="button" onClick={() => setSel(new Set())} className="rounded p-0.5 text-white/70 hover:text-white"><X className="h-4 w-4" /></button>
-          <span className="mx-1 h-5 w-px bg-white/20" />
-          <DarkBtn label="+ %" onClick={() => { const v = numPrompt("Наценить закупку на, %"); if (v != null) runBulk({ type: "markup_pct", value: v }, `Наценка +${v}%`); }} />
-          <DarkBtn label="+ ₽" onClick={() => { const v = numPrompt("Наценить закупку на, ₽"); if (v != null) runBulk({ type: "markup_rub", value: v }, `Наценка +${v} ₽`); }} />
-          <DarkBtn label="− %" onClick={() => { const v = numPrompt("Скинуть с закупки, %"); if (v != null) runBulk({ type: "discount_pct", value: v }, `Скидка −${v}%`); }} />
-          <DarkBtn label="Курс закупа" onClick={() => { const v = numPrompt("Курс закупа для выбранных"); if (v != null && v > 0) runBulk({ type: "set_rate", value: v }, `Курс закупа = ${v}`); }} />
-          <DarkBtn label="Сбросить к формуле" onClick={() => runBulk({ type: "reset_formula" }, "Сброс ручной фиксации")} />
-          <DarkBtn label="Пересчитать" onClick={onRecalcSelected} />
-          <DarkBtn label="Экспорт" onClick={() => onExport("xlsx", false)} />
+        <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
+          <div className="flex max-w-full flex-wrap items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-3 text-white shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+            <span className="text-[13px] font-medium">Выбрано: {sel.size}</span>
+            <button type="button" onClick={() => setSel(new Set())} className="rounded-md p-1 text-white/70 hover:bg-white/10 hover:text-white" title="Снять выделение"><span aria-hidden>✕</span></button>
+            <span className="mx-1 h-5 w-px bg-white/20" />
+            <DarkBtn label="+ %" onClick={() => askBulk({ title: "Наценить закупку на %", label: "Процент", placeholder: "напр. 5", build: (v) => ({ type: "markup_pct", value: v }) })} />
+            <DarkBtn label="+ ₽" onClick={() => askBulk({ title: "Наценить закупку на ₽", label: "Сумма, ₽", placeholder: "напр. 1000", build: (v) => ({ type: "markup_rub", value: v }) })} />
+            <DarkBtn label="− %" onClick={() => askBulk({ title: "Скинуть с закупки %", label: "Процент", placeholder: "напр. 5", build: (v) => ({ type: "discount_pct", value: v }) })} />
+            <DarkBtn label="Курс закупа" onClick={() => askBulk({ title: "Курс закупа для выбранных", label: "Курс USD", placeholder: "напр. 90", build: (v) => ({ type: "set_rate", value: v }) })} />
+            <DarkBtn label="Сбросить к формуле" onClick={() => confirmBulk("Снять ручную фиксацию?", { type: "reset_formula" })} />
+            <DarkBtn label="Пересчитать" onClick={onRecalcSelected} />
+            <DarkBtn label="Экспорт" onClick={() => onExport("xlsx", false)} />
+          </div>
         </div>
       ) : null}
 
-      {/* ── Таблица (десктоп) ── */}
-      {rows.length === 0 ? (
+      {/* ── Таблица / карточки ── */}
+      {localRows.length === 0 ? (
         <EmptyBox title="В каталоге пока нет товаров" hint="Добавьте товары в разделе «Товары»." href="/admin/catalog/products" cta="Перейти в каталог" />
-      ) : withoutCost === rows.filter((r) => !r.is_used).length && withoutCost > 0 ? (
-        <EmptyBox title="Закупочные цены не заполнены" hint={`У ${withoutCost} товаров не указана закупка. Без неё формула не работает.`} href="/admin/catalog/products" cta="Заполнить вручную" extra={<AdminButton type="button" variant="outline" onClick={() => setImportOpen(true)}>Импортировать прайс</AdminButton>} />
       ) : (
         <>
           <div className="hidden overflow-x-auto rounded-xl border border-border/60 bg-white lg:block">
-            <table className="w-full min-w-[980px] text-[13px]">
+            <table className="w-full min-w-[1000px] text-[13px]">
               <thead className="sticky top-0 z-10 bg-surface/90 text-ink-subtle backdrop-blur-sm">
                 <tr className="[&>th]:px-3 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-medium">
-                  <th className="w-8"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAll} aria-label="Выбрать все" /></th>
+                  <th className="w-8"><input type="checkbox" checked={allPageSelected} onChange={toggleAll} aria-label="Выбрать все" className="size-4" /></th>
                   <th className="w-12"></th>
                   <th>Товар</th>
-                  <th className="w-28 text-right">Закупка</th>
+                  <th className="w-32 text-right">Закупка ₽</th>
+                  <th className="w-24 text-right">Курс</th>
                   <th className="w-28 text-right">Нал</th>
                   <th className="w-28 text-right">Карта</th>
-                  <th className="w-32 text-right">Кредит</th>
+                  <th className="w-28 text-right">Кредит 24м</th>
                   <th className="w-20 text-right">Маржа</th>
-                  <th className="w-28">Статус</th>
-                  <th className="w-10"></th>
+                  <th className="w-24">Статус</th>
+                  <th className="w-20"></th>
                 </tr>
               </thead>
               <tbody>
                 {groups.map((g) => (
                   <React.Fragment key={g.key}>
                     <tr className="bg-surface/40">
-                      <td colSpan={10} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">{g.label} · {g.items.length}</td>
+                      <td colSpan={11} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">{g.label} · {g.items.length}</td>
                     </tr>
                     {g.items.map((r) => {
                       const m = margin(r.price_cash ?? 0, r.cost_rub);
                       return (
-                        <tr key={r.id} className={cn("border-t border-border/40 align-middle transition-colors hover:bg-surface/50 [&>td]:px-3 [&>td]:py-2", sel.has(r.id) && "bg-ink/[0.03]")}>
-                          <td><input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} aria-label="Выбрать" /></td>
+                        <tr
+                          key={r.id}
+                          onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button,input,label")) toggleSel(r.id); }}
+                          className={cn("cursor-pointer select-none border-t border-border/40 align-middle transition-colors hover:bg-surface/50 [&>td]:px-3 [&>td]:py-2", sel.has(r.id) && "bg-ink/[0.06]")}
+                        >
+                          <td><input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} aria-label="Выбрать" className="size-4" /></td>
                           <td>
                             <span className="inline-flex size-10 items-center justify-center overflow-hidden rounded-md border border-border bg-white">
                               {r.image ? <Image src={r.image} alt="" width={36} height={36} unoptimized className="size-9 object-contain" /> : null}
@@ -323,14 +402,22 @@ export function PricingShell({
                             <Link href={`/admin/catalog/products/${r.id}/edit`} className="font-medium text-ink hover:underline">{r.title}</Link>
                             <div className="text-[11.5px] text-ink-subtle">{[r.sku, r.color, r.memory].filter(Boolean).join(" · ") || "—"}{r.is_used ? " · Б/У" : ""}</div>
                           </td>
-                          <td className="text-right tabular-nums">
-                            {r.cost_rub != null ? <>{r.cost_rub.toLocaleString("ru-RU")} ₽<div className="text-[11px] text-ink-subtle">{r.cost_usd ? `$${r.cost_usd.toFixed(0)}` : ""}</div></> : <span className="text-ink-subtle">—</span>}
+                          <td className="text-right">
+                            {r.price_override ? (
+                              <span className="text-ink-subtle">фикс</span>
+                            ) : (
+                              <>
+                                <EditableNum value={r.cost_rub} onSave={(v) => saveCost(r, v, r.cost_rate)} />
+                                {r.cost_usd ? <div className="text-[11px] text-ink-subtle">${r.cost_usd.toFixed(0)}</div> : null}
+                              </>
+                            )}
+                          </td>
+                          <td className="text-right">
+                            {r.price_override ? <span className="text-ink-subtle">—</span> : <EditableNum value={r.cost_rate} step="0.01" onSave={(v) => saveCost(r, r.cost_rub, v)} />}
                           </td>
                           <td className="text-right font-semibold text-sale tabular-nums">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</td>
                           <td className="text-right tabular-nums text-ink-muted">{r.price_card != null ? formatPrice(r.price_card) : "—"}</td>
-                          <td className="text-right tabular-nums text-ink-muted">
-                            {r.credit_24m_monthly != null ? <>от {formatPrice(r.credit_24m_monthly)}<div className="text-[11px] text-ink-subtle">за 24 мес</div></> : "—"}
-                          </td>
+                          <td className="text-right tabular-nums text-ink-muted">{r.credit_24m_monthly != null ? `${formatPrice(r.credit_24m_monthly)}` : "—"}</td>
                           <td className="text-right"><MarginPill m={m} min={min} /></td>
                           <td>
                             <span className="inline-flex items-center gap-1.5">
@@ -338,53 +425,78 @@ export function PricingShell({
                               {r.price_override ? <span className="inline-flex items-center gap-0.5 rounded-full bg-ink px-1.5 py-0.5 text-[10px] font-medium text-white"><Lock className="h-2.5 w-2.5" />фикс</span> : null}
                             </span>
                           </td>
-                          <td className="text-center">
-                            <Link href={`/admin/catalog/products/${r.id}/edit`} className="inline-flex size-7 items-center justify-center rounded-sm border border-border bg-white text-ink-subtle hover:bg-surface hover:text-ink" title="Открыть карточку"><ArrowUpRight className="h-4 w-4" strokeWidth={1.75} /></Link>
+                          <td>
+                            <div className="flex items-center justify-end gap-1">
+                              <button type="button" onClick={() => recalcOne(r.id)} title="Пересчитать по формуле" className="inline-flex size-7 items-center justify-center rounded-sm border border-border bg-white text-ink-subtle hover:bg-surface hover:text-ink"><RefreshCw className="h-3.5 w-3.5" strokeWidth={1.75} /></button>
+                              <Link href={`/admin/catalog/products/${r.id}/edit`} className="inline-flex size-7 items-center justify-center rounded-sm border border-border bg-white text-ink-subtle hover:bg-surface hover:text-ink" title="Открыть карточку"><ArrowUpRight className="h-4 w-4" strokeWidth={1.75} /></Link>
+                            </div>
                           </td>
                         </tr>
                       );
                     })}
                   </React.Fragment>
                 ))}
-                {filtered.length === 0 ? <tr><td colSpan={10} className="px-4 py-10 text-center text-ink-muted">Нет товаров по фильтру.</td></tr> : null}
+                {paged.length === 0 ? <tr><td colSpan={11} className="px-4 py-10 text-center text-ink-muted">Нет товаров по фильтру.</td></tr> : null}
               </tbody>
             </table>
           </div>
 
-          {/* ── Карточки (мобильные) ── */}
+          {/* мобильные карточки */}
           <div className="space-y-3 lg:hidden">
-            {filtered.length === 0 ? <div className="rounded-lg border border-border/60 bg-white px-4 py-8 text-center text-ink-muted">Нет товаров по фильтру.</div> : filtered.map((r) => {
+            {paged.length === 0 ? <div className="rounded-lg border border-border/60 bg-white px-4 py-8 text-center text-ink-muted">Нет товаров по фильтру.</div> : paged.map((r) => {
               const m = margin(r.price_cash ?? 0, r.cost_rub);
               return (
-                <div key={r.id} className={cn("rounded-xl border border-border/60 bg-white p-3", sel.has(r.id) && "ring-1 ring-ink/30")}>
+                <div key={r.id} onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button,input,label")) toggleSel(r.id); }} className={cn("cursor-pointer select-none rounded-xl border border-border/60 bg-white p-3", sel.has(r.id) && "ring-1 ring-ink/30")}>
                   <div className="flex items-start gap-3">
-                    <input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} className="mt-1.5" />
+                    <input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} className="mt-1.5 size-4" />
                     <span className="inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-white">{r.image ? <Image src={r.image} alt="" width={36} height={36} unoptimized className="size-9 object-contain" /> : null}</span>
                     <div className="min-w-0 flex-1">
                       <Link href={`/admin/catalog/products/${r.id}/edit`} className="block truncate text-[14px] font-medium text-ink">{r.title}</Link>
-                      <div className="truncate text-[11.5px] text-ink-subtle">{[r.sku, r.color, r.memory].filter(Boolean).join(" · ") || "—"}{r.is_used ? " · Б/У" : ""}</div>
+                      <div className="truncate text-[11.5px] text-ink-subtle">{[r.sku, r.color, r.memory].filter(Boolean).join(" · ") || "—"}</div>
                     </div>
-                    <Link href={`/admin/catalog/products/${r.id}/edit`} className="inline-flex size-8 shrink-0 items-center justify-center rounded-sm border border-border text-ink-subtle"><ArrowUpRight className="h-4 w-4" /></Link>
+                    <button type="button" onClick={() => recalcOne(r.id)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-sm border border-border text-ink-subtle"><RefreshCw className="h-4 w-4" /></button>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[13px]">
                     <Cell label="Нал"><span className="font-semibold text-sale">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</span></Cell>
                     <Cell label="Карта">{r.price_card != null ? formatPrice(r.price_card) : "—"}</Cell>
-                    <Cell label="Закупка">{r.cost_rub != null ? `${r.cost_rub.toLocaleString("ru-RU")} ₽` : "—"}</Cell>
-                    <Cell label="24 мес">{r.credit_24m_monthly != null ? `${formatPrice(r.credit_24m_monthly)}` : "—"}</Cell>
+                    <div className="flex items-center justify-between gap-2"><span className="text-ink-subtle">Закупка</span>{r.price_override ? <span>фикс</span> : <EditableNum value={r.cost_rub} onSave={(v) => saveCost(r, v, r.cost_rate)} />}</div>
                     <Cell label="Маржа"><MarginPill m={m} min={min} /></Cell>
-                    <Cell label="">{r.price_override ? <span className="inline-flex items-center gap-0.5 rounded-full bg-ink px-1.5 py-0.5 text-[10px] text-white"><Lock className="h-2.5 w-2.5" />фикс</span> : null}</Cell>
                   </div>
                 </div>
               );
             })}
           </div>
+
+          {/* пагинация */}
+          {pages > 1 ? (
+            <div className="flex items-center justify-center gap-1.5">
+              <button type="button" disabled={pageClamped <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface disabled:opacity-40"><ChevronLeft className="h-4 w-4" /> Назад</button>
+              {Array.from({ length: pages }, (_, i) => i + 1).filter((p) => Math.abs(p - pageClamped) <= 2 || p === 1 || p === pages).map((p, i, arr) => (
+                <React.Fragment key={p}>
+                  {i > 0 && p - arr[i - 1] > 1 ? <span className="px-1 text-ink-subtle">…</span> : null}
+                  <button type="button" onClick={() => setPage(p)} className={cn("inline-flex h-9 min-w-9 items-center justify-center rounded-lg border px-2 text-[13px] tabular-nums", p === pageClamped ? "border-ink bg-ink text-white" : "border-border bg-white text-ink hover:bg-surface")}>{p}</button>
+                </React.Fragment>
+              ))}
+              <button type="button" disabled={pageClamped >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface disabled:opacity-40">Вперёд <ChevronRight className="h-4 w-4" /></button>
+            </div>
+          ) : null}
         </>
       )}
 
-      <p className="text-[12px] text-ink-subtle">Цены меняются в карточке товара (кнопка «Открыть») или массовыми операциями. Б/У в формулу не входят.</p>
+      <p className="text-[12px] text-ink-subtle">Закупку и курс закупа можно править прямо в таблице — цены пересчитываются сразу. Кнопка ↻ в строке пересчитывает товар по формуле. Б/У в формулу не входят.</p>
 
-      <FormulaModal open={formulaOpen} onClose={() => setFormulaOpen(false)} initial={settings} course={course} affected={rows.filter((r) => !r.is_used && !r.price_override && r.cost_rub != null).length} onSaved={() => { setFormulaOpen(false); router.refresh(); }} />
+      <FormulaModal open={formulaOpen} onClose={() => setFormulaOpen(false)} initial={settings} course={course} affected={localRows.filter((r) => !r.is_used && !r.price_override && r.cost_rub != null).length} onSaved={() => { setFormulaOpen(false); router.refresh(); }} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onDone={() => { setImportOpen(false); router.refresh(); }} />
+
+      <Modal open={!!dialog} onClose={() => setDialog(null)} title={dialog?.title ?? ""}
+        footer={<><AdminButton type="button" variant="outline" onClick={() => setDialog(null)}>Отмена</AdminButton><AdminButton type="button" onClick={submitDialog}>{dialog?.confirmLabel ?? "Применить"}</AdminButton></>}>
+        {dialog?.desc ? <p className="mb-3 text-[13px] text-ink-muted">{dialog.desc}</p> : null}
+        {dialog?.input ? (
+          <Field label={dialog.input.label}>
+            <TextInput autoFocus type="number" step="0.01" value={dlgVal} placeholder={dialog.input.placeholder} onChange={(e) => setDlgVal(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submitDialog(); }} />
+          </Field>
+        ) : null}
+      </Modal>
     </div>
   );
 }
@@ -397,7 +509,7 @@ function CourseChip({ label, value, delta }: { label: string; value: number | nu
       <span className="text-ink-subtle">{label}</span>
       <span className="font-semibold">{value != null ? `${value.toFixed(2)} ₽` : "—"}</span>
       {delta != null ? (
-        <span className={cn("inline-flex items-center", up ? "text-[#0a7d3e]" : down ? "text-sale" : "text-ink-subtle")}>
+        <span className={cn("inline-flex items-center text-[12px]", up ? "text-[#0a7d3e]" : down ? "text-sale" : "text-ink-subtle")}>
           {up ? <ArrowUp className="h-3 w-3" /> : down ? <ArrowDown className="h-3 w-3" /> : <Minus className="h-3 w-3" />}{Math.abs(delta).toFixed(1)}%
         </span>
       ) : null}
@@ -433,29 +545,57 @@ function Cell({ label, children }: { label: string; children: React.ReactNode })
   return <div className="flex items-center justify-between gap-2"><span className="text-ink-subtle">{label}</span><span className="tabular-nums">{children}</span></div>;
 }
 
-function EmptyBox({ title, hint, href, cta, extra }: { title: string; hint: string; href: string; cta: string; extra?: React.ReactNode }) {
+function EmptyBox({ title, hint, href, cta }: { title: string; hint: string; href: string; cta: string }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-border/60 bg-white px-6 py-16 text-center">
       <span className="inline-flex size-12 items-center justify-center rounded-full bg-surface text-ink-muted"><Upload className="h-5 w-5" strokeWidth={1.5} /></span>
       <p className="mt-4 text-base font-medium text-ink">{title}</p>
       <p className="mt-1.5 max-w-md text-sm text-ink-muted">{hint}</p>
-      <div className="mt-6 flex flex-wrap justify-center gap-2">
-        {extra}
-        <Link href={href}><AdminButton type="button">{cta}</AdminButton></Link>
-      </div>
+      <Link href={href} className="mt-6"><AdminButton type="button">{cta}</AdminButton></Link>
     </div>
   );
 }
 
-function numPrompt(label: string, def?: number): number | null {
-  const raw = typeof window !== "undefined" ? window.prompt(label, def != null ? String(def) : "") : null;
-  if (raw == null) return null;
-  const v = Number(raw.replace(",", "."));
-  return Number.isFinite(v) ? v : null;
+/** Инлайн-редактирование числа в ячейке таблицы. */
+function EditableNum({ value, onSave, step }: { value: number | null; onSave: (v: number | null) => void; step?: string }) {
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState("");
+  const [saved, setSaved] = React.useState(false);
+  if (!editing) {
+    return (
+      <button type="button" onClick={() => { setDraft(value != null ? String(value) : ""); setEditing(true); }} className="inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 tabular-nums hover:bg-surface">
+        {value != null ? value.toLocaleString("ru-RU") : <span className="text-ink-subtle">указать</span>}
+        {saved ? <Check className="h-3.5 w-3.5 text-[#0a7d3e]" /> : <Pencil className="h-3 w-3 text-ink-subtle/60" />}
+      </button>
+    );
+  }
+  const commit = () => {
+    const v = draft.trim() === "" ? null : Number(draft.replace(",", "."));
+    setEditing(false);
+    if (v != null && !Number.isFinite(v)) return;
+    if (v !== value) { onSave(v); setSaved(true); setTimeout(() => setSaved(false), 1500); }
+  };
+  return (
+    <input autoFocus value={draft} step={step} inputMode="decimal" onChange={(e) => setDraft(e.target.value)} onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") setEditing(false); }}
+      className="h-7 w-24 rounded-sm border border-ink/40 bg-white px-1.5 text-right text-[13px] tabular-nums outline-none" />
+  );
 }
 
 function DarkBtn({ label, onClick }: { label: string; onClick: () => void }) {
   return <button type="button" onClick={onClick} className="inline-flex h-8 items-center rounded-md bg-white/10 px-3 text-[13px] text-white transition-colors hover:bg-white/20">{label}</button>;
+}
+
+/** Подсказка при наведении (без зависимостей). */
+function InfoTip({ text }: { text: string }) {
+  return (
+    <span className="group/tip relative inline-flex">
+      <Info className="h-3.5 w-3.5 cursor-help text-ink-subtle" />
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-[80] mb-1.5 hidden w-56 -translate-x-1/2 rounded-lg bg-ink px-3 py-2 text-[11px] font-normal leading-relaxed text-white shadow-[0_10px_30px_rgba(0,0,0,0.2)] group-hover/tip:block">
+        {text}
+      </span>
+    </span>
+  );
 }
 
 /* ── Модалка формулы ── */
@@ -476,7 +616,6 @@ function FormulaModal({ open, onClose, initial, course, affected, onSaved }: { o
   const [saving, setSaving] = React.useState(false);
   React.useEffect(() => { if (open) setV(initial); }, [open, initial]);
   const set = (patch: Partial<PricingSettingsInput>) => setV((s) => ({ ...s, ...patch }));
-
   const previewFor = (usd: number) => calculatePrices({ cost_usd: usd, price_override: false }, v as PricingSettings);
 
   const save = async () => {
@@ -492,7 +631,7 @@ function FormulaModal({ open, onClose, initial, course, affected, onSaved }: { o
     <label className="block">
       <span className="mb-1.5 flex items-center gap-1 text-[13px] font-medium text-ink">
         {label}
-        {TOOLTIPS[key] ? <span title={TOOLTIPS[key]} className="cursor-help"><Info className="h-3.5 w-3.5 text-ink-subtle" /></span> : null}
+        {TOOLTIPS[key] ? <InfoTip text={TOOLTIPS[key]} /> : null}
       </span>
       <TextInput type="number" step="0.01" value={String(v[key] ?? "")} onChange={(e) => set({ [key]: e.target.value === "" ? 0 : Number(e.target.value) } as Partial<PricingSettingsInput>)} />
       {hint ? <span className="mt-1 block text-[12px] text-ink-subtle">{hint}</span> : null}
@@ -521,8 +660,6 @@ function FormulaModal({ open, onClose, initial, course, affected, onSaved }: { o
             <div className="flex h-9 items-center"><Switch checked={v.use_cbr_auto} onChange={(on) => set({ use_cbr_auto: on })} label={v.use_cbr_auto ? "Включено" : "Выключено"} /></div>
           </Field>
         </div>
-
-        {/* 3-колоночное превью */}
         <div className="grid gap-3 sm:grid-cols-3">
           {[500, 1000, 2000].map((usd) => {
             const p = previewFor(usd);
