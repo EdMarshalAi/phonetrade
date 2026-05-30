@@ -389,22 +389,18 @@ export function ProductForm({
 
         <Panel className="space-y-4 p-5">
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Цена наличными, ₽" error={errors.price_cash?.message} hint={priceReadonly ? "Считается формулой из закупки" : "Красная цена на сайте"}>
-              <TextInput type="number" min={0} readOnly={priceReadonly} hasError={!!errors.price_cash} className={cn(priceReadonly && "bg-surface/60 text-ink-muted")} {...register("price_cash")} />
-            </Field>
-            <Field label="Цена картой, ₽" error={errors.price_card?.message} hint={priceReadonly ? "Считается формулой" : undefined}>
-              <TextInput type="number" min={0} readOnly={priceReadonly} hasError={!!errors.price_card} className={cn(priceReadonly && "bg-surface/60 text-ink-muted")} {...register("price_card")} />
-            </Field>
-            <Field label="Старая цена, ₽" hint="Для зачёркивания (акция)">
+            {!priceReadonly ? (
+              <>
+                <Field label="Цена наличными, ₽" error={errors.price_cash?.message} hint={overrideOn ? "Зафиксированная цена" : "Красная цена на сайте"}>
+                  <TextInput type="number" min={0} hasError={!!errors.price_cash} {...register("price_cash")} />
+                </Field>
+                <Field label="Цена картой, ₽" error={errors.price_card?.message}>
+                  <TextInput type="number" min={0} hasError={!!errors.price_card} {...register("price_card")} />
+                </Field>
+              </>
+            ) : null}
+            <Field label="Старая цена, ₽" hint="Зачёркнутая цена на витрине (необязательно)">
               <TextInput type="number" min={0} {...register("price_old")} />
-            </Field>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="В кредит, ₽/мес" hint="Платёж — показывается на сайте и на главной">
-              <TextInput type="number" min={0} placeholder="напр. 5 900" {...register("installment_from")} />
-            </Field>
-            <Field label="Условие кредита" hint="напр. 0-0-24 (необязательно)">
-              <TextInput placeholder="0-0-24" {...register("installment_partner")} />
             </Field>
             <Field label="Гарантия, мес">
               <TextInput type="number" min={0} {...register("warranty_months")} />
