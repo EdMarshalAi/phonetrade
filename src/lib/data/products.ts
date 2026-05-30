@@ -73,6 +73,8 @@ export type Product = {
   /** Значения кастомных опций (базовые color/memory/sim/condition — в своих полях). */
   options?: Record<string, string>;
   condition?: string;
+  /** Свободное описание состояния Б/У (из админки, поле condition_text). */
+  conditionText?: string;
   battery?: number;
   isUsed?: boolean;
   isNew?: boolean;

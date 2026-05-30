@@ -157,6 +157,23 @@ export function ProductBuyPanel({ product, variants }: Props) {
         </div>
       )}
 
+      {product.isUsed && (product.conditionText || product.battery != null) ? (
+        <div className="rounded-3xl border border-border/60 bg-surface/40 p-5">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <span className="text-xs uppercase tracking-[0.16em] text-ink-subtle">Состояние</span>
+            {product.battery != null ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-ink px-2.5 py-1 text-[12px] font-medium text-white tabular-nums">
+                🔋 Аккумулятор: {product.battery}%
+              </span>
+            ) : null}
+          </div>
+          {product.conditionText ? (
+            <p className="text-[14px] leading-relaxed text-ink-muted">{product.conditionText}</p>
+          ) : null}
+          <p className="mt-2 text-[11px] text-ink-subtle">Фото для иллюстрации — реальный товар может отличаться.</p>
+        </div>
+      ) : null}
+
       <div className="rounded-3xl bg-white border border-border/60 p-6">
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
