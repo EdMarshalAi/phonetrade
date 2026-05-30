@@ -514,3 +514,14 @@ export async function getStaticPage(slug: string): Promise<StaticPageRow | null>
     .maybeSingle();
   return (data as StaticPageRow) ?? null;
 }
+
+/** Опубликованные страницы для sitemap (slug + дата изменения). */
+export async function getPublishedPageSlugs(): Promise<{ slug: string; updatedAt: string | null }[]> {
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("static_pages")
+    .select("slug,updated_at")
+    .eq("status", "published")
+    .limit(1000);
+  return ((data as { slug: string; updated_at: string | null }[]) ?? []).map((r) => ({ slug: r.slug, updatedAt: r.updated_at }));
+}

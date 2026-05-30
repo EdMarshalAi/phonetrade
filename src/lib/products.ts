@@ -125,6 +125,32 @@ export async function getRelatedProducts(
   return (data as ProductRow[]).map(rowToProduct);
 }
 
+export async function getNewProducts(): Promise<Product[]> {
+  if (!supabase) return ALL_PRODUCTS.filter((p) => p.isNew);
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("is_new", true)
+    .eq("status", "published")
+    .is("deleted_at", null)
+    .order("sort", { ascending: true });
+  if (error || !data) return ALL_PRODUCTS.filter((p) => p.isNew);
+  return (data as ProductRow[]).map(rowToProduct);
+}
+
+/** Лёгкий список опубликованных товаров для sitemap (id + дата изменения). */
+export async function getSitemapProducts(): Promise<{ id: string; updatedAt: string | null }[]> {
+  if (!supabase) return ALL_PRODUCTS.map((p) => ({ id: p.id, updatedAt: null }));
+  const { data, error } = await supabase
+    .from("products")
+    .select("id,updated_at")
+    .eq("status", "published")
+    .is("deleted_at", null)
+    .limit(5000);
+  if (error || !data) return ALL_PRODUCTS.map((p) => ({ id: p.id, updatedAt: null }));
+  return (data as { id: string; updated_at: string | null }[]).map((r) => ({ id: r.id, updatedAt: r.updated_at }));
+}
+
 const CATEGORY_SEARCH_LABEL: Record<string, string> = {
   iphone: "iphone айфон", ipad: "ipad айпад", mac: "mac macbook мак макбук",
   watch: "apple watch часы вотч", airpods: "airpods наушники эирподс",
