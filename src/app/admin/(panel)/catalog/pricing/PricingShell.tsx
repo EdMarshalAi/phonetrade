@@ -101,8 +101,12 @@ export function PricingShell({
     setBusy(true);
     const res = await refreshCbrRate();
     setBusy(false);
-    if (res.error) return toast.error(res.error);
-    toast.success(`Курс ЦБ обновлён: USD ${res.usd}`);
+    if (res.error) {
+      toast.error(`Не удалось обновить курс ЦБ: ${res.error}`);
+      return;
+    }
+    const d = res.date ? res.date.split("-").reverse().join(".") : "";
+    toast.success(`Курс ЦБ обновлён${d ? ` на ${d}` : ""}: USD ${res.usd?.toFixed(2)} ₽ · EUR ${res.eur?.toFixed(2)} ₽`);
     router.refresh();
   };
   const onRecalcAll = async () => {
