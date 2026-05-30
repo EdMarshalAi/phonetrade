@@ -49,6 +49,19 @@ export type Product = {
   highlights?: string[];
   priceCash: number;
   priceCard: number;
+  /** Старая цена для зачёркивания (акция). Показывается, если > priceCash. */
+  priceOld?: number;
+  /** Платёж в кредит, ₽/мес (вводится в админке). Показывается единой строкой. */
+  installmentFrom?: number;
+  /** Партнёр/условие кредита (напр. «0-0-24»). */
+  installmentPartner?: string;
+  /** Остаток на складе. null = «уточняйте». 0 = нет в наличии. */
+  stock?: number;
+  isAvailable?: boolean;
+  /** Сопутствующие товары (ID), заданные в админке. */
+  relatedProductIds?: string[];
+  /** Подробное описание (HTML), на странице товара после сопутствующих. */
+  descriptionHtml?: string;
   /** Устаревшее одиночное поле бейджа (оставлено для обратной совместимости). */
   badge?: string;
   /** Ключи бейджей из реестра (shop_settings.product_badges) — может быть несколько. */

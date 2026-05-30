@@ -49,7 +49,21 @@ export function ProductDetailShell({ product, related, variants, productBlocks }
         </section>
       )}
 
-      {product.description && product.description.length > 0 && (
+      {product.descriptionHtml && product.descriptionHtml.trim().length > 0 ? (
+        <section className="bg-bg border-t border-border/60">
+          <div className="container-page py-14 md:py-20">
+            <div className="mx-auto max-w-3xl">
+              <h2 className="mb-6 text-2xl md:text-3xl font-semibold tracking-[-0.02em] text-ink">
+                Подробное описание
+              </h2>
+              <div
+                className="prose prose-neutral max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-ink prose-img:rounded-2xl"
+                dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
+              />
+            </div>
+          </div>
+        </section>
+      ) : product.description && product.description.length > 0 ? (
         <section className="bg-bg">
           <div className="container-page py-14 md:py-20">
             <ProductDescription
@@ -58,7 +72,7 @@ export function ProductDetailShell({ product, related, variants, productBlocks }
             />
           </div>
         </section>
-      )}
+      ) : null}
     </>
   );
 }

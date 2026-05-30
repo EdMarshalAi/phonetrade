@@ -163,7 +163,7 @@ export function ProductCard({ product, className }: Props) {
 
       <div className="flex-1 min-h-3" />
 
-      <div className="grid grid-cols-2 gap-3 mt-4 mb-4">
+      <div className="grid grid-cols-2 gap-3 mt-4 mb-1">
         <div>
           <div className="text-[11px] uppercase tracking-wider text-ink-subtle mb-1">
             Наличные
@@ -171,6 +171,11 @@ export function ProductCard({ product, className }: Props) {
           <div className="text-[19px] sm:text-xl font-bold text-sale tracking-tight tabular-nums leading-none">
             {formatPrice(product.priceCash)}
           </div>
+          {product.priceOld && product.priceOld > product.priceCash ? (
+            <div className="mt-1 text-[12px] text-ink-subtle line-through tabular-nums">
+              {formatPrice(product.priceOld)}
+            </div>
+          ) : null}
         </div>
         <div>
           <div className="text-[11px] uppercase tracking-wider text-ink-subtle mb-1">
@@ -181,6 +186,14 @@ export function ProductCard({ product, className }: Props) {
           </div>
         </div>
       </div>
+      {product.installmentFrom ? (
+        <div className="mb-4 mt-2 text-[12px] text-ink-subtle">
+          В кредит — от{" "}
+          <span className="font-medium text-ink">{formatPrice(product.installmentFrom)}/мес</span>
+        </div>
+      ) : (
+        <div className="mb-4" />
+      )}
 
       <div className="flex gap-2" data-stop-card>
         <Button

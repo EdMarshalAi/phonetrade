@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Plus, X, ArrowUp, ArrowDown, Trash2, Pencil, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Panel } from "@/components/admin/ui";
-import { TextInput, Textarea, AdminButton } from "@/components/admin/form";
+import { TextInput, Textarea, AdminButton, ToggleRow } from "@/components/admin/form";
 import { Modal } from "@/components/admin/Modal";
 import { IconPicker } from "@/components/admin/IconPicker";
 import { BlocksEditor } from "@/components/admin/BlocksEditor";
@@ -18,6 +18,7 @@ const TABS = [
   { key: "options", label: "Опции" },
   { key: "badges", label: "Бейджики" },
   { key: "blocks", label: "Блоки под товаром" },
+  { key: "availability", label: "Наличие" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
@@ -47,23 +48,26 @@ export function ProductSettingsForm({
   initialOptions,
   initialBadges,
   initialBlocks,
+  initialAllowZeroStock = true,
 }: {
   initialOptions: ProductOption[];
   initialBadges: ProductBadge[];
   initialBlocks: InfoBlock[];
+  initialAllowZeroStock?: boolean;
 }) {
   const router = useRouter();
   const [tab, setTab] = React.useState<Tab>("options");
   const [options, setOptions] = React.useState<ProductOption[]>(initialOptions);
   const [badges, setBadges] = React.useState<ProductBadge[]>(initialBadges);
   const [blocks, setBlocks] = React.useState<InfoBlock[]>(initialBlocks);
+  const [allowZeroStock, setAllowZeroStock] = React.useState<boolean>(initialAllowZeroStock);
   const [saving, setSaving] = React.useState(false);
   const [editOption, setEditOption] = React.useState<number | null>(null);
   const [editBadge, setEditBadge] = React.useState<number | null>(null);
 
   const save = async () => {
     setSaving(true);
-    const res = await saveProductRegistry(options, badges, blocks);
+    const res = await saveProductRegistry(options, badges, blocks, allowZeroStock);
     setSaving(false);
     if (res.error) {
       toast.error(res.error);
@@ -157,13 +161,22 @@ export function ProductSettingsForm({
             </AdminButton>
           </div>
         </Panel>
-      ) : (
+      ) : tab === "blocks" ? (
         <div>
           <p className="mb-3 text-[13px] text-ink-muted">
             Блоки на странице товара (самовывоз, доставка, гарантия, trade-in). Блок со ссылкой выделяется тёмной плашкой.
           </p>
           <BlocksEditor value={blocks} onChange={setBlocks} withHref />
         </div>
+      ) : (
+        <Panel className="space-y-4 p-5">
+          <ToggleRow
+            checked={allowZeroStock}
+            onChange={setAllowZeroStock}
+            title="Разрешать покупку товаров с нулевым остатком"
+            hint="Если выключено — товары с остатком 0 не показываются на сайте и недоступны к заказу. Товары без указанного остатка («уточняйте») показываются всегда."
+          />
+        </Panel>
       )}
 
       <div className="sticky bottom-0 -mx-1 flex items-center gap-2 border-t border-border/60 bg-bg/85 py-3 backdrop-blur-sm">

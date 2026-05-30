@@ -23,6 +23,23 @@ import {
  * The mock data (src/lib/data/products.ts) remains the source of truth for seeding.
  */
 
+/**
+ * Разрешена ли продажа/показ товаров с нулевым остатком (shop_settings.product_availability).
+ * По умолчанию true — ничего не скрываем, пока магазин не настроит.
+ */
+export async function getAllowZeroStock(): Promise<boolean> {
+  if (!supabase) return true;
+  const { data } = await supabase.from("shop_settings").select("value").eq("key", "product_availability").maybeSingle();
+  const v = data?.value as { allow_zero_stock?: boolean } | null;
+  return v?.allow_zero_stock !== false;
+}
+
+/** Скрывает товары с явным нулевым остатком, если показ запрещён. null/undefined остаток = «уточняйте» → видим. */
+function hideZeroStock(products: Product[], allow: boolean): Product[] {
+  if (allow) return products;
+  return products.filter((p) => p.stock == null || p.stock > 0);
+}
+
 export async function getCategories(): Promise<Category[]> {
   if (!supabase) return CATEGORIES;
   const { data, error } = await supabase
@@ -45,7 +62,7 @@ export async function getFeaturedIphones(): Promise<Product[]> {
     .order("sort", { ascending: true })
     .limit(8);
   if (error || !data || data.length === 0) return FEATURED_IPHONES;
-  return (data as ProductRow[]).map(rowToProduct);
+  return hideZeroStock((data as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
 }
 
 export async function getFeaturedCatalog(): Promise<Product[]> {
@@ -59,7 +76,7 @@ export async function getFeaturedCatalog(): Promise<Product[]> {
     .order("sort", { ascending: true })
     .limit(8);
   if (error || !data || data.length === 0) return FEATURED_CATALOG;
-  return (data as ProductRow[]).map(rowToProduct);
+  return hideZeroStock((data as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
 }
 
 export async function getUsedProducts(): Promise<Product[]> {
@@ -72,7 +89,7 @@ export async function getUsedProducts(): Promise<Product[]> {
     .is("deleted_at", null)
     .order("sort", { ascending: true });
   if (error || !data || data.length === 0) return USED_IPHONES;
-  return (data as ProductRow[]).map(rowToProduct);
+  return hideZeroStock((data as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
 }
 
 export async function getHeroProduct(): Promise<Product> {
@@ -93,7 +110,7 @@ export async function getProductsByCategory(
     .is("deleted_at", null)
     .order("sort", { ascending: true });
   if (error || !data) return mockByCategory(slug);
-  return (data as ProductRow[]).map(rowToProduct);
+  return hideZeroStock((data as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
 }
 
 export async function getProductById(id: string): Promise<Product | undefined> {
@@ -113,6 +130,22 @@ export async function getRelatedProducts(
   limit = 8
 ): Promise<Product[]> {
   if (!supabase) return mockRelated(product, limit);
+
+  // 1) Явно выбранные в админке сопутствующие товары (сохраняем порядок выбора).
+  const ids = product.relatedProductIds ?? [];
+  if (ids.length > 0) {
+    const { data } = await supabase
+      .from("products")
+      .select("*")
+      .in("id", ids)
+      .eq("status", "published")
+      .is("deleted_at", null);
+    const byId = new Map((data as ProductRow[] | null ?? []).map((r) => [r.id, rowToProduct(r)]));
+    const ordered = ids.map((id) => byId.get(id)).filter((p): p is Product => !!p);
+    if (ordered.length > 0) return ordered.slice(0, limit);
+  }
+
+  // 2) Фолбэк — товары той же категории.
   const { data, error } = await supabase
     .from("products")
     .select("*")
@@ -136,7 +169,7 @@ export async function getNewProducts(): Promise<Product[]> {
     .is("deleted_at", null)
     .order("sort", { ascending: true });
   if (error || !data) return ALL_PRODUCTS.filter((p) => p.isNew);
-  return (data as ProductRow[]).map(rowToProduct);
+  return hideZeroStock((data as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
 }
 
 /** Лёгкий список опубликованных товаров для sitemap (id + дата изменения). */
@@ -189,10 +222,14 @@ export async function searchProducts(query: string): Promise<Product[]> {
     pool = error || !data ? ALL_PRODUCTS : (data as ProductRow[]).map(rowToProduct);
   }
 
-  const matched = pool.filter((p) => {
-    const hay = searchHaystack(p);
-    return terms.every((t) => hay.includes(t));
-  });
+  const allow = supabase ? await getAllowZeroStock() : true;
+  const matched = hideZeroStock(
+    pool.filter((p) => {
+      const hay = searchHaystack(p);
+      return terms.every((t) => hay.includes(t));
+    }),
+    allow
+  );
 
   return matched.sort((a, b) => {
     const at = a.title.toLowerCase();

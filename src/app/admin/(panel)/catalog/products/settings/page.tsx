@@ -5,16 +5,18 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminButton } from "@/components/admin/form";
 import { getProductOptions, getProductBadges, getProductBlocks } from "@/lib/content";
+import { getAllowZeroStock } from "@/lib/products";
 import { ProductSettingsForm } from "./ProductSettingsForm";
 
 export const metadata: Metadata = { title: "Настройки товаров" };
 
 export default async function ProductSettingsPage() {
   await requireAdmin(["admin", "manager", "content"]);
-  const [optionDefs, badgeDefs, blockDefs] = await Promise.all([
+  const [optionDefs, badgeDefs, blockDefs, allowZeroStock] = await Promise.all([
     getProductOptions(),
     getProductBadges(),
     getProductBlocks(),
+    getAllowZeroStock(),
   ]);
 
   return (
@@ -30,7 +32,7 @@ export default async function ProductSettingsPage() {
           </Link>
         }
       />
-      <ProductSettingsForm initialOptions={optionDefs} initialBadges={badgeDefs} initialBlocks={blockDefs} />
+      <ProductSettingsForm initialOptions={optionDefs} initialBadges={badgeDefs} initialBlocks={blockDefs} initialAllowZeroStock={allowZeroStock} />
     </>
   );
 }

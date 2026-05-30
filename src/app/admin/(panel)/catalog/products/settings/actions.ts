@@ -9,7 +9,8 @@ const STAFF = ["admin", "manager", "content"] as const;
 export async function saveProductRegistry(
   options: ProductOption[],
   badges: ProductBadge[],
-  productBlocks: InfoBlock[] = []
+  productBlocks: InfoBlock[] = [],
+  allowZeroStock = true
 ): Promise<{ error?: string }> {
   try {
     await adminMutation({
@@ -54,6 +55,10 @@ export async function saveProductRegistry(
           .from("shop_settings")
           .upsert({ key: "product_blocks", value: normBlocks }, { onConflict: "key" });
         if (e3) throw e3;
+        const { error: e4 } = await db
+          .from("shop_settings")
+          .upsert({ key: "product_availability", value: { allow_zero_stock: allowZeroStock } }, { onConflict: "key" });
+        if (e4) throw e4;
       },
     });
     return {};

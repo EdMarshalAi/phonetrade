@@ -16,6 +16,9 @@ export type ProductRow = {
   highlights: string[] | null;
   price_cash: number;
   price_card: number;
+  price_old: number | null;
+  installment_from: number | null;
+  installment_partner: string | null;
   badge: string | null;
   badges: string[] | null;
   options: Record<string, string> | null;
@@ -25,6 +28,10 @@ export type ProductRow = {
   is_new: boolean;
   rating: number | null;
   in_stock: boolean;
+  stock: number | null;
+  is_available: boolean | null;
+  related_product_ids: string[] | null;
+  description_html: string | null;
 };
 
 export type CategoryRow = {
@@ -51,6 +58,9 @@ export function rowToProduct(r: ProductRow): Product {
     highlights: r.highlights ?? undefined,
     priceCash: r.price_cash,
     priceCard: r.price_card,
+    priceOld: r.price_old ?? undefined,
+    installmentFrom: r.installment_from ?? undefined,
+    installmentPartner: r.installment_partner ?? undefined,
     badge: r.badge ?? undefined,
     badges: Array.isArray(r.badges) ? r.badges : undefined,
     options: r.options ?? undefined,
@@ -60,6 +70,10 @@ export function rowToProduct(r: ProductRow): Product {
     isNew: r.is_new,
     rating: r.rating ?? undefined,
     inStock: r.in_stock,
+    stock: r.stock ?? undefined,
+    isAvailable: r.is_available ?? undefined,
+    relatedProductIds: Array.isArray(r.related_product_ids) ? r.related_product_ids : undefined,
+    descriptionHtml: r.description_html ?? undefined,
   };
 }
 
@@ -100,6 +114,9 @@ export function productToRow(p: Product, sort = 0): ProductRow & { sort: number 
     highlights: p.highlights ?? null,
     price_cash: p.priceCash,
     price_card: p.priceCard,
+    price_old: p.priceOld ?? null,
+    installment_from: p.installmentFrom ?? null,
+    installment_partner: p.installmentPartner ?? null,
     badge: p.badge ?? null,
     badges: deriveBadges(p),
     options: p.options ?? {},
@@ -109,6 +126,10 @@ export function productToRow(p: Product, sort = 0): ProductRow & { sort: number 
     is_new: p.isNew ?? false,
     rating: p.rating ?? null,
     in_stock: p.inStock ?? true,
+    stock: p.stock ?? null,
+    is_available: p.isAvailable ?? true,
+    related_product_ids: p.relatedProductIds ?? null,
+    description_html: p.descriptionHtml ?? null,
     sort,
   };
 }

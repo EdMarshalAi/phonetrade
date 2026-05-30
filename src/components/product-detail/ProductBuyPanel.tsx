@@ -158,7 +158,7 @@ export function ProductBuyPanel({ product, variants }: Props) {
       )}
 
       <div className="rounded-3xl bg-white border border-border/60 p-6">
-        <div className="grid grid-cols-2 gap-4 mb-5">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <div className="text-[11px] uppercase tracking-wider text-ink-subtle mb-1">
               Наличные
@@ -166,9 +166,11 @@ export function ProductBuyPanel({ product, variants }: Props) {
             <div className="text-3xl md:text-[34px] font-bold text-sale tracking-tight tabular-nums leading-none">
               {formatPrice(product.priceCash)}
             </div>
-            <div className="mt-1 text-[11px] text-ink-subtle">
-              от {formatPrice(Math.round(product.priceCash / 24))}/мес
-            </div>
+            {product.priceOld && product.priceOld > product.priceCash ? (
+              <div className="mt-1.5 text-[13px] text-ink-subtle line-through tabular-nums">
+                {formatPrice(product.priceOld)}
+              </div>
+            ) : null}
           </div>
           <div>
             <div className="text-[11px] uppercase tracking-wider text-ink-subtle mb-1">
@@ -177,11 +179,20 @@ export function ProductBuyPanel({ product, variants }: Props) {
             <div className="text-3xl md:text-[34px] font-bold text-ink tracking-tight tabular-nums leading-none">
               {formatPrice(product.priceCard)}
             </div>
-            <div className="mt-1 text-[11px] text-ink-subtle">
-              или в кредит 0-0-24
-            </div>
           </div>
         </div>
+
+        {product.installmentFrom ? (
+          <div className="mb-5 flex items-center gap-2 rounded-2xl border border-border/60 bg-surface/50 px-4 py-2.5 text-[13px] text-ink-muted">
+            <span>
+              В кредит — от{" "}
+              <span className="font-semibold text-ink tabular-nums">{formatPrice(product.installmentFrom)}/мес</span>
+            </span>
+            {product.installmentPartner ? (
+              <span className="text-ink-subtle">· {product.installmentPartner}</span>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="flex gap-2">
           <Button

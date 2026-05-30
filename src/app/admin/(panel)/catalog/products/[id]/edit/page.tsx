@@ -19,10 +19,11 @@ export default async function EditProductPage({
 }) {
   const { id } = await params;
   const db = createSupabaseAdminClient();
-  const [{ data: prod }, { data: cats }, { data: varRows }, optionDefs, badgeDefs] = await Promise.all([
+  const [{ data: prod }, { data: cats }, { data: varRows }, { data: allProd }, optionDefs, badgeDefs] = await Promise.all([
     db.from("products").select("*").eq("id", id).maybeSingle(),
     db.from("categories").select("slug,title").order("sort"),
     db.from("product_variants").select("*").eq("product_id", id).order("sort_order"),
+    db.from("products").select("id,title,category_slug,image").eq("status", "published").is("deleted_at", null).order("sort"),
     getProductOptions(),
     getProductBadges(),
   ]);
@@ -66,6 +67,7 @@ export default async function EditProductPage({
         images={imgRows ?? []}
         optionDefs={optionDefs}
         badgeDefs={badgeDefs}
+        allProducts={(allProd ?? []) as { id: string; title: string; category_slug: string; image: string | null }[]}
       />
     </>
   );
