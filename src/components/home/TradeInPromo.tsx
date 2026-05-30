@@ -29,9 +29,9 @@ export function TradeInPromo({ block }: { block?: TradeInPromoBlock | null }) {
     <section className="bg-bg">
       <div className="container-page pt-10 md:pt-16 pb-6 md:pb-10">
         <MotionReveal>
-          <div className="rounded-[2rem] md:rounded-[2.5rem] bg-ink text-white overflow-hidden">
-            <div className="grid md:grid-cols-12 gap-8 md:gap-6 p-8 md:p-14 items-center">
-              <div className="md:col-span-7">
+          <div className="group rounded-[2rem] md:rounded-[2.5rem] bg-ink text-white overflow-hidden">
+            <div className="grid md:grid-cols-12 gap-6 md:gap-4 p-6 md:p-10 items-center">
+              <div className="md:col-span-6">
                 <p className="text-xs uppercase tracking-[0.16em] text-onDark-muted mb-4">
                   Trade-in
                 </p>
@@ -49,16 +49,16 @@ export function TradeInPromo({ block }: { block?: TradeInPromoBlock | null }) {
                   </Link>
                 </div>
               </div>
-              <div className="md:col-span-5">
+              <div className="md:col-span-6">
                 {b.imageUrl ? (
-                  <div className="relative aspect-square">
+                  <div className="relative aspect-[4/3] md:aspect-[16/10]">
                     <Image
                       src={b.imageUrl}
                       alt={b.title}
                       fill
                       unoptimized
-                      sizes="(max-width:768px) 100vw, 40vw"
-                      className="object-contain object-bottom-right drop-shadow-[0_18px_30px_rgba(0,0,0,0.18)]"
+                      sizes="(max-width:768px) 100vw, 50vw"
+                      className="object-contain object-bottom-right drop-shadow-[0_18px_30px_rgba(0,0,0,0.18)] transition-transform duration-500 ease-[var(--ease-apple)] group-hover:scale-[1.04]"
                     />
                   </div>
                 ) : (
