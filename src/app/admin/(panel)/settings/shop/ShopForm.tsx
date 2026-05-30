@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import Image from "next/image";
 import { Plus, ArrowUp, ArrowDown, Trash2, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { Field, TextInput, Select, Switch, AdminButton } from "@/components/admin/form";
+import { Field, TextInput, Switch, AdminButton } from "@/components/admin/form";
 import { Panel, PanelTitle } from "@/components/admin/ui";
 import { Modal } from "@/components/admin/Modal";
 import { ImageField } from "@/components/admin/ImageField";
@@ -229,18 +229,26 @@ export function ShopForm({ initial }: { initial: ShopGeneral }) {
                 <TextInput value={contacts[editC].label} onChange={(e) => patchC(editC, { label: e.target.value })} placeholder="WhatsApp" />
               </Field>
             </div>
-            <div className="grid gap-4 sm:grid-cols-[1fr_200px]">
-              <Field label="Ссылка">
-                <TextInput value={contacts[editC].href} onChange={(e) => patchC(editC, { href: e.target.value })} placeholder="https://wa.me/7900… или tel:+7900…" />
-              </Field>
-              <Field label="Где показывать">
-                <Select value={contacts[editC].location} onChange={(e) => patchC(editC, { location: e.target.value as ShopContactLink["location"] })}>
-                  <option value="both">Шапка и футер</option>
-                  <option value="header">Только шапка</option>
-                  <option value="footer">Только футер</option>
-                </Select>
-              </Field>
-            </div>
+            <Field label="Ссылка">
+              <TextInput value={contacts[editC].href} onChange={(e) => patchC(editC, { href: e.target.value })} placeholder="https://wa.me/7900… или tel:+7900…" />
+            </Field>
+            <Field label="Где показывать" hint="Можно выбрать оба — контакт появится и в шапке, и в футере.">
+              {(() => {
+                const loc = contacts[editC].location;
+                const inHeader = loc === "header" || loc === "both";
+                const inFooter = loc === "footer" || loc === "both";
+                const setLoc = (h: boolean, f: boolean) => {
+                  if (!h && !f) return; // хотя бы одно место; чтобы убрать — выключите контакт тумблером
+                  patchC(editC, { location: h && f ? "both" : h ? "header" : "footer" });
+                };
+                return (
+                  <div className="flex items-center gap-6 pt-1.5">
+                    <Switch checked={inHeader} onChange={(on) => setLoc(on, inFooter)} label="Шапка" />
+                    <Switch checked={inFooter} onChange={(on) => setLoc(inHeader, on)} label="Футер" />
+                  </div>
+                );
+              })()}
+            </Field>
             <div className="rounded-lg border border-border/60 bg-surface/40 p-3">
               <p className="mb-2 text-[12.5px] font-medium text-ink">
                 Своя иконка соцсети
