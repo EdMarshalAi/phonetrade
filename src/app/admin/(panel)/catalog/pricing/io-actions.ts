@@ -73,13 +73,12 @@ export async function exportPricing(
     if (s) {
       const settingsRows = [
         { Параметр: "Рабочий курс USD", Значение: num(s.working_usd_rate) },
-        { Параметр: "Наценка FX, %", Значение: num(s.fx_markup_percent) },
+        { Параметр: "Наценка по умолчанию, %", Значение: num(s.default_markup_percent) },
         { Параметр: "Наценка карта, %", Значение: num(s.card_markup_percent) },
         { Параметр: "Кредит 6м, %", Значение: num(s.credit_6m_markup_percent) },
         { Параметр: "Кредит 12м, %", Значение: num(s.credit_12m_markup_percent) },
         { Параметр: "Кредит 24м, %", Значение: num(s.credit_24m_markup_percent) },
         { Параметр: "Округление, ₽", Значение: num(s.price_rounding) },
-        { Параметр: "Мин. маржа, %", Значение: num(s.min_margin_percent) },
       ];
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(settingsRows), "Настройки");
     }

@@ -7,13 +7,13 @@
 
 export type PricingSettings = {
   working_usd_rate: number;
-  fx_markup_percent: number;
+  /** Наценка по умолчанию (fallback, если у категории не задана). Раньше — fx_markup_percent. */
+  default_markup_percent: number;
   card_markup_percent: number;
   credit_6m_markup_percent: number;
   credit_12m_markup_percent: number;
   credit_24m_markup_percent: number;
   price_rounding: number;
-  min_margin_percent?: number;
 };
 
 export type ProductPriceInputs = {
@@ -40,9 +40,14 @@ export function roundTo(n: number, step: number): number {
   return Math.round(n / s) * s;
 }
 
-/** Полная рабочая ставка USD с учётом FX-наценки. */
-export function effectiveRate(settings: PricingSettings): number {
-  return settings.working_usd_rate * (1 + settings.fx_markup_percent / 100);
+/**
+ * Полная рабочая ставка USD с учётом наценки.
+ * markupPercent — наценка категории товара; если не передана, берётся
+ * default_markup_percent из настроек.
+ */
+export function effectiveRate(settings: PricingSettings, markupPercent?: number | null): number {
+  const mk = markupPercent ?? settings.default_markup_percent;
+  return settings.working_usd_rate * (1 + mk / 100);
 }
 
 function buildFromBase(base: number, cashOverride: number | null, cardOverride: number | null, s: PricingSettings): CalculatedPrices {
@@ -64,12 +69,12 @@ function buildFromBase(base: number, cashOverride: number | null, cardOverride: 
   };
 }
 
-export function calculatePrices(product: ProductPriceInputs, settings: PricingSettings): CalculatedPrices | null {
+export function calculatePrices(product: ProductPriceInputs, settings: PricingSettings, markupPercent?: number | null): CalculatedPrices | null {
   if (product.price_override && product.override_price_cash) {
     return buildFromBase(product.override_price_cash, product.override_price_cash, product.override_price_card ?? null, settings);
   }
   if (product.cost_usd == null || !Number.isFinite(product.cost_usd) || product.cost_usd <= 0) return null;
-  const base = product.cost_usd * effectiveRate(settings);
+  const base = product.cost_usd * effectiveRate(settings, markupPercent);
   return buildFromBase(base, null, null, settings);
 }
 

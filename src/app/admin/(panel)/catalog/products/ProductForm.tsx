@@ -62,6 +62,7 @@ export function ProductForm({
   badgeDefs = [],
   allProducts = [],
   pricingSettings = null,
+  categoryPricing = {},
   cbrUsd = null,
   priceHistory = [],
 }: {
@@ -73,6 +74,7 @@ export function ProductForm({
   badgeDefs?: ProductBadge[];
   allProducts?: RelatedOption[];
   pricingSettings?: PricingSettings | null;
+  categoryPricing?: Record<string, { markup_percent: number; min_margin_rub: number }>;
   cbrUsd?: number | null;
   priceHistory?: PriceHistoryRow[];
 }) {
@@ -148,19 +150,21 @@ export function ProductForm({
   const wCash = Number(watch("price_cash")) || null;
   const wCard = Number(watch("price_card")) || null;
   const costUsd = costRub && costRate ? costRub / costRate : null;
+  const catSlug = watch("category_slug") as string | undefined;
+  const catPricing = catSlug ? categoryPricing[catSlug] : undefined;
+  const catMarkup = catPricing?.markup_percent ?? pricingSettings?.default_markup_percent ?? null;
+  const catMinMarginRub = catPricing?.min_margin_rub ?? 0;
   const formulaActive = !!pricingSettings && type !== "used" && (overrideOn || !!costUsd);
   const preview =
     formulaActive && pricingSettings
       ? calculatePrices(
           { cost_usd: costUsd, price_override: overrideOn, override_price_cash: wCash, override_price_card: wCard },
-          pricingSettings
+          pricingSettings,
+          catMarkup
         )
       : null;
   const marginInfo = preview ? margin(preview.price_cash, costRub) : null;
-  const lowMargin =
-    marginInfo != null && pricingSettings?.min_margin_percent != null
-      ? marginInfo.percent < pricingSettings.min_margin_percent
-      : false;
+  const lowMargin = marginInfo != null && catMinMarginRub > 0 ? marginInfo.rub < catMinMarginRub : false;
   const priceReadonly = !!costUsd && !overrideOn; // считает формула → нал/карта только чтение
 
   const onRecalc = async () => {
@@ -390,7 +394,7 @@ export function ProductForm({
                   <Stat label="12 мес" value={`${formatPrice(preview.credit_12m_monthly)}/мес`} />
                   <Stat label="24 мес" value={`${formatPrice(preview.credit_24m_monthly)}/мес`} />
                 </div>
-                {lowMargin ? <p className="mt-2 text-[12px] font-medium text-sale">Маржа ниже минимальной ({pricingSettings?.min_margin_percent}%)</p> : null}
+                {lowMargin ? <p className="mt-2 text-[12px] font-medium text-sale">Маржа ниже минимальной по категории ({formatPrice(catMinMarginRub)})</p> : null}
                 {isEdit ? (
                   <div className="mt-3 flex items-center gap-3">
                     <button type="button" onClick={onRecalc} disabled={recalcing} className="inline-flex h-8 items-center gap-2 rounded-sm border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface disabled:opacity-60">

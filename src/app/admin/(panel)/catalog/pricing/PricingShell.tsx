@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format-price";
 import { Modal } from "@/components/admin/Modal";
 import { AdminButton, Field, TextInput, Switch, Select } from "@/components/admin/form";
-import { calculatePrices, margin, type PricingSettings } from "@/lib/pricing/calculate";
-import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, recalcSelected, updateProductCost, type PricingSettingsInput } from "./actions";
+import { calculatePrices, type PricingSettings } from "@/lib/pricing/calculate";
+import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, recalcSelected, updateProductCost, updateCategoryPricing, type PricingSettingsInput } from "./actions";
 import { exportPricing, parsePricingFile, applyPricingImport, bulkUpdateCost, type ImportPreviewRow, type BulkOp } from "./io-actions";
 
 function downloadBase64(filename: string, base64: string, mime: string) {
@@ -39,7 +39,6 @@ export type PricingRow = {
 
 const MARKUPS = [0, 1, 1.5, 2, 3];
 const CATEGORY_LABEL: Record<string, string> = { iphone: "iPhone", ipad: "iPad", mac: "Mac", watch: "Apple Watch", airpods: "AirPods", accessories: "Аксессуары", used: "Б/У" };
-const CATEGORY_ORDER = ["iphone", "ipad", "mac", "watch", "airpods", "accessories"];
 const PAGE_SIZES = [20, 50, 100];
 
 function relativeTime(iso: string | null): string {
@@ -53,6 +52,8 @@ function relativeTime(iso: string | null): string {
   return `${Math.round(h / 24)} дн назад`;
 }
 
+export type PricingCategory = { slug: string; title: string; parent_slug: string | null; markup_percent: number; min_margin_rub: number };
+
 export function PricingShell({
   settings,
   course,
@@ -62,7 +63,7 @@ export function PricingShell({
   settings: PricingSettingsInput;
   course: CourseInfo;
   rows: PricingRow[];
-  categories: { slug: string; title: string }[];
+  categories: PricingCategory[];
 }) {
   const router = useRouter();
   const savedRate = r2(settings.working_usd_rate);
@@ -100,7 +101,10 @@ export function PricingShell({
   };
 
   const settingsForCalc: PricingSettings = settings;
-  const min = settings.min_margin_percent;
+  // slug → данные категории (наценка, мин.маржа ₽, название)
+  const catBy = React.useMemo(() => new Map(categories.map((c) => [c.slug, c])), [categories]);
+  const markupOf = (slug: string | null) => (slug && catBy.get(slug)?.markup_percent != null ? catBy.get(slug)!.markup_percent : settings.default_markup_percent);
+  const minMarginOf = (slug: string | null) => (slug ? catBy.get(slug)?.min_margin_rub ?? 0 : 0);
   const delta = course.usd && course.prevUsd ? ((course.usd - course.prevUsd) / course.prevUsd) * 100 : null;
   const deltaEur = course.eur && course.prevEur ? ((course.eur - course.prevEur) / course.prevEur) * 100 : null;
   const dirtyRate = Math.abs(Number(working.replace(",", ".")) - savedRate) > 1e-6 && Number(working.replace(",", ".")) > 0;
@@ -113,8 +117,9 @@ export function PricingShell({
       if (!t.includes(q.trim().toLowerCase())) return false;
     }
     if (lowOnly) {
-      const m = margin(r.price_cash ?? 0, r.cost_rub);
-      if (!m || m.percent >= min) return false;
+      const minRub = minMarginOf(r.category_slug);
+      const mRub = (r.price_cash ?? 0) - (r.cost_rub ?? 0);
+      if (!(r.cost_rub && minRub > 0 && mRub < minRub)) return false;
     }
     return true;
   });
@@ -124,17 +129,15 @@ export function PricingShell({
   const paged = filtered.slice((pageClamped - 1) * pageSize, pageClamped * pageSize);
 
   const groups = React.useMemo(() => {
+    const order = new Map(categories.map((c, i) => [c.slug, i]));
     const map = new Map<string, PricingRow[]>();
     for (const r of paged) {
       const key = r.category_slug ?? "other";
       (map.get(key) ?? map.set(key, []).get(key)!).push(r);
     }
-    const keys = [...map.keys()].sort((a, b) => {
-      const ia = CATEGORY_ORDER.indexOf(a), ib = CATEGORY_ORDER.indexOf(b);
-      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-    });
-    return keys.map((k) => ({ key: k, label: CATEGORY_LABEL[k] ?? k, items: map.get(k)! }));
-  }, [paged]);
+    const keys = [...map.keys()].sort((a, b) => (order.get(a) ?? 999) - (order.get(b) ?? 999));
+    return keys.map((k) => ({ key: k, label: catBy.get(k)?.title ?? CATEGORY_LABEL[k] ?? k, items: map.get(k)! }));
+  }, [paged, categories, catBy]);
 
   const withoutCost = localRows.filter((r) => !r.is_used && r.cost_rub == null).length;
 
@@ -178,7 +181,7 @@ export function PricingShell({
   /* ── inline-правка закупки + пересчёт строки ── */
   const saveCost = async (row: PricingRow, costRub: number | null, costRate: number | null) => {
     const costUsd = costRub && costRate ? costRub / costRate : null;
-    const calc = costUsd && !row.price_override ? calculatePrices({ cost_usd: costUsd, price_override: false }, settingsForCalc) : null;
+    const calc = costUsd && !row.price_override ? calculatePrices({ cost_usd: costUsd, price_override: false }, settingsForCalc, markupOf(row.category_slug)) : null;
     setLocalRows((rs) => rs.map((r) => (r.id === row.id ? {
       ...r, cost_rub: costRub, cost_rate: costRate, cost_usd: costUsd,
       ...(calc ? { price_cash: calc.price_cash, price_card: calc.price_card, credit_6m_monthly: calc.credit_6m_monthly, credit_12m_monthly: calc.credit_12m_monthly, credit_24m_monthly: calc.credit_24m_monthly } : {}),
@@ -372,7 +375,8 @@ export function PricingShell({
                   <th className="w-28 text-right">Нал</th>
                   <th className="w-28 text-right">Карта</th>
                   <th className="w-28 text-right">Кредит 24м</th>
-                  <th className="w-20 text-right">Маржа</th>
+                  <th className="w-20 text-right">Наценка</th>
+                  <th className="w-24 text-right">Маржа ₽</th>
                   <th className="w-24">Статус</th>
                   <th className="w-20"></th>
                 </tr>
@@ -381,10 +385,9 @@ export function PricingShell({
                 {groups.map((g) => (
                   <React.Fragment key={g.key}>
                     <tr className="bg-surface/40">
-                      <td colSpan={11} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">{g.label} · {g.items.length}</td>
+                      <td colSpan={12} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">{g.label} · {g.items.length} · наценка {markupOf(g.key === "other" ? null : g.key)}%</td>
                     </tr>
                     {g.items.map((r) => {
-                      const m = margin(r.price_cash ?? 0, r.cost_rub);
                       return (
                         <tr
                           key={r.id}
@@ -416,7 +419,8 @@ export function PricingShell({
                           <td className="text-right font-semibold text-sale tabular-nums">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</td>
                           <td className="text-right tabular-nums text-ink-muted">{r.price_card != null ? formatPrice(r.price_card) : "—"}</td>
                           <td className="text-right tabular-nums text-ink-muted">{r.credit_24m_monthly != null ? `${formatPrice(r.credit_24m_monthly)}` : "—"}</td>
-                          <td className="text-right"><MarginPill m={m} min={min} /></td>
+                          <td className="text-right tabular-nums text-ink-subtle">{r.price_override ? "—" : `${markupOf(r.category_slug)}%`}</td>
+                          <td className="text-right"><MarginPill rub={r.cost_rub != null && r.price_cash != null ? r.price_cash - r.cost_rub : null} minRub={minMarginOf(r.category_slug)} /></td>
                           <td>
                             <span className="inline-flex items-center gap-1.5">
                               <StatusPill status={r.status} />
@@ -434,7 +438,7 @@ export function PricingShell({
                     })}
                   </React.Fragment>
                 ))}
-                {paged.length === 0 ? <tr><td colSpan={11} className="px-4 py-10 text-center text-ink-muted">Нет товаров по фильтру.</td></tr> : null}
+                {paged.length === 0 ? <tr><td colSpan={12} className="px-4 py-10 text-center text-ink-muted">Нет товаров по фильтру.</td></tr> : null}
               </tbody>
             </table>
           </div>
@@ -442,7 +446,6 @@ export function PricingShell({
           {/* мобильные карточки */}
           <div className="space-y-3 lg:hidden">
             {paged.length === 0 ? <div className="rounded-lg border border-border/60 bg-white px-4 py-8 text-center text-ink-muted">Нет товаров по фильтру.</div> : paged.map((r) => {
-              const m = margin(r.price_cash ?? 0, r.cost_rub);
               return (
                 <div key={r.id} onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button,input,label")) toggleSel(r.id); }} className={cn("cursor-pointer select-none rounded-xl border border-border/60 bg-white p-3", sel.has(r.id) && "ring-1 ring-ink/30")}>
                   <div className="flex items-start gap-3">
@@ -458,7 +461,8 @@ export function PricingShell({
                     <Cell label="Нал"><span className="font-semibold text-sale">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</span></Cell>
                     <Cell label="Карта">{r.price_card != null ? formatPrice(r.price_card) : "—"}</Cell>
                     <div className="flex items-center justify-between gap-2"><span className="text-ink-subtle">Закупка</span>{r.price_override ? <span>фикс</span> : <EditableNum value={r.cost_rub} onSave={(v) => saveCost(r, v, r.cost_rate)} />}</div>
-                    <Cell label="Маржа"><MarginPill m={m} min={min} /></Cell>
+                    <Cell label="Наценка">{r.price_override ? "—" : `${markupOf(r.category_slug)}%`}</Cell>
+                    <Cell label="Маржа ₽"><MarginPill rub={r.cost_rub != null && r.price_cash != null ? r.price_cash - r.cost_rub : null} minRub={minMarginOf(r.category_slug)} /></Cell>
                   </div>
                 </div>
               );
@@ -483,7 +487,7 @@ export function PricingShell({
 
       <p className="text-[12px] text-ink-subtle">Закупку и курс закупа можно править прямо в таблице — цены пересчитываются сразу. Кнопка ↻ в строке пересчитывает товар по формуле. Б/У в формулу не входят.</p>
 
-      <FormulaModal open={formulaOpen} onClose={() => setFormulaOpen(false)} initial={settings} course={course} affected={localRows.filter((r) => !r.is_used && !r.price_override && r.cost_rub != null).length} onSaved={() => { setFormulaOpen(false); router.refresh(); }} />
+      <FormulaModal open={formulaOpen} onClose={() => setFormulaOpen(false)} initial={settings} course={course} categories={categories} affected={localRows.filter((r) => !r.is_used && !r.price_override && r.cost_rub != null).length} onSaved={() => { router.refresh(); }} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onDone={() => { setImportOpen(false); router.refresh(); }} />
 
       <Modal open={!!dialog} onClose={() => setDialog(null)} title={dialog?.title ?? ""}
@@ -527,10 +531,14 @@ function ActionTile({ icon, title, hint, onClick }: { icon: React.ReactNode; tit
   );
 }
 
-function MarginPill({ m, min }: { m: { percent: number; rub: number } | null; min: number }) {
-  if (!m) return null;
-  const cls = m.percent < min ? "bg-sale/10 text-sale" : m.percent >= 15 ? "bg-[#e7f6ee] text-[#0a7d3e]" : "bg-surface text-ink-muted";
-  return <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[12px] font-medium tabular-nums", cls)}>{m.percent.toFixed(0)}%</span>;
+/** Маржа в ₽ с подсветкой по мин.марже категории: зелёный >1.5×, красный <мин. */
+function MarginPill({ rub, minRub }: { rub: number | null; minRub: number }) {
+  if (rub == null) return <span className="text-ink-subtle">—</span>;
+  const cls =
+    minRub > 0 && rub < minRub ? "bg-sale/10 text-sale"
+    : minRub > 0 && rub >= minRub * 1.5 ? "bg-[#e7f6ee] text-[#0a7d3e]"
+    : "bg-surface text-ink-muted";
+  return <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[12px] font-medium tabular-nums", cls)}>{formatPrice(rub)}</span>;
 }
 
 function StatusPill({ status }: { status: string | null }) {
@@ -598,18 +606,17 @@ function InfoTip({ text }: { text: string }) {
 
 /* ── Модалка формулы ── */
 const TOOLTIPS: Record<string, string> = {
-  fx_markup_percent: "Накручивается на курс ЦБ. Например, ЦБ 71 → рабочий курс 78,1. Закладывайте сюда конвертацию и колебания.",
+  default_markup_percent: "Наценка по умолчанию — применяется к категориям, где наценка не задана отдельно. Накручивается на закупочную цену через рабочий курс.",
   card_markup_percent: "На сколько цена картой выше наличных. Закладывайте комиссию эквайринга (1.5–3.5%) и маржу за безнал.",
   credit_6m_markup_percent: "Удорожание для рассрочки 6 мес. Покрывает комиссию банка-партнёра и риск.",
   credit_12m_markup_percent: "Удорожание для рассрочки 12 мес.",
   credit_24m_markup_percent: "Удорожание для рассрочки 24 мес. Стандарт рынка: 23/28/37%.",
   price_rounding: "До какой суммы округляются итоговые цены. Психологически выгоднее круглые числа.",
-  min_margin_percent: "Порог для алёрта. Если после формулы маржа товара ниже — придёт уведомление в Telegram.",
   working_usd_rate: "Курс, по которому считаются цены. Можно тянуть из ЦБ с поправкой.",
   cbr_markup_percent: "Поправка к курсу ЦБ при автообновлении (на конвертацию у эквайринга).",
 };
 
-function FormulaModal({ open, onClose, initial, course, affected, onSaved }: { open: boolean; onClose: () => void; initial: PricingSettingsInput; course: CourseInfo; affected: number; onSaved: () => void }) {
+function FormulaModal({ open, onClose, initial, course, affected, categories, onSaved }: { open: boolean; onClose: () => void; initial: PricingSettingsInput; course: CourseInfo; affected: number; categories: PricingCategory[]; onSaved: () => void }) {
   const [v, setV] = React.useState<PricingSettingsInput>(initial);
   const [saving, setSaving] = React.useState(false);
   React.useEffect(() => { if (open) setV(initial); }, [open, initial]);
@@ -623,6 +630,7 @@ function FormulaModal({ open, onClose, initial, course, affected, onSaved }: { o
     if (res.error) return toast.error(res.error);
     toast.success("Формула сохранена. Нажмите «Пересчитать всё», чтобы применить к ценам.");
     onSaved();
+    onClose();
   };
 
   const numField = (label: string, key: keyof PricingSettingsInput, hint?: string) => (
@@ -640,9 +648,10 @@ function FormulaModal({ open, onClose, initial, course, affected, onSaved }: { o
     <Modal open={open} onClose={onClose} title="Формула расчёта цен" className="max-w-3xl"
       footer={<div className="flex items-center gap-3"><span className="text-[12px] text-ink-subtle">Сохраняет формулу. Затронет {affected} товаров после «Пересчитать всё».</span><AdminButton type="button" loading={saving} onClick={save}>Сохранить</AdminButton></div>}>
       <div className="space-y-4">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Глобальные настройки</p>
         <div className="grid gap-4 sm:grid-cols-3">
           {numField("Рабочий курс USD", "working_usd_rate", course.usd ? `ЦБ: ${course.usd.toFixed(2)}` : undefined)}
-          {numField("Наценка FX, %", "fx_markup_percent")}
+          {numField("Наценка по умолчанию, %", "default_markup_percent")}
           {numField("Округление, ₽", "price_rounding")}
         </div>
         <div className="grid gap-4 sm:grid-cols-4">
@@ -651,13 +660,14 @@ function FormulaModal({ open, onClose, initial, course, affected, onSaved }: { o
           {numField("12 мес, %", "credit_12m_markup_percent")}
           {numField("24 мес, %", "credit_24m_markup_percent")}
         </div>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {numField("Мин. маржа, %", "min_margin_percent")}
+        <div className="grid gap-4 sm:grid-cols-2">
           {numField("Поправка к курсу ЦБ, %", "cbr_markup_percent")}
           <Field label="Автообновление курса ЦБ">
             <div className="flex h-9 items-center"><Switch checked={v.use_cbr_auto} onChange={(on) => set({ use_cbr_auto: on })} label={v.use_cbr_auto ? "Включено" : "Выключено"} /></div>
           </Field>
         </div>
+
+        <CategoryMarkupTable categories={categories} onSaved={onSaved} />
         <div className="grid gap-3 sm:grid-cols-3">
           {[500, 1000, 2000].map((usd) => {
             const p = previewFor(usd);
@@ -677,6 +687,74 @@ function FormulaModal({ open, onClose, initial, course, affected, onSaved }: { o
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** Таблица наценок и мин.маржи по категориям внутри модалки «Формула». */
+function CategoryMarkupTable({ categories, onSaved }: { categories: PricingCategory[]; onSaved: () => void }) {
+  // только листовые категории товаров (не родители-разделы)
+  const leafs = categories.filter((c) => !categories.some((x) => x.parent_slug === c.slug));
+  if (leafs.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Наценки по категориям</p>
+        <InfoTip text="Наценка на закупочную цену (не на курс). Чем выше — тем больше маржа, но дороже для клиента. Телефоны 8–12%, часы/планшеты ~20%, колонки 30–50%. После сохранения пересчитываются только товары этой категории." />
+      </div>
+      <div className="overflow-hidden rounded-lg border border-border/60">
+        <table className="w-full text-[13px]">
+          <thead className="bg-surface/70 text-ink-subtle">
+            <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-medium">
+              <th>Категория</th>
+              <th className="w-28 text-right">Наценка %</th>
+              <th className="w-32 text-right">Мин. маржа ₽</th>
+              <th className="w-24"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {leafs.map((c) => (
+              <CategoryMarkupRow key={c.slug} cat={c} onSaved={onSaved} />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function CategoryMarkupRow({ cat, onSaved }: { cat: PricingCategory; onSaved: () => void }) {
+  const [mk, setMk] = React.useState(String(cat.markup_percent));
+  const [mm, setMm] = React.useState(String(cat.min_margin_rub));
+  const [saving, setSaving] = React.useState(false);
+  React.useEffect(() => { setMk(String(cat.markup_percent)); setMm(String(cat.min_margin_rub)); }, [cat.markup_percent, cat.min_margin_rub]);
+  const dirty = Number(mk) !== cat.markup_percent || Number(mm) !== cat.min_margin_rub;
+  const save = async () => {
+    const mkn = Number(mk.replace(",", ".")), mmn = Number(mm.replace(",", "."));
+    if (!Number.isFinite(mkn) || !Number.isFinite(mmn)) return toast.error("Введите числа");
+    setSaving(true);
+    const res = await updateCategoryPricing(cat.slug, mkn, mmn);
+    setSaving(false);
+    if (res.error) return toast.error(res.error);
+    toast.success(`«${cat.title}»: пересчитано ${res.recalculated ?? 0} товаров`);
+    onSaved();
+  };
+  return (
+    <tr className="border-t border-border/40 [&>td]:px-3 [&>td]:py-1.5">
+      <td className="text-ink">{cat.title}</td>
+      <td className="text-right">
+        <input type="number" min={0} step="0.5" value={mk} onChange={(e) => setMk(e.target.value)} className="h-8 w-20 rounded-md border border-border bg-white px-2 text-right tabular-nums outline-none focus:border-ink/40" />
+      </td>
+      <td className="text-right">
+        <input type="number" min={0} step="100" value={mm} onChange={(e) => setMm(e.target.value)} className="h-8 w-24 rounded-md border border-border bg-white px-2 text-right tabular-nums outline-none focus:border-ink/40" />
+      </td>
+      <td className="text-right">
+        {dirty ? (
+          <button type="button" onClick={save} disabled={saving} className="rounded-md bg-ink px-2.5 py-1 text-[12px] font-medium text-white transition-colors hover:bg-ink/90 disabled:opacity-50">
+            {saving ? "…" : "Сохранить"}
+          </button>
+        ) : null}
+      </td>
+    </tr>
   );
 }
 

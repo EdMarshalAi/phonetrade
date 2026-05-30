@@ -21,7 +21,7 @@ export default async function EditProductPage({
   const db = createSupabaseAdminClient();
   const [{ data: prod }, { data: cats }, { data: varRows }, { data: allProd }, { data: settings }, { data: rate }, { data: history }, optionDefs, badgeDefs] = await Promise.all([
     db.from("products").select("*").eq("id", id).maybeSingle(),
-    db.from("categories").select("slug,title").order("sort"),
+    db.from("categories").select("slug,title,markup_percent,min_margin_rub").order("sort"),
     db.from("product_variants").select("*").eq("product_id", id).order("sort_order"),
     db.from("products").select("id,title,category_slug,image").eq("status", "published").is("deleted_at", null).order("sort"),
     db.from("pricing_settings").select("*").eq("id", 1).maybeSingle(),
@@ -33,18 +33,20 @@ export default async function EditProductPage({
   const pricingSettings = settings
     ? {
         working_usd_rate: Number(settings.working_usd_rate),
-        fx_markup_percent: Number(settings.fx_markup_percent),
+        default_markup_percent: Number(settings.default_markup_percent),
         card_markup_percent: Number(settings.card_markup_percent),
         credit_6m_markup_percent: Number(settings.credit_6m_markup_percent),
         credit_12m_markup_percent: Number(settings.credit_12m_markup_percent),
         credit_24m_markup_percent: Number(settings.credit_24m_markup_percent),
         price_rounding: Number(settings.price_rounding),
-        min_margin_percent: Number(settings.min_margin_percent),
       }
     : null;
 
   if (!prod) notFound();
   const categories = (cats ?? []) as { slug: string; title: string }[];
+  const categoryPricing = Object.fromEntries(
+    (cats ?? []).map((c) => [c.slug as string, { markup_percent: Number(c.markup_percent ?? 10), min_margin_rub: Number(c.min_margin_rub ?? 0) }])
+  );
   const product = { ...prod, id } as ProductValue;
 
   // Галерея берётся из тех же колонок, что и сайт (image + gallery), а не из
@@ -84,6 +86,7 @@ export default async function EditProductPage({
         badgeDefs={badgeDefs}
         allProducts={(allProd ?? []) as { id: string; title: string; category_slug: string; image: string | null }[]}
         pricingSettings={pricingSettings}
+        categoryPricing={categoryPricing}
         cbrUsd={rate?.usd != null ? Number(rate.usd) : null}
         priceHistory={(history ?? []).map((h) => ({
           id: h.id as number,

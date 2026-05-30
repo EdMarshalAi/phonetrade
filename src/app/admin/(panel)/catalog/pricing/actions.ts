@@ -13,13 +13,12 @@ const settingsSchema = z.object({
   working_usd_rate: z.coerce.number().min(0),
   use_cbr_auto: z.boolean().default(false),
   cbr_markup_percent: z.coerce.number().min(0).default(0),
-  fx_markup_percent: z.coerce.number().min(0).default(10),
+  default_markup_percent: z.coerce.number().min(0).default(10),
   card_markup_percent: z.coerce.number().min(0).default(15),
   credit_6m_markup_percent: z.coerce.number().min(0).default(23),
   credit_12m_markup_percent: z.coerce.number().min(0).default(28),
   credit_24m_markup_percent: z.coerce.number().min(0).default(37),
   price_rounding: z.coerce.number().int().min(1).default(1000),
-  min_margin_percent: z.coerce.number().min(0).default(5),
 });
 export type PricingSettingsInput = z.infer<typeof settingsSchema>;
 
@@ -30,27 +29,31 @@ async function notifyRecalc(count: number, rate: number) {
   } catch {}
 }
 
-/** Проверяет товары с маржой ниже минимума и шлёт алёрт в Telegram. */
+/** Проверяет товары с маржой (₽) ниже минимума категории и шлёт алёрт в Telegram. */
 async function checkLowMargin() {
   try {
     const db = createSupabaseAdminClient();
-    const { data: s } = await db.from("pricing_settings").select("min_margin_percent").eq("id", 1).maybeSingle();
-    const min = Number(s?.min_margin_percent ?? 5);
+    const { data: cats } = await db.from("categories").select("slug, min_margin_rub");
+    const minBySlug = new Map<string, number>((cats ?? []).map((c) => [c.slug as string, Number(c.min_margin_rub ?? 0)]));
     const { data: prods } = await db
       .from("products")
-      .select("title, price_cash, cost_rub")
+      .select("title, price_cash, cost_rub, category_slug")
       .is("deleted_at", null)
       .neq("type", "used")
       .gt("cost_rub", 0)
       .limit(5000);
     const low = (prods ?? [])
-      .map((p) => ({ title: p.title as string, m: ((Number(p.price_cash) - Number(p.cost_rub)) / Number(p.cost_rub)) * 100 }))
-      .filter((x) => Number.isFinite(x.m) && x.m < min)
-      .sort((a, b) => a.m - b.m);
+      .map((p) => {
+        const min = minBySlug.get(p.category_slug as string) ?? 0;
+        const rub = Number(p.price_cash) - Number(p.cost_rub);
+        return { title: p.title as string, rub, min, below: Number.isFinite(rub) && rub < min };
+      })
+      .filter((x) => x.below)
+      .sort((a, b) => a.rub - b.rub);
     if (low.length === 0) return;
     const chats = await telegramRecipientsFor("pricing_below_margin");
     await sendTelegram(
-      `⚠️ ${low.length} товаров с маржой ниже минимума (${min}%). Самый низкий: ${low[0].title} (${low[0].m.toFixed(0)}%).`,
+      `⚠️ ${low.length} товаров с маржой ниже минимума категории. Самый низкий: ${low[0].title} (${Math.round(low[0].rub)} ₽ при минимуме ${Math.round(low[0].min)} ₽).`,
       chats.length ? chats : undefined
     );
   } catch {}
@@ -185,6 +188,45 @@ export async function updateProductCost(id: string, cost_rub: number | null, cos
     return {};
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка сохранения" };
+  }
+}
+
+/** Сохранить наценку/мин.маржу категории и пересчитать её товары по формуле. */
+export async function updateCategoryPricing(
+  slug: string,
+  markup_percent: number,
+  min_margin_rub: number
+): Promise<{ error?: string; recalculated?: number }> {
+  const admin = await requireAdmin([...ROLES]);
+  if (!slug || !Number.isFinite(markup_percent) || markup_percent < 0 || !Number.isFinite(min_margin_rub) || min_margin_rub < 0) {
+    return { error: "Некорректные значения" };
+  }
+  try {
+    let count = 0;
+    await adminMutation({
+      roles: [...ROLES],
+      action: "settings_change",
+      entityType: "category",
+      entityId: slug,
+      changes: { markup_percent, min_margin_rub },
+      revalidate: ["/", "/catalog", `/category/${slug}`, "/admin/catalog/pricing"],
+      run: async (db) => {
+        const { error } = await db.from("categories").update({ markup_percent, min_margin_rub, updated_at: new Date().toISOString() }).eq("slug", slug);
+        if (error) throw error;
+        // id-шники товаров категории → точечный пересчёт
+        const { data: prods } = await db.from("products").select("id").eq("category_slug", slug).is("deleted_at", null).neq("type", "used");
+        const ids = (prods ?? []).map((p) => p.id as string);
+        if (ids.length) {
+          const { data, error: e2 } = await db.rpc("recalculate_all_prices", { p_reason: "category_markup_edit", p_user_id: admin.id, p_ids: ids });
+          if (e2) throw e2;
+          count = typeof data === "number" ? data : 0;
+        }
+      },
+    });
+    await checkLowMargin();
+    return { recalculated: count };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Ошибка сохранения наценки категории" };
   }
 }
 

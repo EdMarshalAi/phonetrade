@@ -28,20 +28,19 @@ export default async function PricingPage() {
       .order("category_slug")
       .order("title")
       .limit(5000),
-    db.from("categories").select("slug,title").order("sort"),
+    db.from("categories").select("slug,title,parent_slug,sort,markup_percent,min_margin_rub").order("sort"),
   ]);
 
   const settings: PricingSettingsInput = {
     working_usd_rate: num(s?.working_usd_rate) ?? 90,
     use_cbr_auto: !!s?.use_cbr_auto,
     cbr_markup_percent: num(s?.cbr_markup_percent) ?? 0,
-    fx_markup_percent: num(s?.fx_markup_percent) ?? 10,
+    default_markup_percent: num(s?.default_markup_percent) ?? 10,
     card_markup_percent: num(s?.card_markup_percent) ?? 15,
     credit_6m_markup_percent: num(s?.credit_6m_markup_percent) ?? 23,
     credit_12m_markup_percent: num(s?.credit_12m_markup_percent) ?? 28,
     credit_24m_markup_percent: num(s?.credit_24m_markup_percent) ?? 37,
     price_rounding: num(s?.price_rounding) ?? 1000,
-    min_margin_percent: num(s?.min_margin_percent) ?? 5,
   };
 
   const latest = rates?.[0];
@@ -76,7 +75,13 @@ export default async function PricingPage() {
     price_override: !!p.price_override,
   }));
 
-  const categories = (cats ?? []).map((c) => ({ slug: c.slug as string, title: c.title as string }));
+  const categories = (cats ?? []).map((c) => ({
+    slug: c.slug as string,
+    title: c.title as string,
+    parent_slug: (c.parent_slug as string | null) ?? null,
+    markup_percent: num(c.markup_percent) ?? 10,
+    min_margin_rub: num(c.min_margin_rub) ?? 0,
+  }));
 
   return (
     <>
