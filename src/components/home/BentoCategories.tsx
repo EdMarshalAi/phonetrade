@@ -61,9 +61,10 @@ export function BentoCategories({ categories, tiles }: Props) {
             {tiles.map((t) => {
               const { size, span } = SIZE_MAP[t.size] ?? SIZE_MAP.medium;
               const title = t.custom_title || t.category_title || "Категория";
-              // Картинка категории — главный источник (меняется в «Каталог → Категории»);
-              // custom_image_url оставлен как фолбэк для плиток без категории.
-              const image = t.category_image || t.custom_image_url || null;
+              // Картинка плитки задаётся здесь же, в «Блоки на главной → Bento-плитки»
+              // (custom_image_url) — это главный источник. Если не задана — берём
+              // картинку категории как фолбэк.
+              const image = t.custom_image_url || t.category_image || null;
               const href = t.category_slug ? `/category/${t.category_slug}` : "#";
               return (
                 <BentoCard
