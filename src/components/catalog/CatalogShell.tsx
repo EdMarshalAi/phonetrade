@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import type { CategoryConfig } from "@/lib/catalog/category-config";
 import type { FacetOptions } from "@/lib/catalog/filters";
 import {
@@ -24,11 +25,13 @@ type Props = {
   facetOptions: FacetOptions;
   /** SEO-блок (HTML) из админки. Если задан — заменяет config.seo. */
   seoHtml?: string | null;
+  /** Подкатегории (для родительской категории) — ссылки на дочерние страницы. */
+  subcategories?: { slug: string; title: string }[];
 };
 
 const PAGE_SIZE = 12;
 
-export function CatalogShell({ config, products, facetOptions, seoHtml }: Props) {
+export function CatalogShell({ config, products, facetOptions, seoHtml, subcategories = [] }: Props) {
   const { filters, sort, setSort, toggleValue, reset, setFilters } =
     useCatalogFilters();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -57,6 +60,24 @@ export function CatalogShell({ config, products, facetOptions, seoHtml }: Props)
         description={config.description}
         total={filteredAndSorted.length}
       />
+
+      {subcategories.length > 0 && (
+        <section className="bg-bg">
+          <div className="container-page pb-2 pt-1">
+            <div className="flex flex-wrap gap-2">
+              {subcategories.map((s) => (
+                <Link
+                  key={s.slug}
+                  href={`/category/${s.slug}`}
+                  className="inline-flex items-center rounded-full border border-border/70 bg-white px-4 py-2 text-[13.5px] font-medium text-ink transition-colors hover:border-ink/40 hover:bg-surface"
+                >
+                  {s.title}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {facetOptions.model && facetOptions.model.length > 0 && (
         <section className="bg-bg">

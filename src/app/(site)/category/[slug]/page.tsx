@@ -40,10 +40,14 @@ export default async function CategoryPage({
   const config = await resolveConfig(slug);
   if (!config) notFound();
 
-  const [products, meta] = await Promise.all([
+  const [products, meta, allCategories] = await Promise.all([
     getProductsByCategory(config.slug),
     getCategoryMeta(slug),
+    getCategories().catch(() => []),
   ]);
+  const subcategories = allCategories
+    .filter((c) => c.parentSlug === config.slug)
+    .map((c) => ({ slug: c.slug, title: c.title }));
 
   // Фильтры категории: из админки (categories.available_filters) или фолбэк на код-конфиг.
   const enabledFacets =
@@ -66,6 +70,7 @@ export default async function CategoryPage({
       products={products}
       facetOptions={facetOptions}
       seoHtml={meta?.seo_text ?? null}
+      subcategories={subcategories}
     />
   );
 }
