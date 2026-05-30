@@ -4,6 +4,8 @@ import { getNewProducts } from "@/lib/products";
 import { ProductCard } from "@/components/product/ProductCard";
 import { plural } from "@/lib/utils/plural";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Новинки Apple",
   description: "Свежие поступления техники Apple с гарантией PhoneTrade в Белгороде.",

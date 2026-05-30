@@ -7,6 +7,8 @@ import { getProductsByCategory } from "@/lib/products";
 import { getCategoryConfig } from "@/lib/catalog/category-config";
 import { plural } from "@/lib/utils/plural";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Каталог Apple — все категории",
   description:
