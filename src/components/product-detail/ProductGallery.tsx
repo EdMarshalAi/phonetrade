@@ -31,10 +31,10 @@ export function ProductGallery({ product }: Props) {
                 aria-label={`Фото ${i + 1}`}
                 aria-current={i === index}
                 className={cn(
-                  "relative block size-16 md:size-20 rounded-2xl overflow-hidden bg-surface border-2 transition-colors",
+                  "relative block size-16 md:size-20 rounded-2xl overflow-hidden bg-white border-2 transition-colors",
                   i === index
                     ? "border-ink"
-                    : "border-transparent hover:border-border"
+                    : "border-border/60 hover:border-border"
                 )}
               >
                 <Image
@@ -51,7 +51,7 @@ export function ProductGallery({ product }: Props) {
         </ul>
       )}
 
-      <div className="relative flex-1 rounded-3xl bg-surface overflow-hidden aspect-square">
+      <div className="relative flex-1 rounded-3xl bg-white border border-border/60 overflow-hidden aspect-square">
         <ProductBadges badges={product.badges} className="absolute top-5 left-5 z-10 max-w-[calc(100%-2.5rem)]" />
 
         <AnimatePresence mode="wait" initial={false}>
