@@ -3,31 +3,27 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/admin/auth";
 import { PageHeader, Panel, PanelHeader, PanelTitle } from "@/components/admin/ui";
 import { Table, THead, TH, TBody, TR, TD, EmptyState } from "@/components/admin/table";
-import { TimeSeriesChart, DonutChart, BarsChart, type SeriesPoint } from "@/components/admin/Charts";
-import { FilterSelect } from "@/components/admin/ListControls";
+import { TimeSeriesChart, DonutChart, type SeriesPoint } from "@/components/admin/Charts";
+import { PeriodPicker } from "@/components/admin/analytics/PeriodPicker";
+import { AnalyticsTabs } from "@/components/admin/analytics/AnalyticsTabs";
+import { KpiCard, KpiRow } from "@/components/admin/analytics/KpiCard";
+import { getDateRange, getPreviousPeriod, parsePreset, rangeLabel, daysInRange, type Range } from "@/lib/analytics/dateRange";
+import { formatNumber, formatPercent } from "@/lib/analytics/format";
 
 export const metadata: Metadata = { title: "Аналитика сайта" };
 
-/* ── helpers ─────────────────────────────────────────────────────────────── */
+const TABS = [
+  { key: "overview", label: "Обзор" },
+  { key: "audience", label: "Аудитория" },
+  { key: "behavior", label: "Поведение" },
+  { key: "sources", label: "Источники" },
+  { key: "tech", label: "Технические" },
+];
 
-function lastNDays(n: number): string[] {
-  const days: string[] = [];
-  const now = new Date();
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(now.getDate() - i);
-    days.push(d.toISOString().slice(0, 10));
-  }
-  return days;
-}
+const DEVICE_LABELS: Record<string, string> = { desktop: "Десктоп", mobile: "Мобильный", tablet: "Планшет", "—": "Неизвестно" };
 
-function sinceIso(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - days);
-  return d.toISOString();
-}
+function fmt(n: number) { return n.toLocaleString("ru-RU"); }
 
-/** Классифицирует referrer/utm в 5 каналов. */
 function classifySource(referrer: string | null, utm: Record<string, string> | null): string {
   const medium = utm?.utm_medium ?? utm?.medium ?? "";
   const source = utm?.utm_source ?? utm?.source ?? "";
@@ -43,510 +39,158 @@ function classifySource(referrer: string | null, utm: Record<string, string> | n
   return "Прямые";
 }
 
-function fmt(n: number): string {
-  return n.toLocaleString("ru-RU");
-}
+type ViewRow = {
+  path: string; referrer: string | null; utm: Record<string, string> | null;
+  session_id: string | null; visitor_id: string | null; device_type: string | null;
+  city: string | null; created_at: string;
+};
+type SessionRow = { id: string; is_bounce: boolean | null; pages_count: number | null };
 
-function pct(a: number, b: number): string {
-  if (!b) return "0%";
-  return `${((a / b) * 100).toFixed(1)}%`;
-}
+async function loadSite(db: ReturnType<typeof createSupabaseAdminClient>, range: Range) {
+  const from = range.from.toISOString();
+  const to = range.to.toISOString();
+  const [{ data: viewsRaw }, { data: sessionsRaw }, { count: leadsCount }, { count: ordersCount }] = await Promise.all([
+    db.from("page_views").select("path,referrer,utm,session_id,visitor_id,device_type,city,created_at").gte("created_at", from).lte("created_at", to).limit(20000),
+    db.from("sessions").select("id,is_bounce,pages_count").gte("created_at", from).lte("created_at", to).limit(20000),
+    db.from("leads").select("id", { count: "exact", head: true }).gte("created_at", from).lte("created_at", to),
+    db.from("orders").select("id", { count: "exact", head: true }).is("deleted_at", null).gte("created_at", from).lte("created_at", to),
+  ]);
+  const views = (viewsRaw ?? []) as ViewRow[];
+  const sessions = (sessionsRaw ?? []) as SessionRow[];
 
-/* ── KPI card ────────────────────────────────────────────────────────────── */
-function KpiCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  return (
-    <div className="rounded-md border border-border/70 bg-white px-5 py-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.04em] text-ink-subtle">{label}</p>
-      <p className="mt-1.5 text-2xl font-semibold tracking-tight text-ink">{value}</p>
-      {sub ? <p className="mt-0.5 text-[12px] text-ink-subtle">{sub}</p> : null}
-    </div>
-  );
-}
+  const visitors = new Set(views.map((v) => v.visitor_id ?? v.session_id)).size;
+  const pageviews = views.length;
+  const sessionPages: Record<string, number> = {};
+  for (const v of views) { const s = v.session_id ?? "—"; sessionPages[s] = (sessionPages[s] ?? 0) + 1; }
+  const totalSessions = sessions.length || Object.keys(sessionPages).length;
+  const bounceSessions = sessions.length
+    ? sessions.filter((s) => s.is_bounce).length
+    : Object.values(sessionPages).filter((c) => c === 1).length;
+  const bounce = totalSessions ? (bounceSessions / totalSessions) * 100 : 0;
+  const depth = totalSessions ? pageviews / totalSessions : 0;
+  const conversion = visitors ? ((ordersCount ?? 0) / visitors) * 100 : 0;
 
-/* ── generic empty wrapper ───────────────────────────────────────────────── */
-function ChartEmpty() {
-  return (
-    <EmptyState
-      title="Данных пока нет"
-      hint="Копятся по мере трафика на сайте."
-    />
-  );
+  return {
+    views, sessions, visitors, pageviews, totalSessions, bounce, depth, conversion,
+    leads: leadsCount ?? 0, orders: ordersCount ?? 0,
+  };
 }
-
-/* ── funnel step row ─────────────────────────────────────────────────────── */
-function FunnelRow({
-  label,
-  count,
-  fromFirst,
-  dropOff,
-}: {
-  label: string;
-  count: number;
-  fromFirst: string;
-  dropOff: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 py-2.5 border-b border-border/50 last:border-0">
-      <div className="flex-1 min-w-0">
-        <p className="text-[14px] text-ink truncate">{label}</p>
-      </div>
-      <span className="text-[14px] font-medium text-ink w-16 text-right">{fmt(count)}</span>
-      <span className="text-[13px] text-ink-muted w-14 text-right">{fromFirst}</span>
-      <span className="text-[12px] text-ink-subtle w-14 text-right">{dropOff}</span>
-    </div>
-  );
-}
-
-/* ── page ────────────────────────────────────────────────────────────────── */
 
 export default async function SiteAnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireAdmin(["admin","manager","analytics"]);
-
-  const sp = await searchParams;
-  const days = [7, 30, 90].includes(Number(sp.days)) ? Number(sp.days) : 30;
-  const since = sinceIso(days);
+  await requireAdmin(["admin", "manager", "analytics"]);
+  const params = await searchParams;
+  const tab = TABS.some((t) => t.key === params.tab) ? (params.tab as string) : "overview";
+  const period = parsePreset(typeof params.period === "string" ? params.period : undefined);
+  const compare = params.compare !== "false";
+  const range = getDateRange(period);
+  const prevRange = getPreviousPeriod(range);
 
   const db = createSupabaseAdminClient();
-
-  // Parallel DB fetches
-  const [
-    { data: viewsRaw },
-    { data: sessionsRaw },
-    { count: leadsCount },
-    { count: ordersCount },
-    { data: funnelRaw },
-    { data: searchRaw },
-    { data: heroEventsRaw },
-    { data: heroSlidesRaw },
-  ] = await Promise.all([
-    db
-      .from("page_views")
-      .select("path,referrer,utm,session_id,visitor_id,device_type,city,created_at")
-      .gte("created_at", since)
-      .limit(5000),
-    db
-      .from("sessions")
-      .select("id,is_bounce,pages_count")
-      .gte("created_at", since)
-      .limit(10000),
-    db
-      .from("leads")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", since),
-    db
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", since),
-    db
-      .from("funnel_events")
-      .select("event_type,session_id,created_at")
-      .gte("created_at", since)
-      .limit(20000),
-    db
-      .from("search_queries")
-      .select("query,normalized_query,results_count,created_at")
-      .gte("created_at", since)
-      .order("created_at", { ascending: false })
-      .limit(5000),
-    db
-      .from("hero_slide_events")
-      .select("slide_id,event_type,created_at")
-      .gte("created_at", since)
-      .limit(10000),
-    db.from("hero_slides").select("id,title"),
+  const [cur, prev] = await Promise.all([
+    loadSite(db, range),
+    compare ? loadSite(db, prevRange) : Promise.resolve(null),
   ]);
 
-  // ── Normalise rows ────────────────────────────────────────────────────────
-  type ViewRow = {
-    path: string;
-    referrer: string | null;
-    utm: Record<string, string> | null;
-    session_id: string | null;
-    visitor_id: string | null;
-    device_type: string | null;
-    city: string | null;
-    created_at: string;
-  };
-  const views: ViewRow[] = (viewsRaw ?? []) as ViewRow[];
-
-  type SessionRow = { id: string; is_bounce: boolean | null; pages_count: number | null };
-  const sessions: SessionRow[] = (sessionsRaw ?? []) as SessionRow[];
-
-  type FunnelRow2 = { event_type: string; session_id: string | null; created_at: string };
-  const funnelEvents: FunnelRow2[] = (funnelRaw ?? []) as FunnelRow2[];
-
-  type SearchRow = { query: string; normalized_query: string | null; results_count: number; created_at: string };
-  const searchRows: SearchRow[] = (searchRaw ?? []) as SearchRow[];
-
-  type HeroEvent = { slide_id: string | null; event_type: string; created_at: string };
-  const heroEvents: HeroEvent[] = (heroEventsRaw ?? []) as HeroEvent[];
-
-  type HeroSlide = { id: string; title: string | null };
-  const heroSlides: HeroSlide[] = (heroSlidesRaw ?? []) as HeroSlide[];
-
-  // ── KPIs ─────────────────────────────────────────────────────────────────
-
-  // Unique visitors (prefer visitor_id, fallback session_id)
-  const uniqueVisitors = new Set(views.map((v) => v.visitor_id ?? v.session_id)).size;
-  const totalPageViews = views.length;
-
-  // Sessions: из таблицы sessions если заполнена (cron), иначе выводим из
-  // page_views по session_id — работает без cron-агрегации.
-  const sessionPageCounts: Record<string, number> = {};
-  for (const v of views) {
-    const sid = v.session_id ?? "—";
-    sessionPageCounts[sid] = (sessionPageCounts[sid] ?? 0) + 1;
-  }
-  const derivedSessions = Object.keys(sessionPageCounts).length;
-  const totalSessions = sessions.length || derivedSessions;
-  const bounceSessions = sessions.length
-    ? sessions.filter((s) => s.is_bounce).length
-    : Object.values(sessionPageCounts).filter((c) => c === 1).length;
-  const bounceRate = totalSessions > 0 ? (bounceSessions / totalSessions) * 100 : 0;
-  const avgDepth = totalSessions > 0 ? (totalPageViews / totalSessions).toFixed(1) : "—";
-
-  // Conversion
-  const convRate =
-    uniqueVisitors > 0 ? (((ordersCount ?? 0) / uniqueVisitors) * 100).toFixed(2) : "0.00";
-
-  // ── Views by day ─────────────────────────────────────────────────────────
-  const byDay: Record<string, number> = {};
-  for (const v of views) {
+  // дневные ряды (текущий период) для sparkline и графика
+  const dayKeys = daysInRange(range);
+  const viewsByDayMap: Record<string, number> = {};
+  const visByDay: Record<string, Set<string>> = {};
+  for (const v of cur.views) {
     const d = v.created_at.slice(0, 10);
-    byDay[d] = (byDay[d] ?? 0) + 1;
+    viewsByDayMap[d] = (viewsByDayMap[d] ?? 0) + 1;
+    (visByDay[d] ??= new Set()).add(v.visitor_id ?? v.session_id ?? "");
   }
-  const dayLabels = lastNDays(days);
-  const viewsByDay: SeriesPoint[] = dayLabels.map((d) => ({
-    label: d.slice(5).replace("-", "."),
-    value: byDay[d] ?? 0,
-  }));
+  const pvSpark = dayKeys.map((d) => viewsByDayMap[d] ?? 0);
+  const visSpark = dayKeys.map((d) => visByDay[d]?.size ?? 0);
+  const viewsSeries: SeriesPoint[] = dayKeys.map((d) => ({ label: d.slice(5).replace("-", "."), value: viewsByDayMap[d] ?? 0 }));
 
-  // ── Funnel ───────────────────────────────────────────────────────────────
-  const FUNNEL_STEPS: { key: string; label: string }[] = [
-    { key: "view_page", label: "Просмотр страницы" },
-    { key: "view_product", label: "Просмотр товара" },
-    { key: "add_to_cart", label: "Добавление в корзину" },
-    { key: "begin_checkout", label: "Начало оформления" },
-    { key: "submit_order", label: "Отправка заказа" },
-    { key: "pay_order", label: "Оплата заказа" },
-  ];
-  const funnelCounts: Record<string, number> = {};
-  for (const ev of funnelEvents) {
-    funnelCounts[ev.event_type] = (funnelCounts[ev.event_type] ?? 0) + 1;
-  }
-  const funnelStepsData = FUNNEL_STEPS.map((s) => ({ ...s, count: funnelCounts[s.key] ?? 0 }));
-  const funnelFirst = funnelStepsData[0]?.count ?? 0;
-  const hasFunnel = funnelStepsData.some((s) => s.count > 0);
-
-  // ── Traffic sources ───────────────────────────────────────────────────────
+  // источники / устройства / топ-страниц (текущий период)
   const sourceCount: Record<string, number> = {};
-  for (const v of views) {
-    const src = classifySource(v.referrer, v.utm);
-    sourceCount[src] = (sourceCount[src] ?? 0) + 1;
-  }
-  const sourceData: SeriesPoint[] = Object.entries(sourceCount)
-    .sort((a, b) => b[1] - a[1])
-    .map(([label, value]) => ({ label, value }));
-
-  // ── Top pages ─────────────────────────────────────────────────────────────
+  const deviceCount: Record<string, number> = {};
   const pathViews: Record<string, number> = {};
   const pathVisitors: Record<string, Set<string>> = {};
-  for (const v of views) {
+  for (const v of cur.views) {
+    const src = classifySource(v.referrer, v.utm);
+    sourceCount[src] = (sourceCount[src] ?? 0) + 1;
+    const dev = v.device_type ?? "—";
+    deviceCount[dev] = (deviceCount[dev] ?? 0) + 1;
     pathViews[v.path] = (pathViews[v.path] ?? 0) + 1;
-    if (!pathVisitors[v.path]) pathVisitors[v.path] = new Set();
-    pathVisitors[v.path].add(v.visitor_id ?? v.session_id ?? "");
+    (pathVisitors[v.path] ??= new Set()).add(v.visitor_id ?? v.session_id ?? "");
   }
-  const topPages = Object.entries(pathViews)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([path, pv]) => ({ path, views: pv, visitors: pathVisitors[path]?.size ?? 0 }));
+  const sourceData: SeriesPoint[] = Object.entries(sourceCount).sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ label, value }));
+  const deviceData: SeriesPoint[] = Object.entries(deviceCount).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ label: DEVICE_LABELS[k] ?? k, value: v }));
+  const topPages = Object.entries(pathViews).sort((a, b) => b[1] - a[1]).slice(0, 10)
+    .map(([path, v]) => ({ path, views: v, visitors: pathVisitors[path]?.size ?? 0 }));
 
-  // ── Devices ───────────────────────────────────────────────────────────────
-  const deviceCount: Record<string, number> = {};
-  for (const v of views) {
-    const d = v.device_type ?? "—";
-    deviceCount[d] = (deviceCount[d] ?? 0) + 1;
-  }
-  const DEVICE_LABELS: Record<string, string> = { desktop: "Десктоп", mobile: "Мобильный", tablet: "Планшет", "—": "Неизвестно" };
-  const deviceData: SeriesPoint[] = Object.entries(deviceCount)
-    .sort((a, b) => b[1] - a[1])
-    .map(([k, v]) => ({ label: DEVICE_LABELS[k] ?? k, value: v }));
-
-  // ── Search queries ────────────────────────────────────────────────────────
-  const queryCount: Record<string, number> = {};
-  for (const s of searchRows) {
-    const key = s.normalized_query ?? s.query;
-    queryCount[key] = (queryCount[key] ?? 0) + 1;
-  }
-  const topQueries = Object.entries(queryCount)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([query, count]) => ({ query, count }));
-
-  const noResultQueries: Record<string, number> = {};
-  for (const s of searchRows.filter((r) => r.results_count === 0)) {
-    const key = s.normalized_query ?? s.query;
-    noResultQueries[key] = (noResultQueries[key] ?? 0) + 1;
-  }
-  const topNoResult = Object.entries(noResultQueries)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([query, count]) => ({ query, count }));
-
-  // ── Hero CTR ──────────────────────────────────────────────────────────────
-  const heroSlideMap = Object.fromEntries(heroSlides.map((s) => [s.id, s.title ?? s.id]));
-  const heroViews: Record<string, number> = {};
-  const heroClicks: Record<string, number> = {};
-  for (const ev of heroEvents) {
-    const sid = ev.slide_id ?? "unknown";
-    if (ev.event_type === "view") heroViews[sid] = (heroViews[sid] ?? 0) + 1;
-    else if (ev.event_type === "click") heroClicks[sid] = (heroClicks[sid] ?? 0) + 1;
-  }
-  const heroRows = Object.keys({ ...heroViews, ...heroClicks })
-    .map((id) => ({
-      id,
-      title: heroSlideMap[id] ?? id,
-      views: heroViews[id] ?? 0,
-      clicks: heroClicks[id] ?? 0,
-      ctr: heroViews[id] ? (((heroClicks[id] ?? 0) / heroViews[id]) * 100).toFixed(1) + "%" : "—",
-    }))
-    .sort((a, b) => b.views - a.views);
-
-  // ── period label ──────────────────────────────────────────────────────────
-  const periodLabel = days === 7 ? "7 дней" : days === 90 ? "90 дней" : "30 дней";
+  const vs = (val: string) => (compare && prev ? `vs ${val} в прошлом периоде` : undefined);
 
   return (
     <>
       <PageHeader
         title="Аналитика сайта"
-        description={`Данные за последние ${periodLabel}. Просмотров: ${fmt(totalPageViews)}, уникальных посетителей: ${fmt(uniqueVisitors)}.`}
-        actions={
-          <FilterSelect
-            param="days"
-            allLabel="30 дней"
-            options={[
-              { value: "7", label: "7 дней" },
-              { value: "90", label: "90 дней" },
-            ]}
-          />
-        }
+        description={`${rangeLabel(range)}${compare ? ` · сравнение с ${rangeLabel(prevRange)}` : ""}`}
       />
-
-      {/* KPI grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiCard label="Уник. посетители" value={fmt(uniqueVisitors)} />
-        <KpiCard label="Просмотры страниц" value={fmt(totalPageViews)} />
-        <KpiCard label="Заявки" value={fmt(leadsCount ?? 0)} />
-        <KpiCard label="Конверсия в заказ" value={`${convRate}%`} sub={`${ordersCount ?? 0} заказов`} />
-        <KpiCard label="Средняя глубина" value={String(avgDepth)} sub="стр./сессия" />
-        <KpiCard label="Bounce rate" value={`${bounceRate.toFixed(1)}%`} sub={`из ${fmt(totalSessions)} сессий`} />
+      <div className="sticky top-14 z-20 -mx-4 mb-1 border-b border-border/60 bg-bg/85 px-4 py-2 backdrop-blur-sm lg:-mx-8 lg:px-8">
+        <PeriodPicker period={period} compare={compare} />
       </div>
+      <AnalyticsTabs tabs={TABS} active={tab} />
 
-      {/* Views by day */}
-      <Panel>
-        <PanelHeader>
-          <PanelTitle>Просмотры по дням</PanelTitle>
-        </PanelHeader>
-        <div className="p-4">
-          {totalPageViews === 0 ? (
-            <ChartEmpty />
-          ) : (
-            <TimeSeriesChart data={viewsByDay} format="number" />
-          )}
+      {tab !== "overview" ? (
+        <EmptyState title="Раздел готовится" hint="Этот таб аналитики появится в ближайшем обновлении. Сейчас доступен «Обзор» с ключевыми показателями и сравнением периодов." />
+      ) : (
+        <div className="space-y-6">
+          <KpiRow>
+            <KpiCard metric="visitors" value={formatNumber(cur.visitors)} current={cur.visitors} previous={prev?.visitors} spark={visSpark} previousLabel={prev ? vs(formatNumber(prev.visitors)) : undefined} />
+            <KpiCard metric="pageviews" value={formatNumber(cur.pageviews)} current={cur.pageviews} previous={prev?.pageviews} spark={pvSpark} previousLabel={prev ? vs(formatNumber(prev.pageviews)) : undefined} />
+            <KpiCard metric="leads" value={formatNumber(cur.leads)} current={cur.leads} previous={prev?.leads} previousLabel={prev ? vs(formatNumber(prev.leads)) : undefined} />
+            <KpiCard metric="conversion" value={formatPercent(cur.conversion, 2)} current={cur.conversion} previous={prev?.conversion} previousLabel={`${cur.orders} заказов`} />
+            <KpiCard metric="depth" value={cur.depth.toFixed(1).replace(".", ",")} current={cur.depth} previous={prev?.depth} previousLabel={`${fmt(cur.totalSessions)} сессий`} />
+            <KpiCard metric="bounce" value={formatPercent(cur.bounce)} current={cur.bounce} previous={prev?.bounce} previousLabel={prev ? vs(formatPercent(prev.bounce)) : undefined} />
+          </KpiRow>
+
+          <Panel>
+            <PanelHeader><PanelTitle>Просмотры по дням</PanelTitle></PanelHeader>
+            <div className="p-4">
+              {cur.pageviews === 0 ? <EmptyState title="Данных пока нет" hint="Копятся по мере трафика на сайте." /> : <TimeSeriesChart data={viewsSeries} format="number" />}
+            </div>
+          </Panel>
+
+          <div className="grid gap-5 lg:grid-cols-2">
+            <Panel>
+              <PanelHeader><PanelTitle>Источники трафика</PanelTitle></PanelHeader>
+              <div className="p-4">{sourceData.length === 0 ? <EmptyState title="Данных пока нет" /> : <DonutChart data={sourceData} format="number" />}</div>
+            </Panel>
+            <Panel>
+              <PanelHeader><PanelTitle>Устройства</PanelTitle></PanelHeader>
+              <div className="p-4">{deviceData.length === 0 ? <EmptyState title="Данных пока нет" /> : <DonutChart data={deviceData} format="number" />}</div>
+            </Panel>
+          </div>
+
+          <Panel>
+            <PanelHeader><PanelTitle>Топ-страниц</PanelTitle></PanelHeader>
+            {topPages.length === 0 ? (
+              <div className="p-5"><EmptyState title="Данных пока нет" hint="Копятся по мере трафика на сайте." /></div>
+            ) : (
+              <Table>
+                <THead><TH>Путь</TH><TH className="w-28 text-right">Просмотры</TH><TH className="w-36 text-right">Уник. посетители</TH></THead>
+                <TBody>
+                  {topPages.map((row) => (
+                    <TR key={row.path}>
+                      <TD className="font-mono text-[13px]">{row.path}</TD>
+                      <TD className="text-right font-medium">{fmt(row.views)}</TD>
+                      <TD className="text-right text-ink-muted">{fmt(row.visitors)}</TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            )}
+          </Panel>
         </div>
-      </Panel>
-
-      {/* Funnel + Sources */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        {/* Конверсионная воронка */}
-        <Panel>
-          <PanelHeader>
-            <PanelTitle>Конверсионная воронка</PanelTitle>
-          </PanelHeader>
-          <div className="px-5 pb-4 pt-2">
-            {!hasFunnel ? (
-              <ChartEmpty />
-            ) : (
-              <>
-                <div className="mb-2 flex gap-2 text-[11px] font-semibold uppercase tracking-[0.04em] text-ink-subtle">
-                  <span className="flex-1">Шаг</span>
-                  <span className="w-16 text-right">Событий</span>
-                  <span className="w-14 text-right">От 1-го</span>
-                  <span className="w-14 text-right">Отсев</span>
-                </div>
-                {funnelStepsData.map((step, i) => {
-                  const prev = i > 0 ? funnelStepsData[i - 1].count : step.count;
-                  const dropOff = prev > 0 && i > 0 ? `-${(((prev - step.count) / prev) * 100).toFixed(0)}%` : "—";
-                  return (
-                    <FunnelRow
-                      key={step.key}
-                      label={step.label}
-                      count={step.count}
-                      fromFirst={pct(step.count, funnelFirst)}
-                      dropOff={dropOff}
-                    />
-                  );
-                })}
-              </>
-            )}
-          </div>
-        </Panel>
-
-        {/* Источники трафика */}
-        <Panel>
-          <PanelHeader>
-            <PanelTitle>Источники трафика</PanelTitle>
-          </PanelHeader>
-          <div className="p-4">
-            {sourceData.length === 0 ? (
-              <ChartEmpty />
-            ) : (
-              <DonutChart data={sourceData} format="number" />
-            )}
-          </div>
-        </Panel>
-      </div>
-
-      {/* Top pages */}
-      <Panel>
-        <PanelHeader>
-          <PanelTitle>Топ-страниц</PanelTitle>
-        </PanelHeader>
-        {topPages.length === 0 ? (
-          <div className="p-5">
-            <ChartEmpty />
-          </div>
-        ) : (
-          <Table>
-            <THead>
-              <TH>Путь</TH>
-              <TH className="w-28 text-right">Просмотры</TH>
-              <TH className="w-32 text-right">Уник. посетители</TH>
-            </THead>
-            <TBody>
-              {topPages.map((row) => (
-                <TR key={row.path}>
-                  <TD className="font-mono text-[13px]">{row.path}</TD>
-                  <TD className="text-right font-medium">{fmt(row.views)}</TD>
-                  <TD className="text-right text-ink-muted">{fmt(row.visitors)}</TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
-        )}
-      </Panel>
-
-      {/* Devices + Search */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        {/* Устройства */}
-        <Panel>
-          <PanelHeader>
-            <PanelTitle>Устройства</PanelTitle>
-          </PanelHeader>
-          <div className="p-4">
-            {deviceData.length === 0 ? (
-              <ChartEmpty />
-            ) : (
-              <DonutChart data={deviceData} format="number" />
-            )}
-          </div>
-        </Panel>
-
-        {/* Поисковые запросы */}
-        <Panel>
-          <PanelHeader>
-            <PanelTitle>Поисковые запросы</PanelTitle>
-          </PanelHeader>
-          <div className="p-4 space-y-5">
-            {topQueries.length === 0 && topNoResult.length === 0 ? (
-              <ChartEmpty />
-            ) : (
-              <>
-                {/* Топ-запросы */}
-                <div>
-                  <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.04em] text-ink-subtle">Топ-запросы</p>
-                  {topQueries.length === 0 ? (
-                    <p className="text-sm text-ink-subtle">Нет данных</p>
-                  ) : (
-                    <Table>
-                      <THead>
-                        <TH>Запрос</TH>
-                        <TH className="w-20 text-right">Раз</TH>
-                      </THead>
-                      <TBody>
-                        {topQueries.map((r, i) => (
-                          <TR key={i}>
-                            <TD>{r.query}</TD>
-                            <TD className="text-right font-medium">{fmt(r.count)}</TD>
-                          </TR>
-                        ))}
-                      </TBody>
-                    </Table>
-                  )}
-                </div>
-
-                {/* Запросы без результатов */}
-                <div>
-                  <p className="mb-2 text-[12px] font-semibold uppercase tracking-[0.04em] text-ink-subtle">Запросы без результатов</p>
-                  {topNoResult.length === 0 ? (
-                    <p className="text-sm text-ink-subtle">Таких запросов нет</p>
-                  ) : (
-                    <Table>
-                      <THead>
-                        <TH>Запрос</TH>
-                        <TH className="w-20 text-right">Раз</TH>
-                      </THead>
-                      <TBody>
-                        {topNoResult.map((r, i) => (
-                          <TR key={i}>
-                            <TD>{r.query}</TD>
-                            <TD className="text-right font-medium text-sale">{fmt(r.count)}</TD>
-                          </TR>
-                        ))}
-                      </TBody>
-                    </Table>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        </Panel>
-      </div>
-
-      {/* Hero CTR */}
-      <Panel>
-        <PanelHeader>
-          <PanelTitle>Hero CTR — слайды главной</PanelTitle>
-        </PanelHeader>
-        {heroRows.length === 0 ? (
-          <div className="p-5">
-            <ChartEmpty />
-          </div>
-        ) : (
-          <Table>
-            <THead>
-              <TH>Слайд</TH>
-              <TH className="w-24 text-right">Показы</TH>
-              <TH className="w-24 text-right">Клики</TH>
-              <TH className="w-20 text-right">CTR</TH>
-            </THead>
-            <TBody>
-              {heroRows.map((row) => (
-                <TR key={row.id}>
-                  <TD>{row.title}</TD>
-                  <TD className="text-right">{fmt(row.views)}</TD>
-                  <TD className="text-right">{fmt(row.clicks)}</TD>
-                  <TD className="text-right font-medium">{row.ctr}</TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
-        )}
-      </Panel>
+      )}
     </>
   );
 }
