@@ -19,14 +19,29 @@ export default async function EditProductPage({
 }) {
   const { id } = await params;
   const db = createSupabaseAdminClient();
-  const [{ data: prod }, { data: cats }, { data: varRows }, { data: allProd }, optionDefs, badgeDefs] = await Promise.all([
+  const [{ data: prod }, { data: cats }, { data: varRows }, { data: allProd }, { data: settings }, { data: rate }, { data: history }, optionDefs, badgeDefs] = await Promise.all([
     db.from("products").select("*").eq("id", id).maybeSingle(),
     db.from("categories").select("slug,title").order("sort"),
     db.from("product_variants").select("*").eq("product_id", id).order("sort_order"),
     db.from("products").select("id,title,category_slug,image").eq("status", "published").is("deleted_at", null).order("sort"),
+    db.from("pricing_settings").select("*").eq("id", 1).maybeSingle(),
+    db.from("currency_rates").select("usd").order("date", { ascending: false }).limit(1).maybeSingle(),
+    db.from("product_price_history").select("id,cost_rub,cost_rate,price_cash,price_card,reason,changed_at").eq("product_id", id).order("changed_at", { ascending: false }).limit(20),
     getProductOptions(),
     getProductBadges(),
   ]);
+  const pricingSettings = settings
+    ? {
+        working_usd_rate: Number(settings.working_usd_rate),
+        fx_markup_percent: Number(settings.fx_markup_percent),
+        card_markup_percent: Number(settings.card_markup_percent),
+        credit_6m_markup_percent: Number(settings.credit_6m_markup_percent),
+        credit_12m_markup_percent: Number(settings.credit_12m_markup_percent),
+        credit_24m_markup_percent: Number(settings.credit_24m_markup_percent),
+        price_rounding: Number(settings.price_rounding),
+        min_margin_percent: Number(settings.min_margin_percent),
+      }
+    : null;
 
   if (!prod) notFound();
   const categories = (cats ?? []) as { slug: string; title: string }[];
@@ -68,6 +83,17 @@ export default async function EditProductPage({
         optionDefs={optionDefs}
         badgeDefs={badgeDefs}
         allProducts={(allProd ?? []) as { id: string; title: string; category_slug: string; image: string | null }[]}
+        pricingSettings={pricingSettings}
+        cbrUsd={rate?.usd != null ? Number(rate.usd) : null}
+        priceHistory={(history ?? []).map((h) => ({
+          id: h.id as number,
+          cost_rub: h.cost_rub != null ? Number(h.cost_rub) : null,
+          cost_rate: h.cost_rate != null ? Number(h.cost_rate) : null,
+          price_cash: h.price_cash != null ? Number(h.price_cash) : null,
+          price_card: h.price_card != null ? Number(h.price_card) : null,
+          reason: (h.reason as string | null) ?? null,
+          changed_at: h.changed_at as string,
+        }))}
       />
     </>
   );

@@ -3,8 +3,14 @@
 import * as React from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import Link from "next/link";
+import { RefreshCw, Lock } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { formatPrice } from "@/lib/utils/format-price";
+import { calculatePrices, margin, type PricingSettings } from "@/lib/pricing/calculate";
+import { recalcProductPrices } from "./actions";
 import { productSchema, type ProductInput, type ProductFormValues } from "@/lib/admin/schemas";
 import { slugify } from "@/lib/admin/slug";
 import { Field, TextInput, Textarea, Select, Switch, ToggleRow, FormError, AdminButton } from "@/components/admin/form";
@@ -20,6 +26,7 @@ import { OptionsBadgesSection } from "./OptionsBadgesSection";
 
 export interface ProductValue extends Partial<ProductInput> {
   id: string;
+  prices_recalculated_at?: string | null;
 }
 
 const TABS = [
@@ -35,6 +42,15 @@ const TABS = [
 ] as const;
 
 export type RelatedOption = { id: string; title: string; category_slug: string; image: string | null };
+export type PriceHistoryRow = {
+  id: number;
+  cost_rub: number | null;
+  cost_rate: number | null;
+  price_cash: number | null;
+  price_card: number | null;
+  reason: string | null;
+  changed_at: string;
+};
 type TabKey = (typeof TABS)[number]["key"];
 
 export function ProductForm({
@@ -45,6 +61,9 @@ export function ProductForm({
   optionDefs = [],
   badgeDefs = [],
   allProducts = [],
+  pricingSettings = null,
+  cbrUsd = null,
+  priceHistory = [],
 }: {
   product?: ProductValue;
   categories: { slug: string; title: string }[];
@@ -53,8 +72,14 @@ export function ProductForm({
   optionDefs?: ProductOption[];
   badgeDefs?: ProductBadge[];
   allProducts?: RelatedOption[];
+  pricingSettings?: PricingSettings | null;
+  cbrUsd?: number | null;
+  priceHistory?: PriceHistoryRow[];
 }) {
   const isEdit = !!product;
+  const router = useRouter();
+  const [recalcing, setRecalcing] = React.useState(false);
+  const [historyOpen, setHistoryOpen] = React.useState(false);
   const [tab, setTab] = React.useState<TabKey>("main");
   const [formError, setFormError] = React.useState<string | null>(null);
   const slugTouched = React.useRef(isEdit);
@@ -87,6 +112,9 @@ export function ProductForm({
       price_cash: product?.price_cash ?? 0,
       price_card: product?.price_card ?? 0,
       price_old: product?.price_old ?? undefined,
+      cost_rub: product?.cost_rub ?? undefined,
+      cost_rate: product?.cost_rate ?? undefined,
+      price_override: product?.price_override ?? false,
       installment_from: product?.installment_from ?? undefined,
       installment_partner: product?.installment_partner ?? "",
       related_product_ids: product?.related_product_ids ?? [],
@@ -111,6 +139,38 @@ export function ProductForm({
   React.useEffect(() => {
     if (!slugTouched.current) setValue("slug", slugify(title));
   }, [title, setValue]);
+
+  // ── Прайс: живой предпросмотр расчётных цен ──
+  const costRub = Number(watch("cost_rub")) || null;
+  const costRate = Number(watch("cost_rate")) || null;
+  const overrideOn = !!watch("price_override");
+  const wCash = Number(watch("price_cash")) || null;
+  const wCard = Number(watch("price_card")) || null;
+  const costUsd = costRub && costRate ? costRub / costRate : null;
+  const formulaActive = !!pricingSettings && type !== "used" && (overrideOn || !!costUsd);
+  const preview =
+    formulaActive && pricingSettings
+      ? calculatePrices(
+          { cost_usd: costUsd, price_override: overrideOn, override_price_cash: wCash, override_price_card: wCard },
+          pricingSettings
+        )
+      : null;
+  const marginInfo = preview ? margin(preview.price_cash, costRub) : null;
+  const lowMargin =
+    marginInfo != null && pricingSettings?.min_margin_percent != null
+      ? marginInfo.percent < pricingSettings.min_margin_percent
+      : false;
+  const priceReadonly = !!costUsd && !overrideOn; // считает формула → нал/карта только чтение
+
+  const onRecalc = async () => {
+    if (!isEdit) return;
+    setRecalcing(true);
+    const res = await recalcProductPrices(product!.id);
+    setRecalcing(false);
+    if (res.error) return toast.error(res.error);
+    toast.success("Цены пересчитаны по формуле");
+    router.refresh();
+  };
 
   const onSubmit = async (values: ProductInput) => {
     setFormError(null);
@@ -252,13 +312,88 @@ export function ProductForm({
 
       {/* Цены и наличие */}
       <div hidden={tab !== "price"} className="space-y-5">
+        {type !== "used" ? (
+          <Panel className="space-y-4 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[14px] font-semibold text-ink">Закупка</p>
+              {cbrUsd ? <span className="text-[12px] text-ink-subtle">Курс ЦБ сегодня: {cbrUsd.toFixed(4)} ₽/$</span> : null}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Закупочная цена, ₽">
+                <TextInput type="number" min={0} placeholder="напр. 64 000" {...register("cost_rub")} />
+              </Field>
+              <Field label="Курс USD на момент закупа" hint="Если не знаете — вставьте курс ЦБ">
+                <div className="flex items-center gap-2">
+                  <TextInput type="number" step="0.0001" min={0} {...register("cost_rate")} />
+                  {cbrUsd ? (
+                    <button type="button" onClick={() => setValue("cost_rate", cbrUsd)} className="h-9 shrink-0 whitespace-nowrap rounded-sm border border-border bg-white px-2.5 text-[12.5px] text-ink hover:bg-surface">
+                      Курс ЦБ
+                    </button>
+                  ) : null}
+                </div>
+              </Field>
+              <Field label="Закупка в долларах">
+                <div className="flex h-9 items-center rounded-sm border border-border/60 bg-surface/50 px-3 text-[14px] text-ink-muted tabular-nums">
+                  {costUsd ? `$${costUsd.toFixed(2)}` : "—"}
+                </div>
+              </Field>
+            </div>
+            <p className="text-[12px] text-ink-subtle">
+              Закупка в долларах фиксируется при сохранении. Дальше цены пересчитываются от неё и текущего рабочего курса USD в «Прайсе».
+            </p>
+
+            <Controller
+              control={control}
+              name="price_override"
+              render={({ field }) => (
+                <ToggleRow
+                  checked={!!field.value}
+                  onChange={field.onChange}
+                  title="Зафиксировать цену вручную"
+                  hint="Цена не будет пересчитываться при изменении курса. Снимите флажок после акции."
+                />
+              )}
+            />
+
+            {preview ? (
+              <div className="rounded-xl border border-border/60 bg-surface/40 p-4">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-[12px] font-medium uppercase tracking-wide text-ink-subtle">
+                    {overrideOn ? "Зафиксировано вручную" : "Рассчитано автоматически"}
+                  </span>
+                  {overrideOn ? <span className="inline-flex items-center gap-1 rounded-full bg-ink/80 px-2 py-0.5 text-[11px] font-medium text-white"><Lock className="h-3 w-3" />фикс</span> : null}
+                </div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[13px] sm:grid-cols-3">
+                  <Stat label="Нал" value={formatPrice(preview.price_cash)} strong />
+                  <Stat label="Картой" value={formatPrice(preview.price_card)} />
+                  <Stat label="Маржа" value={marginInfo ? `${marginInfo.percent.toFixed(0)}% (${formatPrice(marginInfo.rub)})` : "—"} danger={lowMargin} />
+                  <Stat label="6 мес" value={`${formatPrice(preview.credit_6m_monthly)}/мес`} />
+                  <Stat label="12 мес" value={`${formatPrice(preview.credit_12m_monthly)}/мес`} />
+                  <Stat label="24 мес" value={`${formatPrice(preview.credit_24m_monthly)}/мес`} />
+                </div>
+                {lowMargin ? <p className="mt-2 text-[12px] font-medium text-sale">Маржа ниже минимальной ({pricingSettings?.min_margin_percent}%)</p> : null}
+                {isEdit ? (
+                  <div className="mt-3 flex items-center gap-3">
+                    <button type="button" onClick={onRecalc} disabled={recalcing} className="inline-flex h-8 items-center gap-2 rounded-sm border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface disabled:opacity-60">
+                      <RefreshCw className={cn("h-3.5 w-3.5", recalcing && "animate-spin")} strokeWidth={1.75} /> Обновить из формулы
+                    </button>
+                    {product?.prices_recalculated_at ? (
+                      <span className="text-[12px] text-ink-subtle">Пересчитано: {new Date(product.prices_recalculated_at).toLocaleString("ru-RU")}</span>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </Panel>
+        ) : null}
+
         <Panel className="space-y-4 p-5">
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="Цена наличными, ₽" error={errors.price_cash?.message} hint="Красная цена на сайте">
-              <TextInput type="number" min={0} hasError={!!errors.price_cash} {...register("price_cash")} />
+            <Field label="Цена наличными, ₽" error={errors.price_cash?.message} hint={priceReadonly ? "Считается формулой из закупки" : "Красная цена на сайте"}>
+              <TextInput type="number" min={0} readOnly={priceReadonly} hasError={!!errors.price_cash} className={cn(priceReadonly && "bg-surface/60 text-ink-muted")} {...register("price_cash")} />
             </Field>
-            <Field label="Цена картой, ₽" error={errors.price_card?.message}>
-              <TextInput type="number" min={0} hasError={!!errors.price_card} {...register("price_card")} />
+            <Field label="Цена картой, ₽" error={errors.price_card?.message} hint={priceReadonly ? "Считается формулой" : undefined}>
+              <TextInput type="number" min={0} readOnly={priceReadonly} hasError={!!errors.price_card} className={cn(priceReadonly && "bg-surface/60 text-ink-muted")} {...register("price_card")} />
             </Field>
             <Field label="Старая цена, ₽" hint="Для зачёркивания (акция)">
               <TextInput type="number" min={0} {...register("price_old")} />
@@ -307,6 +442,39 @@ export function ProductForm({
             )} />
           </div>
         </Panel>
+
+        {isEdit && priceHistory.length > 0 ? (
+          <Panel className="p-0">
+            <button type="button" onClick={() => setHistoryOpen((o) => !o)} className="flex w-full items-center justify-between px-5 py-3.5 text-left">
+              <span className="text-[14px] font-semibold text-ink">История цен ({priceHistory.length})</span>
+              <span className="text-[12px] text-ink-subtle">{historyOpen ? "Свернуть" : "Развернуть"}</span>
+            </button>
+            {historyOpen ? (
+              <div className="overflow-x-auto border-t border-border/60">
+                <table className="w-full text-[13px]">
+                  <thead className="bg-surface/50 text-ink-subtle">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium">Дата</th>
+                      <th className="px-4 py-2 text-right font-medium">Нал</th>
+                      <th className="px-4 py-2 text-right font-medium">Картой</th>
+                      <th className="px-4 py-2 text-left font-medium">Причина</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {priceHistory.map((h) => (
+                      <tr key={h.id}>
+                        <td className="whitespace-nowrap px-4 py-2 text-ink-muted">{new Date(h.changed_at).toLocaleString("ru-RU")}</td>
+                        <td className="px-4 py-2 text-right tabular-nums">{h.price_cash != null ? formatPrice(h.price_cash) : "—"}</td>
+                        <td className="px-4 py-2 text-right tabular-nums">{h.price_card != null ? formatPrice(h.price_card) : "—"}</td>
+                        <td className="px-4 py-2 text-ink-muted">{REASON_LABEL[h.reason ?? ""] ?? h.reason ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+          </Panel>
+        ) : null}
       </div>
 
       {/* Состояние (Б/У) */}
@@ -479,6 +647,22 @@ function RelatedPicker({
           )}
         </Panel>
       </div>
+    </div>
+  );
+}
+
+const REASON_LABEL: Record<string, string> = {
+  manual_edit: "Ручное изменение",
+  fx_recalc: "Пересчёт по курсу",
+  formula_change: "Изменение формулы",
+  import: "Импорт прайса",
+};
+
+function Stat({ label, value, strong, danger }: { label: string; value: string; strong?: boolean; danger?: boolean }) {
+  return (
+    <div className="flex items-baseline justify-between gap-2 sm:flex-col sm:items-start sm:justify-start sm:gap-0.5">
+      <span className="text-[11px] uppercase tracking-wide text-ink-subtle">{label}</span>
+      <span className={cn("font-semibold tabular-nums", strong ? "text-sale" : "text-ink", danger && "text-sale")}>{value}</span>
     </div>
   );
 }
