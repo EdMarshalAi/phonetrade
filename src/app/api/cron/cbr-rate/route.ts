@@ -12,15 +12,23 @@ export const dynamic = "force-dynamic";
  * пересчитывает цены. При скачке >5% — только сохраняет курс и шлёт алёрт.
  */
 export async function GET(req: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 503 });
   const url = new URL(req.url);
   const provided = req.headers.get("x-cron-secret") || url.searchParams.get("secret");
-  if (provided !== secret) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const db = createSupabaseAdminClient();
+
+  // Секрет берём из env (если задан) ИЛИ из БД (shop_settings.cron_secret) —
+  // последнее позволяет хранить его в Supabase, без правки env на сервере.
+  let expected = process.env.CRON_SECRET || null;
+  if (!expected) {
+    const { data } = await db.from("shop_settings").select("value").eq("key", "cron_secret").maybeSingle();
+    const v = data?.value as { secret?: string } | string | null;
+    expected = typeof v === "string" ? v : v?.secret ?? null;
+  }
+  if (!expected) return NextResponse.json({ error: "cron secret not configured" }, { status: 503 });
+  if (!provided || provided !== expected) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   try {
     const rates = await refreshAndStoreCbr();
-    const db = createSupabaseAdminClient();
     const { data: settings } = await db.from("pricing_settings").select("*").eq("id", 1).maybeSingle();
 
     let recalculated = 0;
