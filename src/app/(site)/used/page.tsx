@@ -32,10 +32,8 @@ export default async function UsedPage() {
 
   const title = meta?.title || "Б/У техника";
   const description = meta?.description || "Проверенные Б/У устройства Apple с магазинной гарантией PhoneTrade.";
-  const facets: FilterFacet[] =
-    meta?.available_filters && meta.available_filters.length > 0
-      ? (meta.available_filters.filter((f) => KNOWN_FACETS.has(f)) as FilterFacet[])
-      : ALL_FACETS;
+  // Фасеты строго из админки (категория `used`). Нет настройки → нет фильтров.
+  const facets: FilterFacet[] = ((meta?.available_filters ?? []).filter((f) => KNOWN_FACETS.has(f)) as FilterFacet[]);
 
   const config: CategoryConfig = {
     slug: "used",

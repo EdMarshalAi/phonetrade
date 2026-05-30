@@ -37,11 +37,8 @@ export default async function CategoryPage({ params }: { params: Promise<RoutePa
   const title = meta?.title || cat?.title || slug;
   const description = meta?.description || cat?.subtitle || `${title} — с гарантией PhoneTrade в Белгороде.`;
 
-  // Фасеты: из админки (available_filters) или весь набор по умолчанию
-  const facets: FilterFacet[] =
-    meta?.available_filters && meta.available_filters.length > 0
-      ? (meta.available_filters.filter((f) => KNOWN_FACETS.has(f)) as FilterFacet[])
-      : ALL_FACETS;
+  // Фасеты строго из админки (categories.available_filters). Нет настройки → нет фильтров.
+  const facets: FilterFacet[] = ((meta?.available_filters ?? []).filter((f) => KNOWN_FACETS.has(f)) as FilterFacet[]);
 
   const config: CategoryConfig = {
     slug: slug as CategoryConfig["slug"],
