@@ -1,7 +1,7 @@
 "use server";
 
 import { adminMutation } from "@/lib/admin/mutations";
-import type { ProductOption, ProductBadge, InfoBlock } from "@/lib/content";
+import type { ProductOption, ProductBadge, InfoBlock, CardDisplay } from "@/lib/content";
 
 const STAFF = ["admin", "manager", "content"] as const;
 
@@ -10,7 +10,8 @@ export async function saveProductRegistry(
   options: ProductOption[],
   badges: ProductBadge[],
   productBlocks: InfoBlock[] = [],
-  allowZeroStock = true
+  allowZeroStock = true,
+  cardDisplay?: CardDisplay
 ): Promise<{ error?: string }> {
   try {
     await adminMutation({
@@ -27,6 +28,7 @@ export async function saveProductRegistry(
           field: o.field ?? null,
           values: o.values.map((v) => v.trim()).filter(Boolean),
           sort: i,
+          applies_to: o.applies_to ?? "both",
         }));
         const normBadges = badges.map((b, i) => ({
           key: b.key,
@@ -36,6 +38,7 @@ export async function saveProductRegistry(
           icon: b.icon ?? null,
           tooltip: (b.tooltip ?? "").trim(),
           sort: i,
+          position: b.position ?? "tl",
         }));
         const normBlocks = productBlocks.map((b) => ({
           icon: b.icon ?? null,
@@ -59,6 +62,12 @@ export async function saveProductRegistry(
           .from("shop_settings")
           .upsert({ key: "product_availability", value: { allow_zero_stock: allowZeroStock } }, { onConflict: "key" });
         if (e4) throw e4;
+        if (cardDisplay) {
+          const { error: e5 } = await db
+            .from("shop_settings")
+            .upsert({ key: "card_display", value: cardDisplay }, { onConflict: "key" });
+          if (e5) throw e5;
+        }
       },
     });
     return {};

@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { requireAdmin } from "@/lib/admin/auth";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminButton } from "@/components/admin/form";
-import { getProductOptions, getProductBadges, getProductBlocks } from "@/lib/content";
+import { getProductOptions, getProductBadges, getProductBlocks, getCardDisplay } from "@/lib/content";
 import { getAllowZeroStock } from "@/lib/products";
 import { ProductSettingsForm } from "./ProductSettingsForm";
 
@@ -12,11 +12,12 @@ export const metadata: Metadata = { title: "Настройки товаров" }
 
 export default async function ProductSettingsPage() {
   await requireAdmin(["admin", "manager", "content"]);
-  const [optionDefs, badgeDefs, blockDefs, allowZeroStock] = await Promise.all([
+  const [optionDefs, badgeDefs, blockDefs, allowZeroStock, cardDisplay] = await Promise.all([
     getProductOptions(),
     getProductBadges(),
     getProductBlocks(),
     getAllowZeroStock(),
+    getCardDisplay(),
   ]);
 
   return (
@@ -32,7 +33,7 @@ export default async function ProductSettingsPage() {
           </Link>
         }
       />
-      <ProductSettingsForm initialOptions={optionDefs} initialBadges={badgeDefs} initialBlocks={blockDefs} initialAllowZeroStock={allowZeroStock} />
+      <ProductSettingsForm initialOptions={optionDefs} initialBadges={badgeDefs} initialBlocks={blockDefs} initialAllowZeroStock={allowZeroStock} initialCardDisplay={cardDisplay} />
     </>
   );
 }

@@ -7,7 +7,8 @@ import { Footer } from "@/components/layout/Footer";
 import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { BackToTop } from "@/components/ui/BackToTop";
 import { BadgeRegistryProvider } from "@/components/product/ProductBadges";
-import { getShopContacts, getNavCategories, getMenu, getProductBadges } from "@/lib/content";
+import { CardSettingsProvider } from "@/components/product/CardSettings";
+import { getShopContacts, getNavCategories, getMenu, getProductBadges, getCardDisplay, getProductOptions } from "@/lib/content";
 
 /**
  * Публичный сайт: шапка, подвал и клиентские провайдеры.
@@ -19,12 +20,14 @@ export default async function SiteLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [contacts, navCategories, topMenu, footerMenu, badges] = await Promise.all([
+  const [contacts, navCategories, topMenu, footerMenu, badges, cardDisplay, cardOptions] = await Promise.all([
     getShopContacts(),
     getNavCategories(),
     getMenu("top"),
     getMenu("footer"),
     getProductBadges(),
+    getCardDisplay(),
+    getProductOptions(),
   ]);
   return (
     <AuthProvider>
@@ -32,6 +35,7 @@ export default async function SiteLayout({
         <CartProvider>
           <FavoritesProvider>
             <BadgeRegistryProvider badges={badges}>
+            <CardSettingsProvider display={cardDisplay} options={cardOptions}>
               <div className="flex min-h-dvh flex-col">
                 <Header contacts={contacts} categories={navCategories} topLinks={topMenu} />
                 <main className="flex-1">{children}</main>
@@ -39,6 +43,7 @@ export default async function SiteLayout({
               </div>
               <PageViewTracker />
               <BackToTop />
+            </CardSettingsProvider>
             </BadgeRegistryProvider>
           </FavoritesProvider>
         </CartProvider>

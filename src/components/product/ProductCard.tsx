@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Heart, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ProductBadges } from "@/components/product/ProductBadges";
+import { useCardSettings } from "@/components/product/CardSettings";
 import { formatPrice } from "@/lib/utils/format-price";
 import { productImages } from "@/lib/utils/product-images";
 import { cn } from "@/lib/utils/cn";
@@ -19,6 +20,16 @@ type Props = {
 
 export function ProductCard({ product, className }: Props) {
   const { add } = useCart();
+  const { display, options: optionDefs } = useCardSettings();
+  const ptype = product.isUsed ? "used" : "new";
+  const cardOptions = optionDefs
+    .filter((o) => display.options.includes(o.key) && ((o.applies_to ?? "both") === "both" || o.applies_to === ptype))
+    .map((o) => ({
+      key: o.key,
+      label: o.label,
+      value: o.field ? ((product as unknown as Record<string, unknown>)[o.field] as string | undefined) : product.options?.[o.key],
+    }))
+    .filter((o) => o.value);
   const { enabled: favEnabled, has: favHas, toggle: favToggle } = useFavorites();
   const [added, setAdded] = React.useState(false);
   const addedTimer = React.useRef<number | null>(null);
@@ -59,13 +70,22 @@ export function ProductCard({ product, className }: Props) {
       )}
     >
       <div className="relative -mx-4 -mt-4 sm:-mx-5 sm:-mt-5 mb-4 bg-surface aspect-square overflow-hidden">
-        <ProductBadges badges={product.badges} className="absolute top-3 left-3 z-20 max-w-[calc(100%-1.5rem)]" />
+        {display.badges ? (
+          <>
+            <ProductBadges badges={product.badges} position="tl" className="absolute top-3 left-3 z-20 max-w-[65%]" />
+            <ProductBadges badges={product.badges} position="tr" className="absolute top-3 right-3 z-20 max-w-[65%] justify-end" />
+            <ProductBadges badges={product.badges} position="bl" className="absolute bottom-3 left-3 z-20 max-w-[65%]" />
+          </>
+        ) : null}
 
-        {product.isUsed && (
-          <span className="absolute bottom-3 right-3 z-20 inline-flex items-center rounded-md bg-ink text-white text-[10px] font-semibold px-2 py-1 tracking-wide">
-            Б/У
-          </span>
-        )}
+        <div className="absolute bottom-3 right-3 z-20 flex max-w-[65%] flex-col items-end gap-1.5">
+          {display.badges ? <ProductBadges badges={product.badges} position="br" className="justify-end" /> : null}
+          {product.isUsed && (
+            <span className="inline-flex items-center rounded-md bg-ink text-white text-[10px] font-semibold px-2 py-1 tracking-wide">
+              Б/У
+            </span>
+          )}
+        </div>
 
         {/* Image layers — crossfade between slides */}
         {images.map((src, i) => (
@@ -144,52 +164,49 @@ export function ProductCard({ product, className }: Props) {
       </h3>
       <p className="mt-1 text-xs text-ink-subtle capitalize">{product.color}</p>
 
-      {product.isUsed && (
+      {cardOptions.length > 0 || (product.isUsed && typeof product.battery === "number") ? (
         <dl className="mt-3 space-y-1 text-xs text-ink-muted">
-          {product.condition && (
-            <div className="flex gap-1.5">
-              <dt className="text-ink-subtle">Состояние:</dt>
-              <dd className="line-clamp-1">{product.condition}</dd>
+          {cardOptions.map((o) => (
+            <div key={o.key} className="flex gap-1.5">
+              <dt className="text-ink-subtle">{o.label}:</dt>
+              <dd className="line-clamp-1">{o.value}</dd>
             </div>
-          )}
-          {typeof product.battery === "number" && (
+          ))}
+          {product.isUsed && typeof product.battery === "number" && (
             <div className="flex gap-1.5">
               <dt className="text-ink-subtle">Аккумулятор:</dt>
               <dd className="font-medium text-ink">{product.battery}%</dd>
             </div>
           )}
         </dl>
-      )}
+      ) : null}
 
       <div className="flex-1 min-h-3" />
 
-      <div className="grid grid-cols-2 gap-3 mt-4 mb-1">
-        <div>
-          <div className="text-[11px] uppercase tracking-wider text-ink-subtle mb-1">
-            Наличные
-          </div>
-          <div className="text-[19px] sm:text-xl font-bold text-sale tracking-tight tabular-nums leading-none">
-            {formatPrice(product.priceCash)}
-          </div>
-          {product.priceOld && product.priceOld > product.priceCash ? (
-            <div className="mt-1 text-[12px] text-ink-subtle line-through tabular-nums">
-              {formatPrice(product.priceOld)}
+      <div className={cn("grid gap-3 mt-4 mb-1", display.cash && display.card ? "grid-cols-2" : "grid-cols-1")}>
+        {display.cash ? (
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-ink-subtle mb-1">Наличные</div>
+            <div className="text-[19px] sm:text-xl font-bold text-sale tracking-tight tabular-nums leading-none">
+              {formatPrice(product.priceCash)}
             </div>
-          ) : null}
-        </div>
-        <div>
-          <div className="text-[11px] uppercase tracking-wider text-ink-subtle mb-1">
-            Картой
+            {display.old_price && product.priceOld && product.priceOld > product.priceCash ? (
+              <div className="mt-1 text-[12px] text-ink-subtle line-through tabular-nums">{formatPrice(product.priceOld)}</div>
+            ) : null}
           </div>
-          <div className="text-[19px] sm:text-xl font-bold text-ink tracking-tight tabular-nums leading-none">
-            {formatPrice(product.priceCard)}
+        ) : null}
+        {display.card ? (
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-ink-subtle mb-1">Картой</div>
+            <div className="text-[19px] sm:text-xl font-bold text-ink tracking-tight tabular-nums leading-none">
+              {formatPrice(product.priceCard)}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
-      {product.installmentFrom ? (
+      {display.credit && product.installmentFrom ? (
         <div className="mb-4 mt-2 text-[12px] text-ink-subtle">
-          В кредит — от{" "}
-          <span className="font-medium text-ink">{formatPrice(product.installmentFrom)}/мес</span>
+          В кредит — от <span className="font-medium text-ink">{formatPrice(product.installmentFrom)}/мес</span>
         </div>
       ) : (
         <div className="mb-4" />

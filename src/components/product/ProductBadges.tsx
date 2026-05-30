@@ -76,13 +76,17 @@ function Badge({ badge }: { badge: ProductBadge }) {
 export function ProductBadges({
   badges,
   className,
+  position,
 }: {
   badges?: string[] | null;
   className?: string;
+  /** Если задан — показываем только бейджи этого угла (tl/tr/bl/br). */
+  position?: "tl" | "tr" | "bl" | "br";
 }) {
   const registry = useBadgeRegistry();
   if (!badges || badges.length === 0) return null;
-  const resolved = registry.filter((b) => badges.includes(b.key)); // порядок реестра, неизвестные ключи отброшены
+  let resolved = registry.filter((b) => badges.includes(b.key)); // порядок реестра, неизвестные ключи отброшены
+  if (position) resolved = resolved.filter((b) => (b.position ?? "tl") === position);
   if (resolved.length === 0) return null;
   return (
     <div className={cn("flex flex-wrap items-start gap-1.5", className)}>

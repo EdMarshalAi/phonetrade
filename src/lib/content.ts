@@ -109,6 +109,29 @@ export interface ProductOption {
   field: string | null;
   values: string[];
   sort: number;
+  /** К какому типу товара применима опция в отображении карточки. */
+  applies_to?: "new" | "used" | "both";
+}
+
+export type BadgeCorner = "tl" | "tr" | "bl" | "br";
+export interface CardDisplay {
+  cash: boolean;
+  card: boolean;
+  credit: boolean;
+  old_price: boolean;
+  badges: boolean;
+  /** Ключи опций (из реестра), которые выводить на карточке доп. строками. */
+  options: string[];
+}
+export const DEFAULT_CARD_DISPLAY: CardDisplay = { cash: true, card: true, credit: true, old_price: true, badges: true, options: [] };
+
+/** Настройки отображения карточки товара (shop_settings.card_display). */
+export async function getCardDisplay(): Promise<CardDisplay> {
+  if (!supabase) return DEFAULT_CARD_DISPLAY;
+  const { data } = await supabase.from("shop_settings").select("value").eq("key", "card_display").maybeSingle();
+  const v = data?.value as Partial<CardDisplay> | null;
+  if (!v) return DEFAULT_CARD_DISPLAY;
+  return { ...DEFAULT_CARD_DISPLAY, ...v, options: Array.isArray(v.options) ? v.options : [] };
 }
 
 /** Бейдж с настраиваемыми цветами, иконкой и подсказкой. */
@@ -121,6 +144,8 @@ export interface ProductBadge {
   icon?: string | null;
   tooltip?: string;
   sort: number;
+  /** Угол на карточке: tl/tr/bl/br (по умолчанию tl — слева сверху). */
+  position?: "tl" | "tr" | "bl" | "br";
 }
 
 /** Дефолты — если в БД реестра ещё нет (фолбэк, чтобы витрина не ломалась). */

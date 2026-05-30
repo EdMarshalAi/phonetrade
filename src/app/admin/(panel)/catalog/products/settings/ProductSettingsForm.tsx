@@ -6,20 +6,29 @@ import { toast } from "sonner";
 import { Plus, X, ArrowUp, ArrowDown, Trash2, Pencil, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Panel } from "@/components/admin/ui";
-import { TextInput, Textarea, AdminButton, ToggleRow } from "@/components/admin/form";
+import { TextInput, Textarea, Select, AdminButton, ToggleRow } from "@/components/admin/form";
 import { Modal } from "@/components/admin/Modal";
 import { IconPicker } from "@/components/admin/IconPicker";
 import { BlocksEditor } from "@/components/admin/BlocksEditor";
 import { resolveIcon } from "@/lib/admin/icons";
-import type { ProductOption, ProductBadge, InfoBlock } from "@/lib/content";
+import type { ProductOption, ProductBadge, InfoBlock, CardDisplay } from "@/lib/content";
+import { DEFAULT_CARD_DISPLAY } from "@/lib/content";
 import { saveProductRegistry } from "./actions";
 
 const TABS = [
+  { key: "card", label: "Карточка" },
   { key: "options", label: "Опции" },
   { key: "badges", label: "Бейджики" },
   { key: "blocks", label: "Блоки под товаром" },
   { key: "availability", label: "Наличие" },
 ] as const;
+
+const CORNERS: { value: "tl" | "tr" | "bl" | "br"; label: string }[] = [
+  { value: "tl", label: "Слева сверху" },
+  { value: "tr", label: "Справа сверху" },
+  { value: "bl", label: "Слева снизу" },
+  { value: "br", label: "Справа снизу" },
+];
 type Tab = (typeof TABS)[number]["key"];
 
 /** id без crypto.randomUUID (его нет в незащищённом контексте http) */
@@ -49,25 +58,31 @@ export function ProductSettingsForm({
   initialBadges,
   initialBlocks,
   initialAllowZeroStock = true,
+  initialCardDisplay = DEFAULT_CARD_DISPLAY,
 }: {
   initialOptions: ProductOption[];
   initialBadges: ProductBadge[];
   initialBlocks: InfoBlock[];
   initialAllowZeroStock?: boolean;
+  initialCardDisplay?: CardDisplay;
 }) {
   const router = useRouter();
-  const [tab, setTab] = React.useState<Tab>("options");
+  const [tab, setTab] = React.useState<Tab>("card");
   const [options, setOptions] = React.useState<ProductOption[]>(initialOptions);
   const [badges, setBadges] = React.useState<ProductBadge[]>(initialBadges);
   const [blocks, setBlocks] = React.useState<InfoBlock[]>(initialBlocks);
   const [allowZeroStock, setAllowZeroStock] = React.useState<boolean>(initialAllowZeroStock);
+  const [card, setCard] = React.useState<CardDisplay>(initialCardDisplay);
   const [saving, setSaving] = React.useState(false);
   const [editOption, setEditOption] = React.useState<number | null>(null);
   const [editBadge, setEditBadge] = React.useState<number | null>(null);
 
+  const setCardField = (patch: Partial<CardDisplay>) => setCard((c) => ({ ...c, ...patch }));
+  const toggleCardOption = (key: string) => setCard((c) => ({ ...c, options: c.options.includes(key) ? c.options.filter((k) => k !== key) : [...c.options, key] }));
+
   const save = async () => {
     setSaving(true);
-    const res = await saveProductRegistry(options, badges, blocks, allowZeroStock);
+    const res = await saveProductRegistry(options, badges, blocks, allowZeroStock, card);
     setSaving(false);
     if (res.error) {
       toast.error(res.error);
@@ -109,7 +124,38 @@ export function ProductSettingsForm({
         ))}
       </div>
 
-      {tab === "options" ? (
+      {tab === "card" ? (
+        <div className="space-y-5">
+          <Panel className="space-y-3 p-5">
+            <p className="text-[14px] font-semibold text-ink">Что показывать на карточке</p>
+            <p className="-mt-1 text-[13px] text-ink-muted">Применяется к карточкам товара на главной, в каталоге и в подборках.</p>
+            <ToggleRow checked={card.cash} onChange={(v) => setCardField({ cash: v })} title="Цена наличными" hint="Красная цена" />
+            <ToggleRow checked={card.card} onChange={(v) => setCardField({ card: v })} title="Цена картой" />
+            <ToggleRow checked={card.credit} onChange={(v) => setCardField({ credit: v })} title="Строка «В кредит — от …/мес»" />
+            <ToggleRow checked={card.old_price} onChange={(v) => setCardField({ old_price: v })} title="Старая цена (зачёркнутая)" hint="Показывается, если задана и больше текущей" />
+            <ToggleRow checked={card.badges} onChange={(v) => setCardField({ badges: v })} title="Бейджи" hint="Раскладываются по углам (см. вкладку «Бейджики»)" />
+          </Panel>
+          <Panel className="space-y-3 p-5">
+            <p className="text-[14px] font-semibold text-ink">Опции на карточке</p>
+            <p className="-mt-1 text-[13px] text-ink-muted">Какие опции выводить доп. строками. У опции в её настройках можно задать тип товара (например «Состояние» — только Б/У).</p>
+            {options.length === 0 ? (
+              <p className="text-[13px] text-ink-subtle">Опций пока нет — добавьте на вкладке «Опции».</p>
+            ) : (
+              <div className="space-y-1.5">
+                {options.map((o) => (
+                  <ToggleRow
+                    key={o.key}
+                    checked={card.options.includes(o.key)}
+                    onChange={() => toggleCardOption(o.key)}
+                    title={o.label}
+                    hint={o.applies_to && o.applies_to !== "both" ? `Только ${o.applies_to === "used" ? "Б/У" : "новые"}` : "Все товары"}
+                  />
+                ))}
+              </div>
+            )}
+          </Panel>
+        </div>
+      ) : tab === "options" ? (
         <Panel className="divide-y divide-border/60">
           {options.length === 0 ? (
             <p className="px-5 py-8 text-center text-[14px] text-ink-muted">Опций пока нет.</p>
@@ -311,6 +357,15 @@ function OptionEditor({
           {option.field ? `Базовая опция · поле «${option.field}»` : "Кастомная опция"}
         </span>
       </label>
+      <label className="block">
+        <span className="mb-1.5 block text-[13px] font-medium text-ink">Применима к типу товара</span>
+        <Select value={option.applies_to ?? "both"} onChange={(e) => onChange({ applies_to: e.target.value as ProductOption["applies_to"] })}>
+          <option value="both">Все товары</option>
+          <option value="new">Только новые</option>
+          <option value="used">Только Б/У</option>
+        </Select>
+        <span className="mt-1 block text-[12px] text-ink-subtle">Если опция включена в показе на карточке — выводится только для этого типа. Напр. «Состояние» → только Б/У.</span>
+      </label>
       <ValuesEditor values={option.values} onChange={(values) => onChange({ values })} />
     </div>
   );
@@ -378,9 +433,17 @@ function BadgeEditor({
         <TextInput value={badge.label} onChange={(e) => onChange({ label: e.target.value })} />
       </label>
 
-      <div>
-        <span className="mb-1.5 block text-[13px] font-medium text-ink">Иконка</span>
-        <IconPicker value={badge.icon ?? null} onChange={(name) => onChange({ icon: name })} />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <span className="mb-1.5 block text-[13px] font-medium text-ink">Иконка</span>
+          <IconPicker value={badge.icon ?? null} onChange={(name) => onChange({ icon: name })} />
+        </div>
+        <label className="block">
+          <span className="mb-1.5 block text-[13px] font-medium text-ink">Угол на карточке</span>
+          <Select value={badge.position ?? "tl"} onChange={(e) => onChange({ position: e.target.value as ProductBadge["position"] })}>
+            {CORNERS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </Select>
+        </label>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
