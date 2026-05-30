@@ -470,10 +470,17 @@ export interface ShopContacts {
   address?: string;
   working_hours?: string;
   phone?: string;
+  phone2?: string;
   email?: string;
+  /** Видимость основных контактов в шапке/футере (undefined = показывать). */
+  phone_enabled?: boolean;
+  phone2_enabled?: boolean;
+  email_enabled?: boolean;
   vk?: string;
   whatsapp?: string;
   telegram?: string;
+  /** Юр. лицо — ООО «…» или ФИО для ИП. */
+  legal_entity?: string;
   /** Управляемый список контакт-ссылок для шапки/футера. */
   contacts?: ShopContactLink[];
 }

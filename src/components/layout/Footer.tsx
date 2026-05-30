@@ -1,6 +1,6 @@
 import * as React from "react";
 import Image from "next/image";
-import { MapPin, Clock, Phone } from "lucide-react";
+import { MapPin, Clock, Phone, Mail } from "lucide-react";
 import { ContactLinks } from "@/components/layout/ContactLinks";
 
 
@@ -24,6 +24,11 @@ export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | nul
   const address = contacts?.address || "Белгород, ул. Попова, 36 (Ун-г Белгород, 1 этаж)";
   const phone = contacts?.phone || "+7 (904) 098-88-77";
   const phoneTel = `tel:+${phone.replace(/\D/g, "")}`;
+  const phoneShown = contacts?.phone_enabled !== false;
+  const phone2 = contacts?.phone2?.trim();
+  const phone2Shown = !!phone2 && contacts?.phone2_enabled !== false;
+  const email = contacts?.email?.trim();
+  const emailShown = !!email && contacts?.email_enabled !== false;
   // Юр. ссылки из меню админки (footer) с фолбэком на встроенные.
   const legal = legalLinks && legalLinks.length > 0 ? legalLinks.map((l) => ({ href: l.href, label: l.title })) : LEGAL;
   return (
@@ -62,18 +67,44 @@ export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | nul
             <div className="my-8 h-px w-32 bg-white/15" aria-hidden />
 
             <div className="flex flex-wrap items-center gap-x-10 gap-y-5">
-              <a
-                href={phoneTel}
-                className="group inline-flex items-center gap-3 text-[15px] font-medium text-white hover:text-onDark transition-colors"
-              >
-                <span
-                  aria-hidden
-                  className="inline-flex size-9 items-center justify-center rounded-full border border-white/15 group-hover:border-white/40 transition-colors"
+              {phoneShown ? (
+                <a
+                  href={phoneTel}
+                  className="group inline-flex items-center gap-3 text-[15px] font-medium text-white hover:text-onDark transition-colors"
                 >
-                  <Phone className="size-4" />
-                </span>
-                {phone}
-              </a>
+                  <span
+                    aria-hidden
+                    className="inline-flex size-9 items-center justify-center rounded-full border border-white/15 group-hover:border-white/40 transition-colors"
+                  >
+                    <Phone className="size-4" />
+                  </span>
+                  {phone}
+                </a>
+              ) : null}
+
+              {phone2Shown ? (
+                <a
+                  href={`tel:+${phone2!.replace(/\D/g, "")}`}
+                  className="group inline-flex items-center gap-3 text-[15px] font-medium text-white hover:text-onDark transition-colors"
+                >
+                  <span aria-hidden className="inline-flex size-9 items-center justify-center rounded-full border border-white/15 group-hover:border-white/40 transition-colors">
+                    <Phone className="size-4" />
+                  </span>
+                  {phone2}
+                </a>
+              ) : null}
+
+              {emailShown ? (
+                <a
+                  href={`mailto:${email}`}
+                  className="group inline-flex items-center gap-3 text-[15px] font-medium text-white hover:text-onDark transition-colors"
+                >
+                  <span aria-hidden className="inline-flex size-9 items-center justify-center rounded-full border border-white/15 group-hover:border-white/40 transition-colors">
+                    <Mail className="size-4" />
+                  </span>
+                  {email}
+                </a>
+              ) : null}
 
               <ContactLinks
                 contacts={contacts?.contacts}

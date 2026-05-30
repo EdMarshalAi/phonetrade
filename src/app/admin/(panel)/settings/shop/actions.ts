@@ -11,10 +11,14 @@ export interface ShopGeneral {
   phone?: string;
   phone2?: string;
   email?: string;
+  phone_enabled?: boolean;
+  phone2_enabled?: boolean;
+  email_enabled?: boolean;
   working_hours?: string;
   vk?: string;
   whatsapp?: string;
   telegram?: string;
+  legal_entity?: string;
   inn?: string;
   ogrn?: string;
   legal_address?: string;

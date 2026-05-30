@@ -38,6 +38,31 @@ function move<T>(arr: T[], i: number, dir: -1 | 1): T[] {
 const iconBtn =
   "inline-flex h-9 w-9 items-center justify-center rounded-sm border border-border bg-white text-ink-muted transition-colors hover:bg-surface hover:text-ink disabled:opacity-40";
 
+/** Строка «поле контакта + тумблер видимости на сайте». */
+function ContactFieldRow({
+  label, value, onValue, enabled, onToggle, type, placeholder,
+}: {
+  label: string;
+  value: string;
+  onValue: (v: string) => void;
+  enabled: boolean;
+  onToggle: (on: boolean) => void;
+  type?: string;
+  placeholder?: string;
+}) {
+  return (
+    <div className="flex items-end gap-4">
+      <Field label={label} className="flex-1">
+        <TextInput type={type} value={value} onChange={(e) => onValue(e.target.value)} placeholder={placeholder} />
+      </Field>
+      <div className="flex h-10 shrink-0 items-center gap-2 pb-px">
+        <span className="text-[12.5px] text-ink-subtle">{enabled ? "Показан" : "Скрыт"}</span>
+        <Switch checked={enabled} onChange={onToggle} />
+      </div>
+    </div>
+  );
+}
+
 export function ShopForm({ initial }: { initial: ShopGeneral }) {
   const router = useRouter();
   const [tab, setTab] = React.useState<Tab>("main");
@@ -94,13 +119,34 @@ export function ShopForm({ initial }: { initial: ShopGeneral }) {
         </Panel>
       ) : tab === "contacts" ? (
         <div className="space-y-5">
-          <Panel className="space-y-4 p-5">
+          <Panel className="space-y-3 p-5">
             <PanelTitle>Контактная информация</PanelTitle>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Телефон"><TextInput value={v.phone ?? ""} onChange={(e) => set({ phone: e.target.value })} placeholder="+7 …" /></Field>
-              <Field label="Доп. телефон"><TextInput value={v.phone2 ?? ""} onChange={(e) => set({ phone2: e.target.value })} /></Field>
-              <Field label="Email"><TextInput type="email" value={v.email ?? ""} onChange={(e) => set({ email: e.target.value })} /></Field>
-            </div>
+            <p className="-mt-1 text-[13px] text-ink-muted">Тумблер справа — показывать контакт в шапке и футере сайта.</p>
+            <ContactFieldRow
+              label="Телефон"
+              value={v.phone ?? ""}
+              onValue={(val) => set({ phone: val })}
+              enabled={v.phone_enabled !== false}
+              onToggle={(on) => set({ phone_enabled: on })}
+              placeholder="+7 904 098-88-77"
+            />
+            <ContactFieldRow
+              label="Доп. телефон"
+              value={v.phone2 ?? ""}
+              onValue={(val) => set({ phone2: val })}
+              enabled={v.phone2_enabled !== false}
+              onToggle={(on) => set({ phone2_enabled: on })}
+              placeholder="+7 …"
+            />
+            <ContactFieldRow
+              label="Email"
+              type="email"
+              value={v.email ?? ""}
+              onValue={(val) => set({ email: val })}
+              enabled={v.email_enabled !== false}
+              onToggle={(on) => set({ email_enabled: on })}
+              placeholder="shop@phonetrade.ru"
+            />
           </Panel>
 
           <div>
@@ -150,9 +196,12 @@ export function ShopForm({ initial }: { initial: ShopGeneral }) {
       ) : (
         <Panel className="space-y-4 p-5">
           <PanelTitle>Юридическая информация</PanelTitle>
+          <Field label="Юр. лицо (ООО «…» или ФИО для ИП)">
+            <TextInput value={v.legal_entity ?? ""} onChange={(e) => set({ legal_entity: e.target.value })} placeholder="ИП Иванов Иван Иванович" />
+          </Field>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="ИНН"><TextInput value={v.inn ?? ""} onChange={(e) => set({ inn: e.target.value })} /></Field>
-            <Field label="ОГРН"><TextInput value={v.ogrn ?? ""} onChange={(e) => set({ ogrn: e.target.value })} /></Field>
+            <Field label="ОГРН / ОГРНИП"><TextInput value={v.ogrn ?? ""} onChange={(e) => set({ ogrn: e.target.value })} /></Field>
           </div>
           <Field label="Юридический адрес"><TextInput value={v.legal_address ?? ""} onChange={(e) => set({ legal_address: e.target.value })} /></Field>
         </Panel>

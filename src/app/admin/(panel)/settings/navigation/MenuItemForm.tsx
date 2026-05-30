@@ -18,12 +18,12 @@ export interface MenuItemValue {
   is_visible: boolean;
 }
 
-export function MenuItemForm({ item }: { item?: MenuItemValue }) {
+export function MenuItemForm({ item, defaultLocation }: { item?: MenuItemValue; defaultLocation?: string }) {
   const isEdit = !!item;
   const [formError, setFormError] = React.useState<string | null>(null);
   const { register, handleSubmit, control, formState: { isSubmitting } } = useForm<MenuItemInput>({
     defaultValues: {
-      menu_location: (item?.menu_location as MenuItemInput["menu_location"]) ?? "main",
+      menu_location: (item?.menu_location as MenuItemInput["menu_location"]) ?? (defaultLocation as MenuItemInput["menu_location"]) ?? "main",
       title: item?.title ?? "",
       link_url: item?.link_url ?? "",
       link_type: (item?.link_type as MenuItemInput["link_type"]) ?? "url",

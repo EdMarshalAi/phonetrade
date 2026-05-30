@@ -28,6 +28,7 @@ export async function getCategories(): Promise<Category[]> {
   const { data, error } = await supabase
     .from("categories")
     .select("*")
+    .eq("is_published", true)
     .order("sort", { ascending: true });
   if (error || !data || data.length === 0) return CATEGORIES;
   return (data as CategoryRow[]).map(rowToCategory);

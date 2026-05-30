@@ -22,9 +22,8 @@ export default async function CatalogPage() {
   const counts = await Promise.all(
     categories.map((c) => getProductsByCategory(c.slug).then((p) => p.length).catch(() => 0))
   );
-  const items = categories
-    .map((c, i) => ({ ...c, count: counts[i], desc: getCategoryConfig(c.slug)?.description }))
-    .filter((c) => c.count > 0);
+  // Показываем все опубликованные категории (в т.ч. созданные в админке и пока пустые).
+  const items = categories.map((c, i) => ({ ...c, count: counts[i], desc: getCategoryConfig(c.slug)?.description }));
 
   return (
     <section className="bg-bg">

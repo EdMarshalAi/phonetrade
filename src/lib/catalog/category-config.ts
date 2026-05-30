@@ -243,6 +243,25 @@ export function getCategoryConfig(slug: string): CategoryConfig | undefined {
   return CATEGORY_CONFIGS[slug as CategorySlug];
 }
 
+/**
+ * Конфиг по умолчанию для произвольной категории из админки (нет хардкода).
+ * Фасеты подставляются из настроек категории (available_filters) на уровне страницы.
+ */
+export function defaultCategoryConfig(
+  slug: string,
+  title: string,
+  description?: string
+): CategoryConfig {
+  return {
+    slug: slug as CategorySlug,
+    title,
+    description: description || `${title} — с гарантией PhoneTrade в Белгороде.`,
+    facets: [],
+    quickFacets: [],
+    sortOptions: COMMON_SORT,
+  };
+}
+
 export const VALID_CATEGORY_SLUGS = Object.keys(
   CATEGORY_CONFIGS
 ) as CategorySlug[];

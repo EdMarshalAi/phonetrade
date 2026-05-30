@@ -110,6 +110,11 @@ export function Header({
   const { user: authUser } = useAuth();
   const phone = contacts?.phone || "+7 (904) 098-88-77";
   const phoneTel = `tel:+${phone.replace(/\D/g, "")}`;
+  const phoneShown = contacts?.phone_enabled !== false;
+  const phone2 = contacts?.phone2?.trim();
+  const phone2Shown = !!phone2 && contacts?.phone2_enabled !== false;
+  const email = contacts?.email?.trim();
+  const emailShown = !!email && contacts?.email_enabled !== false;
   const hours = contacts?.working_hours || "Ежедневно 10:00–20:00";
   // Реальные категории из БД (если переданы) — иначе встроенный дефолт.
   const catItems: CategoryMenuItem[] =
@@ -169,12 +174,24 @@ export function Header({
                 className="flex items-center gap-3"
                 itemClassName="inline-flex size-7 items-center justify-center rounded-full bg-white/8 text-onDark hover:bg-white/15 hover:text-white transition-colors"
               />
-              <a
-                href={phoneTel}
-                className="font-medium text-white hover:text-onDark transition-colors tabular-nums"
-              >
-                {phone}
-              </a>
+              {emailShown ? (
+                <a href={`mailto:${email}`} className="hover:text-white transition-colors">
+                  {email}
+                </a>
+              ) : null}
+              {phone2Shown ? (
+                <a href={`tel:+${phone2!.replace(/\D/g, "")}`} className="font-medium text-white hover:text-onDark transition-colors tabular-nums">
+                  {phone2}
+                </a>
+              ) : null}
+              {phoneShown ? (
+                <a
+                  href={phoneTel}
+                  className="font-medium text-white hover:text-onDark transition-colors tabular-nums"
+                >
+                  {phone}
+                </a>
+              ) : null}
             </div>
           </div>
         </div>
