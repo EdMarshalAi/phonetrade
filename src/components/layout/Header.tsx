@@ -15,10 +15,6 @@ import {
   X,
 } from "lucide-react";
 import { SearchInput } from "@/components/layout/SearchInput";
-import {
-  CATEGORY_SUBCATEGORIES,
-  subcategoryHref,
-} from "@/lib/catalog/subcategories";
 import type { CategorySlug } from "@/lib/data/products";
 import { useCart } from "@/components/providers/CartProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -41,6 +37,7 @@ type CategoryMenuItem = {
   label: string;
   slug?: CategorySlug;
   iconUrl?: string | null;
+  children?: { href: string; label: string }[];
 };
 
 const ALL_CATEGORIES: CategoryMenuItem[] = [
@@ -100,10 +97,12 @@ const MOBILE_SECTIONS: MobileSection[] = [
 export function Header({
   contacts,
   categories,
+  categoryTree,
   topLinks,
 }: {
   contacts?: import("@/lib/content").ShopContacts | null;
   categories?: { slug: string; title: string; icon_url?: string | null }[];
+  categoryTree?: { slug: string; title: string; icon_url?: string | null; children: { slug: string; title: string }[] }[];
   topLinks?: { title: string; href: string }[];
 }) {
   const { count: cartCount } = useCart();
@@ -117,10 +116,19 @@ export function Header({
   const emailShown = !!email && contacts?.email_enabled !== false;
   const hours = contacts?.working_hours || "Ежедневно 10:00–20:00";
   // Реальные категории из БД (если переданы) — иначе встроенный дефолт.
+  // Дерево (родитель + серии) приоритетнее — для вложенного меню.
   const catItems: CategoryMenuItem[] =
-    categories && categories.length > 0
-      ? categories.map((c) => ({ href: `/category/${c.slug}`, label: c.title, slug: c.slug as CategorySlug, iconUrl: c.icon_url ?? null }))
-      : ALL_CATEGORIES;
+    categoryTree && categoryTree.length > 0
+      ? categoryTree.map((c) => ({
+          href: `/category/${c.slug}`,
+          label: c.title,
+          slug: c.slug as CategorySlug,
+          iconUrl: c.icon_url ?? null,
+          children: c.children.map((ch) => ({ href: `/category/${ch.slug}`, label: ch.title })),
+        }))
+      : categories && categories.length > 0
+        ? categories.map((c) => ({ href: `/category/${c.slug}`, label: c.title, slug: c.slug as CategorySlug, iconUrl: c.icon_url ?? null }))
+        : ALL_CATEGORIES;
   const topItems = topLinks && topLinks.length > 0 ? topLinks.map((t) => ({ href: t.href, label: t.title })) : TOP_LINKS;
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -281,9 +289,7 @@ export function Header({
                     )}
                   >
                     {catItems.map((item) => {
-                      const subs = item.slug
-                        ? CATEGORY_SUBCATEGORIES[item.slug] ?? []
-                        : [];
+                      const subs = item.children ?? [];
                       const itemRow = (
                         <span className="flex items-center gap-3 w-full">
                           <span
@@ -357,31 +363,19 @@ export function Header({
                                       className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold text-ink hover:bg-surface data-[highlighted]:bg-surface outline-none cursor-pointer border-b border-border/60 mb-1"
                                     >
                                       Все {item.label}
-                                      <span className="text-xs text-ink-subtle tabular-nums">
-                                        {subs.reduce(
-                                          (acc, s) => acc + s.count,
-                                          0
-                                        )}
-                                      </span>
                                     </a>
                                   )}
                                 />
                                 {subs.map((sub) => (
                                   <Menu.Item
-                                    key={sub.label}
+                                    key={sub.href}
                                     render={(props) => (
                                       <a
                                         {...props}
-                                        href={subcategoryHref(
-                                          item.slug!,
-                                          sub.label
-                                        )}
+                                        href={sub.href}
                                         className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm text-ink hover:bg-surface data-[highlighted]:bg-surface outline-none cursor-pointer"
                                       >
                                         <span>{sub.label}</span>
-                                        <span className="text-xs text-ink-subtle tabular-nums">
-                                          {sub.count}
-                                        </span>
                                       </a>
                                     )}
                                   />

@@ -62,6 +62,30 @@ export interface NavCategory {
   icon_url: string | null;
 }
 
+export interface NavCategoryNode extends NavCategory {
+  children: { slug: string; title: string }[];
+}
+
+/** Дерево навигации: верхний уровень + дочерние серии (для вложенного меню). */
+export async function getNavCategoryTree(): Promise<NavCategoryNode[]> {
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("categories")
+    .select("slug,title,icon_url,sort,parent_slug")
+    .eq("is_published", true)
+    .neq("slug", "trade-in")
+    .order("sort", { ascending: true });
+  const all = (data ?? []) as { slug: string; title: string; icon_url: string | null; parent_slug: string | null }[];
+  return all
+    .filter((c) => !c.parent_slug)
+    .map((p) => ({
+      slug: p.slug,
+      title: p.title,
+      icon_url: p.icon_url ?? null,
+      children: all.filter((c) => c.parent_slug === p.slug).map((c) => ({ slug: c.slug, title: c.title })),
+    }));
+}
+
 /** Категории для меню/шапки (с иконкой), без trade-in. */
 export async function getNavCategories(): Promise<NavCategory[]> {
   if (!supabase) return [];

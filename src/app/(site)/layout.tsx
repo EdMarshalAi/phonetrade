@@ -8,7 +8,7 @@ import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { BackToTop } from "@/components/ui/BackToTop";
 import { BadgeRegistryProvider } from "@/components/product/ProductBadges";
 import { CardSettingsProvider } from "@/components/product/CardSettings";
-import { getShopContacts, getNavCategories, getMenu, getProductBadges, getCardDisplay, getProductOptions } from "@/lib/content";
+import { getShopContacts, getNavCategoryTree, getMenu, getProductBadges, getCardDisplay, getProductOptions } from "@/lib/content";
 
 /**
  * Публичный сайт: шапка, подвал и клиентские провайдеры.
@@ -20,9 +20,9 @@ export default async function SiteLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [contacts, navCategories, topMenu, footerMenu, badges, cardDisplay, cardOptions] = await Promise.all([
+  const [contacts, navTree, topMenu, footerMenu, badges, cardDisplay, cardOptions] = await Promise.all([
     getShopContacts(),
-    getNavCategories(),
+    getNavCategoryTree(),
     getMenu("top"),
     getMenu("footer"),
     getProductBadges(),
@@ -37,7 +37,7 @@ export default async function SiteLayout({
             <BadgeRegistryProvider badges={badges}>
             <CardSettingsProvider display={cardDisplay} options={cardOptions}>
               <div className="flex min-h-dvh flex-col">
-                <Header contacts={contacts} categories={navCategories} topLinks={topMenu} />
+                <Header contacts={contacts} categoryTree={navTree} topLinks={topMenu} />
                 <main className="flex-1">{children}</main>
                 <Footer contacts={contacts} legalLinks={footerMenu} />
               </div>
