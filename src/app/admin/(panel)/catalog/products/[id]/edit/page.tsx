@@ -5,7 +5,7 @@ import { ExternalLink } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminButton } from "@/components/admin/form";
-import { ProductForm, type ProductValue } from "../../ProductForm";
+import { ProductForm, type ProductValue, type RelatedOption } from "../../ProductForm";
 import type { ProductImage } from "../../VariantsManager";
 import { productImages } from "@/lib/utils/product-images";
 import { getProductOptions, getProductBadges } from "@/lib/content";
@@ -23,7 +23,7 @@ export default async function EditProductPage({
     db.from("products").select("*").eq("id", id).maybeSingle(),
     db.from("categories").select("slug,title,markup_percent,min_margin_rub").order("sort"),
     db.from("product_variants").select("*").eq("product_id", id).order("sort_order"),
-    db.from("products").select("id,title,category_slug,image").eq("status", "published").is("deleted_at", null).order("sort"),
+    db.from("products").select("id,title,category_slug,image,color,memory,model,variant_group_id").is("deleted_at", null).order("sort"),
     db.from("pricing_settings").select("*").eq("id", 1).maybeSingle(),
     db.from("currency_rates").select("usd").order("date", { ascending: false }).limit(1).maybeSingle(),
     db.from("product_price_history").select("id,cost_rub,cost_rate,price_cash,price_card,reason,changed_at").eq("product_id", id).order("changed_at", { ascending: false }).limit(20),
@@ -84,7 +84,7 @@ export default async function EditProductPage({
         images={imgRows ?? []}
         optionDefs={optionDefs}
         badgeDefs={badgeDefs}
-        allProducts={(allProd ?? []) as { id: string; title: string; category_slug: string; image: string | null }[]}
+        allProducts={(allProd ?? []) as RelatedOption[]}
         pricingSettings={pricingSettings}
         categoryPricing={categoryPricing}
         cbrUsd={rate?.usd != null ? Number(rate.usd) : null}

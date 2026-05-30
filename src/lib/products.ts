@@ -254,10 +254,11 @@ export async function getVariantsForProduct(product: Product): Promise<{
   memories: Product[];
 }> {
   if (!supabase) return mockVariants(product);
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("model", product.model);
+  // Явная группа «Связанные товары» приоритетнее авто-объединения по model.
+  const query = product.variantGroupId
+    ? supabase.from("products").select("*").eq("variant_group_id", product.variantGroupId)
+    : supabase.from("products").select("*").eq("model", product.model);
+  const { data, error } = await query;
   if (error || !data || data.length === 0) return mockVariants(product);
   const siblings = (data as ProductRow[]).map(rowToProduct);
   return {

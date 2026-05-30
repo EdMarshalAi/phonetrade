@@ -226,3 +226,62 @@ export async function setPrimaryImage(
     return { error: e instanceof Error ? e.message : "Ошибка установки главного изображения" };
   }
 }
+
+// ── Связанные товары (группа вариантов: цвет/память) ─────────────────────────
+
+/**
+ * Присваивает общую группу variant_group_id товару и выбранным связанным
+ * товарам (двунаправленно). Товары, которые были в группе, но не выбраны —
+ * исключаются. Если в группе остаётся ≤1 товара — группа снимается у всех.
+ * Витрина показывает переключатели цвет/память по этой группе (фолбэк — model).
+ */
+export async function setVariantGroup(
+  productId: string,
+  memberIds: string[]
+): Promise<{ error?: string; group?: string | null; count?: number }> {
+  const allIds = Array.from(new Set([productId, ...memberIds.filter(Boolean)]));
+  try {
+    let group: string | null = null;
+    let count = 0;
+    await adminMutation({
+      roles: [...STAFF],
+      action: "update",
+      entityType: "variant_group",
+      entityId: productId,
+      changes: { members: allIds.length },
+      revalidate: ["/", "/catalog", ...allIds.map((id) => `/product/${id}`)],
+      run: async (db) => {
+        const now = new Date().toISOString();
+        const { data: cur } = await db.from("products").select("variant_group_id").eq("id", productId).maybeSingle();
+        const existing = (cur?.variant_group_id as string | null) ?? null;
+
+        if (allIds.length <= 1) {
+          if (existing) {
+            const { error } = await db.from("products").update({ variant_group_id: null, updated_at: now }).eq("variant_group_id", existing);
+            if (error) throw error;
+          }
+          group = null;
+          return;
+        }
+
+        const groupId = existing ?? `vg-${crypto.randomUUID().slice(0, 12)}`;
+        // снять группу с тех, кто был в ней, но больше не выбран
+        if (existing) {
+          const { data: prev } = await db.from("products").select("id").eq("variant_group_id", existing);
+          const toRemove = (prev ?? []).map((p) => p.id as string).filter((id) => !allIds.includes(id));
+          if (toRemove.length) {
+            const { error } = await db.from("products").update({ variant_group_id: null, updated_at: now }).in("id", toRemove);
+            if (error) throw error;
+          }
+        }
+        const { error } = await db.from("products").update({ variant_group_id: groupId, updated_at: now }).in("id", allIds);
+        if (error) throw error;
+        group = groupId;
+        count = allIds.length;
+      },
+    });
+    return { group, count };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Ошибка сохранения группы" };
+  }
+}

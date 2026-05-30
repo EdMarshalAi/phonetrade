@@ -137,6 +137,19 @@ export function AdminTopbar({
         </nav>
       </div>
 
+      <div className="flex shrink-0 items-center gap-2">
+      {/* Кнопка «На сайт» — рядом с профилем, не в выпадающем списке */}
+      <Link
+        href="/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 rounded-sm border border-border bg-white px-2.5 py-1.5 text-[13px] text-ink-muted transition-colors hover:bg-surface hover:text-ink"
+        title="Открыть сайт в новой вкладке"
+      >
+        <ExternalLink className="h-4 w-4" strokeWidth={1.75} />
+        <span className="hidden sm:inline">На сайт</span>
+      </Link>
+
       {/* Меню пользователя */}
       <div className="relative shrink-0">
         <button
@@ -159,15 +172,6 @@ export function AdminTopbar({
                 <p className="text-[13px] font-medium text-ink">{userName || userEmail}</p>
                 <p className="text-[11px] text-ink-subtle">{ROLE_LABEL[role] ?? role}</p>
               </div>
-              <Link
-                href="/"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 text-[13.5px] text-ink hover:bg-surface"
-              >
-                <ExternalLink className="h-4 w-4 text-ink-subtle" strokeWidth={1.75} /> На сайт
-              </Link>
               <form action={signOutAction}>
                 <button
                   type="submit"
@@ -179,6 +183,7 @@ export function AdminTopbar({
             </div>
           </>
         ) : null}
+      </div>
       </div>
     </header>
   );

@@ -201,8 +201,15 @@ export function PricingShell({
   /* ── экспорт ── */
   const onExport = async (format: "xlsx" | "csv", onlyVisible: boolean) => {
     setExportOpen(false);
+    await runExport(onlyVisible ? filtered.map((r) => r.id) : null, format);
+  };
+  const onExportIds = async (ids: string[]) => {
+    if (!ids.length) return toast.error("Ничего не выбрано");
+    await runExport(ids, "xlsx");
+  };
+  const runExport = async (ids: string[] | null, format: "xlsx" | "csv") => {
     setBusy(true);
-    const res = await exportPricing(onlyVisible ? filtered.map((r) => r.id) : null, format);
+    const res = await exportPricing(ids, format);
     setBusy(false);
     if ("error" in res) return toast.error(res.error);
     downloadBase64(res.filename, res.base64, res.mime);
@@ -311,11 +318,15 @@ export function PricingShell({
         <div className="relative">
           <ActionTile icon={<Download className="h-5 w-5" strokeWidth={1.5} />} title="Экспорт" hint="XLSX · CSV" onClick={() => setExportOpen((o) => !o)} />
           {exportOpen ? (
-            <div className="absolute right-0 top-full z-30 mt-1 w-60 rounded-lg border border-border/70 bg-white py-1 shadow-lg">
-              <button type="button" onClick={() => onExport("xlsx", false)} className="block w-full px-3 py-2 text-left text-[13px] text-ink hover:bg-surface">XLSX — все товары</button>
-              <button type="button" onClick={() => onExport("csv", false)} className="block w-full px-3 py-2 text-left text-[13px] text-ink hover:bg-surface">CSV — все товары</button>
+            <div className="absolute right-0 top-full z-30 mt-1 w-72 rounded-lg border border-border/70 bg-white py-1 shadow-lg">
+              <p className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
+                По фильтру: {cat ? catBy.get(cat)?.title ?? cat : "все категории"} ({filtered.length})
+              </p>
+              <button type="button" onClick={() => onExport("xlsx", true)} className="block w-full px-3 py-2 text-left text-[13px] text-ink hover:bg-surface">XLSX — по фильтру</button>
+              <button type="button" onClick={() => onExport("csv", true)} className="block w-full px-3 py-2 text-left text-[13px] text-ink hover:bg-surface">CSV — по фильтру</button>
               <div className="my-1 border-t border-border/50" />
-              <button type="button" onClick={() => onExport("xlsx", true)} className="block w-full px-3 py-2 text-left text-[13px] text-ink hover:bg-surface">XLSX — только видимые ({filtered.length})</button>
+              <button type="button" onClick={() => onExport("xlsx", false)} className="block w-full px-3 py-2 text-left text-[13px] text-ink-muted hover:bg-surface">XLSX — все товары</button>
+              <button type="button" onClick={() => onExport("csv", false)} className="block w-full px-3 py-2 text-left text-[13px] text-ink-muted hover:bg-surface">CSV — все товары</button>
             </div>
           ) : null}
         </div>
@@ -353,7 +364,7 @@ export function PricingShell({
             <DarkBtn label="Курс закупа" onClick={() => askBulk({ title: "Курс закупа для выбранных", label: "Курс USD", placeholder: "напр. 90", build: (v) => ({ type: "set_rate", value: v }) })} />
             <DarkBtn label="Сбросить к формуле" onClick={() => confirmBulk("Снять ручную фиксацию?", { type: "reset_formula" })} />
             <DarkBtn label="Пересчитать" onClick={onRecalcSelected} />
-            <DarkBtn label="Экспорт" onClick={() => onExport("xlsx", false)} />
+            <DarkBtn label="Экспорт выбранных" onClick={() => onExportIds([...sel])} />
           </div>
         </div>
       ) : null}

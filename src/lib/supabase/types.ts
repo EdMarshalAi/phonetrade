@@ -31,6 +31,7 @@ export type ProductRow = {
   stock: number | null;
   is_available: boolean | null;
   related_product_ids: string[] | null;
+  variant_group_id: string | null;
   description_html: string | null;
 };
 
@@ -74,6 +75,7 @@ export function rowToProduct(r: ProductRow): Product {
     stock: r.stock ?? undefined,
     isAvailable: r.is_available ?? undefined,
     relatedProductIds: Array.isArray(r.related_product_ids) ? r.related_product_ids : undefined,
+    variantGroupId: r.variant_group_id ?? undefined,
     descriptionHtml: r.description_html ?? undefined,
   };
 }
@@ -131,6 +133,7 @@ export function productToRow(p: Product, sort = 0): ProductRow & { sort: number 
     stock: p.stock ?? null,
     is_available: p.isAvailable ?? true,
     related_product_ids: p.relatedProductIds ?? null,
+    variant_group_id: p.variantGroupId ?? null,
     description_html: p.descriptionHtml ?? null,
     sort,
   };

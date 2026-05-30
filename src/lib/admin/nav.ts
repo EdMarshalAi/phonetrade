@@ -1,5 +1,4 @@
 import {
-  LayoutDashboard,
   BarChart3,
   ShoppingCart,
   Inbox,
@@ -48,18 +47,18 @@ const ANALYTICS: AdminRole[] = ["admin", "manager", "analytics"];
 /** Структура сайдбара админки (спека §2). */
 export const ADMIN_NAV: NavGroup[] = [
   {
-    items: [
-      { label: "Обзор", href: "/admin", icon: LayoutDashboard, roles: [...ALL, "analytics"] },
-      { label: "Заказы", href: "/admin/orders", icon: ShoppingCart, roles: STAFF },
-      { label: "Заявки", href: "/admin/leads", icon: Inbox, roles: STAFF },
-      { label: "Клиенты", href: "/admin/customers", icon: Users, roles: STAFF },
-    ],
-  },
-  {
     label: "Аналитика",
     items: [
       { label: "Аналитика сайта", href: "/admin/analytics/site", icon: BarChart3, roles: ANALYTICS },
       { label: "Аналитика заказов", href: "/admin/analytics/orders", icon: BarChart3, roles: ANALYTICS },
+    ],
+  },
+  {
+    label: "Продажи",
+    items: [
+      { label: "Заказы", href: "/admin/orders", icon: ShoppingCart, roles: STAFF },
+      { label: "Заявки", href: "/admin/leads", icon: Inbox, roles: STAFF },
+      { label: "Клиенты", href: "/admin/customers", icon: Users, roles: STAFF },
     ],
   },
   {

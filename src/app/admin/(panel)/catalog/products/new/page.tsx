@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/admin/ui";
-import { ProductForm } from "../ProductForm";
+import { ProductForm, type RelatedOption } from "../ProductForm";
 import { getProductOptions, getProductBadges } from "@/lib/content";
 
 export const metadata: Metadata = { title: "Новый товар" };
@@ -10,7 +10,7 @@ export default async function NewProductPage() {
   const db = createSupabaseAdminClient();
   const [{ data }, { data: allProd }, { data: settings }, { data: rate }, optionDefs, badgeDefs] = await Promise.all([
     db.from("categories").select("slug,title,markup_percent,min_margin_rub").order("sort"),
-    db.from("products").select("id,title,category_slug,image").eq("status", "published").is("deleted_at", null).order("sort"),
+    db.from("products").select("id,title,category_slug,image,color,memory,model,variant_group_id").is("deleted_at", null).order("sort"),
     db.from("pricing_settings").select("*").eq("id", 1).maybeSingle(),
     db.from("currency_rates").select("usd").order("date", { ascending: false }).limit(1).maybeSingle(),
     getProductOptions(),
@@ -39,7 +39,7 @@ export default async function NewProductPage() {
         categories={categories}
         optionDefs={optionDefs}
         badgeDefs={badgeDefs}
-        allProducts={(allProd ?? []) as { id: string; title: string; category_slug: string; image: string | null }[]}
+        allProducts={(allProd ?? []) as RelatedOption[]}
         pricingSettings={pricingSettings}
         categoryPricing={categoryPricing}
         cbrUsd={rate?.usd != null ? Number(rate.usd) : null}

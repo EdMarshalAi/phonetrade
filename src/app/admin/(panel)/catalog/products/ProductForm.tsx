@@ -21,7 +21,8 @@ import { Plus, X } from "lucide-react";
 import Image from "next/image";
 import type { ProductOption, ProductBadge } from "@/lib/content";
 import { createProduct, updateProduct } from "./actions";
-import { VariantsSection, GallerySection, type Variant, type ProductImage } from "./VariantsManager";
+import { GallerySection, type Variant, type ProductImage } from "./VariantsManager";
+import { RelatedProductsManager } from "./RelatedProductsManager";
 import { OptionsBadgesSection } from "./OptionsBadgesSection";
 
 export interface ProductValue extends Partial<ProductInput> {
@@ -37,11 +38,11 @@ const TABS = [
   { key: "description", label: "Описание" },
   { key: "used", label: "Состояние (Б/У)" },
   { key: "seo", label: "SEO" },
-  { key: "variants", label: "Варианты" },
+  { key: "variants", label: "Связанные товары" },
   { key: "gallery", label: "Галерея" },
 ] as const;
 
-export type RelatedOption = { id: string; title: string; category_slug: string; image: string | null };
+export type RelatedOption = { id: string; title: string; category_slug: string; image: string | null; color?: string | null; memory?: string | null; model?: string | null; variant_group_id?: string | null };
 export type PriceHistoryRow = {
   id: number;
   cost_rub: number | null;
@@ -537,10 +538,15 @@ export function ProductForm({
         </Panel>
       </div>
 
-      {/* Варианты */}
+      {/* Связанные товары (варианты цвет/память) */}
       {isEdit ? (
         <div hidden={tab !== "variants"}>
-          <VariantsSection productId={product!.id} variants={variants} />
+          <RelatedProductsManager
+            productId={product!.id}
+            currentGroupId={(product as ProductValue & { variant_group_id?: string | null }).variant_group_id ?? null}
+            currentModel={(watch("model") as string) ?? null}
+            products={allProducts}
+          />
         </div>
       ) : null}
 

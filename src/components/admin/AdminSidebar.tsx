@@ -1,11 +1,14 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { X } from "lucide-react";
+import { X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { navForAccess } from "@/lib/admin/nav";
+
+const COLLAPSE_KEY = "admin-nav-collapsed";
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/admin") return pathname === "/admin";
@@ -30,6 +33,23 @@ export function AdminSidebar({
 }) {
   const pathname = usePathname();
   const groups = navForAccess(fullAccess, permissions);
+
+  // Свёрнутые группы (по label) — сохраняются в localStorage.
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set());
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLLAPSE_KEY);
+      if (raw) setCollapsed(new Set(JSON.parse(raw) as string[]));
+    } catch { /* ignore */ }
+  }, []);
+  const toggleGroup = (label: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+  };
 
   return (
     <>
@@ -82,14 +102,24 @@ export function AdminSidebar({
 
         {/* навигация */}
         <nav className="scrollbar-hide flex-1 overflow-y-auto px-3 pb-6">
-          {groups.map((group, gi) => (
-            <div key={group.label ?? gi} className={cn(gi > 0 && "mt-6")}>
-              {group.label ? (
-                <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-onDark-muted/70">
-                  {group.label}
-                </p>
+          {groups.map((group, gi) => {
+            const label = group.label;
+            const hasActive = group.items.some((it) => isActive(pathname, it.href));
+            // активную группу не сворачиваем принудительно — показываем её содержимое
+            const isCollapsed = !!label && collapsed.has(label) && !hasActive;
+            return (
+            <div key={label ?? gi} className={cn(gi > 0 && "mt-5")}>
+              {label ? (
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(label)}
+                  className="group flex w-full items-center justify-between gap-2 px-3 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-onDark-muted/70 transition-colors hover:text-onDark-muted"
+                >
+                  <span>{label}</span>
+                  <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 transition-transform duration-200", isCollapsed && "-rotate-90")} strokeWidth={2.25} />
+                </button>
               ) : null}
-              <ul className="space-y-0.5">
+              <ul className={cn("space-y-0.5", isCollapsed && "hidden")}>
                 {group.items.map((item) => {
                   const active = isActive(pathname, item.href);
                   const Icon = item.icon;
@@ -123,7 +153,8 @@ export function AdminSidebar({
                 })}
               </ul>
             </div>
-          ))}
+            );
+          })}
         </nav>
       </aside>
     </>
