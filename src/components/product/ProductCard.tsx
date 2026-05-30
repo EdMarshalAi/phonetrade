@@ -78,7 +78,7 @@ export function ProductCard({ product, className }: Props) {
         className
       )}
     >
-      <div className="relative -mx-4 -mt-4 sm:-mx-5 sm:-mt-5 mb-4 bg-surface aspect-square overflow-hidden">
+      <div className="relative -mx-4 -mt-4 sm:-mx-5 sm:-mt-5 mb-4 bg-white border-b border-border/60 aspect-square overflow-hidden">
         {display.badges ? (
           <>
             <ProductBadges badges={product.badges} position="tl" className="absolute top-3 left-3 z-20 max-w-[65%]" />
