@@ -30,6 +30,32 @@ async function notifyRecalc(count: number, rate: number) {
   } catch {}
 }
 
+/** Проверяет товары с маржой ниже минимума и шлёт алёрт в Telegram. */
+async function checkLowMargin() {
+  try {
+    const db = createSupabaseAdminClient();
+    const { data: s } = await db.from("pricing_settings").select("min_margin_percent").eq("id", 1).maybeSingle();
+    const min = Number(s?.min_margin_percent ?? 5);
+    const { data: prods } = await db
+      .from("products")
+      .select("title, price_cash, cost_rub")
+      .is("deleted_at", null)
+      .neq("type", "used")
+      .gt("cost_rub", 0)
+      .limit(5000);
+    const low = (prods ?? [])
+      .map((p) => ({ title: p.title as string, m: ((Number(p.price_cash) - Number(p.cost_rub)) / Number(p.cost_rub)) * 100 }))
+      .filter((x) => Number.isFinite(x.m) && x.m < min)
+      .sort((a, b) => a.m - b.m);
+    if (low.length === 0) return;
+    const chats = await telegramRecipientsFor("pricing_below_margin");
+    await sendTelegram(
+      `⚠️ ${low.length} товаров с маржой ниже минимума (${min}%). Самый низкий: ${low[0].title} (${low[0].m.toFixed(0)}%).`,
+      chats.length ? chats : undefined
+    );
+  } catch {}
+}
+
 /** Сохранить формулу и пересчитать все товары без ручной фиксации. */
 export async function updatePricingSettings(input: PricingSettingsInput): Promise<{ error?: string; recalculated?: number }> {
   const parsed = settingsSchema.safeParse(input);
@@ -52,6 +78,7 @@ export async function updatePricingSettings(input: PricingSettingsInput): Promis
       },
     });
     await notifyRecalc(count, parsed.data.working_usd_rate);
+    await checkLowMargin();
     return { recalculated: count };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка сохранения формулы" };
@@ -77,6 +104,7 @@ export async function recalcAllPrices(): Promise<{ error?: string; recalculated?
     });
     const { data: s } = await createSupabaseAdminClient().from("pricing_settings").select("working_usd_rate").eq("id", 1).maybeSingle();
     await notifyRecalc(count, Number(s?.working_usd_rate ?? 0));
+    await checkLowMargin();
     return { recalculated: count };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка пересчёта" };
@@ -107,6 +135,7 @@ async function updatePricingSettingsRate(rate: number): Promise<{ error?: string
         count = typeof data === "number" ? data : 0;
       },
     });
+    await checkLowMargin();
     return { recalculated: count };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка обновления курса" };
