@@ -436,23 +436,23 @@ function BadgeEditor({
 }) {
   return (
     <div className="space-y-4">
-      <label className="block">
-        <span className="mb-1.5 block text-[13px] font-medium text-ink">Название</span>
-        <TextInput value={badge.label} onChange={(e) => onChange({ label: e.target.value })} />
-      </label>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div>
+      <div className="flex items-end gap-3">
+        <div className="shrink-0">
           <span className="mb-1.5 block text-[13px] font-medium text-ink">Иконка</span>
           <IconPicker value={badge.icon ?? null} onChange={(name) => onChange({ icon: name })} />
         </div>
-        <label className="block">
-          <span className="mb-1.5 block text-[13px] font-medium text-ink">Угол на карточке</span>
-          <Select value={badge.position ?? "tl"} onChange={(e) => onChange({ position: e.target.value as ProductBadge["position"] })}>
-            {CORNERS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </Select>
+        <label className="block flex-1">
+          <span className="mb-1.5 block text-[13px] font-medium text-ink">Название</span>
+          <TextInput value={badge.label} onChange={(e) => onChange({ label: e.target.value })} />
         </label>
       </div>
+
+      <label className="block">
+        <span className="mb-1.5 block text-[13px] font-medium text-ink">Угол на карточке</span>
+        <Select value={badge.position ?? "tl"} onChange={(e) => onChange({ position: e.target.value as ProductBadge["position"] })}>
+          {CORNERS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </Select>
+      </label>
 
       <div className="grid grid-cols-2 gap-4">
         <Swatches label="Фон" value={badge.bg} colors={BG_SWATCHES} onChange={(c) => onChange({ bg: c })} />
