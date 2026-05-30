@@ -8,7 +8,10 @@ const inter = Inter({
   display: "swap",
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://31.129.97.8";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "PhoneTrade — Магазин техники Apple в Белгороде",
     template: "%s · PhoneTrade",
@@ -47,9 +50,41 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const ld = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Store",
+      name: "PhoneTrade",
+      description: "Магазин техники Apple в Белгороде: iPhone, iPad, Mac, Apple Watch, AirPods. Trade-in, Б/У, гарантия и сервис.",
+      url: SITE_URL,
+      image: `${SITE_URL}/brand/logo-mark-white.png`,
+      priceRange: "₽₽",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: "Белгород",
+        streetAddress: "ул. Попова, 36",
+        addressCountry: "RU",
+      },
+      areaServed: "Белгород",
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "PhoneTrade",
+      url: SITE_URL,
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${SITE_URL}/search?q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ];
   return (
     <html lang="ru" className={`h-full ${inter.variable}`}>
-      <body className="min-h-full bg-bg text-ink">{children}</body>
+      <body className="min-h-full bg-bg text-ink">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
+        {children}
+      </body>
     </html>
   );
 }

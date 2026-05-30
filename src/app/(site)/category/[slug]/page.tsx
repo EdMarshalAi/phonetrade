@@ -18,7 +18,15 @@ export async function generateMetadata({ params }: { params: Promise<RouteParams
   const { slug } = await params;
   const meta = await getCategoryMeta(slug);
   if (!meta) return {};
-  return { title: meta.title, description: meta.description ?? undefined };
+  const title = meta.title;
+  const description = meta.description ?? undefined;
+  const canonical = `/category/${slug}`;
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: { title, description, url: canonical, type: "website" },
+  };
 }
 
 export default async function CategoryPage({ params }: { params: Promise<RouteParams> }) {

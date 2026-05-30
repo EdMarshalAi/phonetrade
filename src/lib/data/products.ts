@@ -62,6 +62,14 @@ export type Product = {
   isAvailable?: boolean;
   /** Краткое описание (≤3 строк), показывается над блоком покупки. */
   shortDescription?: string;
+  /** SEO-поля из админки/БД. */
+  metaTitle?: string;
+  metaDescription?: string;
+  ogImageUrl?: string;
+  canonicalUrl?: string;
+  isIndexable?: boolean;
+  sku?: string;
+  brand?: string;
   /** Сопутствующие товары (ID), заданные в админке. */
   relatedProductIds?: string[];
   /** Группа «Связанные товары» (варианты цвет/память). Общий id у всех вариантов. */

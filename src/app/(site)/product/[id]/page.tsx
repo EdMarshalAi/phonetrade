@@ -19,9 +19,18 @@ export async function generateMetadata({
   const { id } = await params;
   const product = await getProductById(id);
   if (!product) return {};
+  const title = product.metaTitle || `${product.title} — купить в Белгороде`;
+  const description = product.metaDescription || product.shortDescription || `Купить ${product.title} в Белгороде с гарантией PhoneTrade.`;
+  const imgs = productImages(product);
+  const canonical = `/product/${product.id}`;
+  const indexable = product.isIndexable !== false;
   return {
-    title: product.title,
-    description: product.highlights?.[0] ?? `Купить ${product.title} в Белгороде с гарантией PhoneTrade.`,
+    title,
+    description,
+    alternates: { canonical },
+    robots: indexable ? undefined : { index: false, follow: true },
+    openGraph: { title, description, url: canonical, type: "website", images: imgs.length ? [imgs[0]] : undefined },
+    twitter: { card: "summary_large_image", title, description, images: imgs.length ? [imgs[0]] : undefined },
   };
 }
 
@@ -50,8 +59,8 @@ export default async function ProductPage({
     name: product.title,
     image: productImages(product),
     description: `${product.title} — купить в Белгороде в PhoneTrade: гарантия, доставка и самовывоз.`,
-    sku: product.id,
-    brand: { "@type": "Brand", name: brandName },
+    sku: product.sku || product.id,
+    brand: { "@type": "Brand", name: product.brand && product.brand !== "Other" ? product.brand : brandName },
     offers: {
       "@type": "Offer",
       url: `${base}/product/${product.id}`,

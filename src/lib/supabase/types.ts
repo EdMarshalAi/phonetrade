@@ -35,6 +35,13 @@ export type ProductRow = {
   related_product_ids: string[] | null;
   variant_group_id: string | null;
   description_html: string | null;
+  meta_title: string | null;
+  meta_description: string | null;
+  og_image_url: string | null;
+  canonical_url: string | null;
+  is_indexable: boolean | null;
+  sku: string | null;
+  brand: string | null;
 };
 
 export type CategoryRow = {
@@ -69,6 +76,13 @@ export function rowToProduct(r: ProductRow): Product {
     badges: Array.isArray(r.badges) ? r.badges : undefined,
     options: r.options ?? undefined,
     shortDescription: r.short_description ?? undefined,
+    metaTitle: r.meta_title ?? undefined,
+    metaDescription: r.meta_description ?? undefined,
+    ogImageUrl: r.og_image_url ?? undefined,
+    canonicalUrl: r.canonical_url ?? undefined,
+    isIndexable: r.is_indexable ?? undefined,
+    sku: r.sku ?? undefined,
+    brand: r.brand ?? undefined,
     condition: r.condition ?? undefined,
     conditionText: r.condition_text ?? undefined,
     battery: r.battery ?? undefined,
@@ -129,6 +143,13 @@ export function productToRow(p: Product, sort = 0): ProductRow & { sort: number 
     badges: deriveBadges(p),
     options: p.options ?? {},
     short_description: p.shortDescription ?? null,
+    meta_title: p.metaTitle ?? null,
+    meta_description: p.metaDescription ?? null,
+    og_image_url: p.ogImageUrl ?? null,
+    canonical_url: p.canonicalUrl ?? null,
+    is_indexable: p.isIndexable ?? null,
+    sku: p.sku ?? null,
+    brand: p.brand ?? null,
     condition: p.condition ?? null,
     condition_text: p.conditionText ?? null,
     battery: p.battery ?? null,
