@@ -7,6 +7,7 @@ import {
   FolderTree,
   Tag,
   Repeat,
+  Table2,
   Images,
   LayoutGrid,
   Newspaper,
@@ -65,6 +66,7 @@ export const ADMIN_NAV: NavGroup[] = [
     label: "Каталог",
     items: [
       { label: "Товары", href: "/admin/catalog/products", icon: Package, roles: ALL },
+      { label: "Прайс", href: "/admin/catalog/pricing", icon: Table2, roles: STAFF },
       { label: "Категории", href: "/admin/catalog/categories", icon: FolderTree, roles: ALL },
       { label: "Бренды", href: "/admin/catalog/brands", icon: Tag, roles: ALL },
       { label: "Цены выкупа", href: "/admin/catalog/trade-in-prices", icon: Repeat, roles: STAFF },
