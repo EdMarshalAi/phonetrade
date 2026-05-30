@@ -22,6 +22,7 @@ export type ProductRow = {
   badge: string | null;
   badges: string[] | null;
   options: Record<string, string> | null;
+  short_description: string | null;
   condition: string | null;
   condition_text: string | null;
   battery: number | null;
@@ -67,6 +68,7 @@ export function rowToProduct(r: ProductRow): Product {
     badge: r.badge ?? undefined,
     badges: Array.isArray(r.badges) ? r.badges : undefined,
     options: r.options ?? undefined,
+    shortDescription: r.short_description ?? undefined,
     condition: r.condition ?? undefined,
     conditionText: r.condition_text ?? undefined,
     battery: r.battery ?? undefined,
@@ -126,6 +128,7 @@ export function productToRow(p: Product, sort = 0): ProductRow & { sort: number 
     badge: p.badge ?? null,
     badges: deriveBadges(p),
     options: p.options ?? {},
+    short_description: p.shortDescription ?? null,
     condition: p.condition ?? null,
     condition_text: p.conditionText ?? null,
     battery: p.battery ?? null,

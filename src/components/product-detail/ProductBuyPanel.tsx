@@ -85,10 +85,26 @@ export function ProductBuyPanel({ product, variants }: Props) {
             aria-label="Артикул"
             className="text-[11px] tabular-nums tracking-wider text-ink-subtle/60 shrink-0"
           >
-            #{product.id.toUpperCase()}
+            Арт. {product.id.toUpperCase()}
           </span>
         </div>
+        {/* Характеристики товара — показываем всегда (не зависят от вариантов) */}
+        <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[13px]">
+          {product.color ? (
+            <div className="flex gap-1.5"><dt className="text-ink-subtle">Цвет:</dt><dd className="text-ink capitalize">{product.color}</dd></div>
+          ) : null}
+          {product.memory ? (
+            <div className="flex gap-1.5"><dt className="text-ink-subtle">Память:</dt><dd className="text-ink">{product.memory}</dd></div>
+          ) : null}
+          {product.sim ? (
+            <div className="flex gap-1.5"><dt className="text-ink-subtle">SIM:</dt><dd className="text-ink">{product.sim}</dd></div>
+          ) : null}
+        </dl>
       </div>
+
+      {product.shortDescription ? (
+        <p className="text-[15px] leading-relaxed text-ink-muted">{product.shortDescription}</p>
+      ) : null}
 
       {colorOptions.length > 1 && (
         <div>
