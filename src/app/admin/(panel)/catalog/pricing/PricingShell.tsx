@@ -9,7 +9,7 @@ import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2,
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format-price";
 import { Modal } from "@/components/admin/Modal";
-import { AdminButton, Field, TextInput, Switch } from "@/components/admin/form";
+import { AdminButton, Field, TextInput, Switch, Select } from "@/components/admin/form";
 import { calculatePrices, margin, type PricingSettings } from "@/lib/pricing/calculate";
 import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, recalcSelected, updateProductCost, type PricingSettingsInput } from "./actions";
 import { exportPricing, parsePricingFile, applyPricingImport, bulkUpdateCost, type ImportPreviewRow, type BulkOp } from "./io-actions";
@@ -318,23 +318,22 @@ export function PricingShell({
         </div>
       </div>
 
-      {/* ── Фильтры (тулбар) ── */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-3 rounded-xl border border-border/60 bg-white px-4 py-3">
-        <select value={cat} onChange={(e) => setCat(e.target.value)} className="h-9 rounded-lg border border-border bg-white px-2.5 text-[13px] text-ink">
+      {/* ── Фильтры (тулбар, один ряд) ── */}
+      <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-white px-4 py-2.5">
+        <Select value={cat} onChange={(e) => setCat(e.target.value)} className="w-44 shrink-0">
           <option value="">Все категории</option>
           {categories.map((c) => <option key={c.slug} value={c.slug}>{c.title}</option>)}
-        </select>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по названию или SKU…" className="h-9 w-60 max-w-full rounded-lg border border-border bg-white px-3 text-[13px] text-ink outline-none focus:border-ink/40" />
+        </Select>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по названию или SKU…" className="h-10 w-56 min-w-0 flex-1 rounded-lg border border-border bg-white px-3 text-[13px] text-ink outline-none focus:border-ink/40" />
         <Switch checked={hideFixed} onChange={setHideFixed} label="Скрыть зафиксированные" />
         <Switch checked={lowOnly} onChange={setLowOnly} label="Маржа ниже мин." />
-        <div className="ml-auto flex items-center gap-3 text-[12.5px] text-ink-subtle">
-          <span>На странице:</span>
+        <div className="ml-auto flex shrink-0 items-center gap-2.5">
           <div className="inline-flex overflow-hidden rounded-lg border border-border">
             {PAGE_SIZES.map((n) => (
-              <button key={n} type="button" onClick={() => setPageSize(n)} className={cn("px-2.5 py-1 text-[12.5px] transition-colors", pageSize === n ? "bg-ink text-white" : "bg-white text-ink hover:bg-surface")}>{n}</button>
+              <button key={n} type="button" onClick={() => setPageSize(n)} className={cn("px-2.5 py-1.5 text-[12.5px] transition-colors", pageSize === n ? "bg-ink text-white" : "bg-white text-ink hover:bg-surface")}>{n}</button>
             ))}
           </div>
-          <span className="tabular-nums">{filtered.length} тов.</span>
+          <span className="text-[12.5px] tabular-nums text-ink-subtle">{filtered.length}</span>
         </div>
       </div>
 
@@ -727,13 +726,13 @@ function ImportModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
       {!preview ? (
         <div className="space-y-4">
           <p className="text-[13px] text-ink-muted">Файл XLSX или CSV с колонками <b>SKU</b>, <b>Закупка ₽</b>, <b>Курс закупа</b>. До 5 МБ / 5000 строк.</p>
-          <label className="flex items-center gap-2 text-[13px] text-ink">
-            Идентификатор:
-            <select value={idBy} onChange={(e) => setIdBy(e.target.value as "sku" | "id")} className="h-9 rounded-sm border border-border bg-white px-2.5 text-[13px]">
+          <div className="flex items-center gap-2 text-[13px] text-ink">
+            <span>Идентификатор:</span>
+            <Select value={idBy} onChange={(e) => setIdBy(e.target.value as "sku" | "id")} className="w-36">
               <option value="sku">по SKU</option>
               <option value="id">по ID</option>
-            </select>
-          </label>
+            </Select>
+          </div>
           <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/80 bg-surface/40 py-10 text-ink-muted hover:border-ink/30 disabled:opacity-60">
             {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" strokeWidth={1.5} />}
             <span className="text-[14px]">Выбрать файл XLSX / CSV</span>
