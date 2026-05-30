@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "images.unsplash.com" },
       // Supabase Storage (изображения товаров, баннеров, блога и т.д.)
       { protocol: "https", hostname: "giwehapapi.beget.app" },
+      // Превью каталога М.Видео (временные placeholder-картинки импорта)
+      { protocol: "https", hostname: "img.mvideo.ru" },
     ],
   },
 };

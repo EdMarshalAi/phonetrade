@@ -14,6 +14,8 @@ export type Category = {
   title: string;
   image: string;
   subtitle?: string;
+  /** Родительская категория (для двухуровневого каталога). null/undefined = верхний уровень. */
+  parentSlug?: string | null;
 };
 
 export type Sim = "eSIM" | "Dual SIM" | "eSIM + SIM" | "nano-SIM";

@@ -256,8 +256,8 @@ export function defaultCategoryConfig(
     slug: slug as CategorySlug,
     title,
     description: description || `${title} — с гарантией PhoneTrade в Белгороде.`,
-    facets: [],
-    quickFacets: [],
+    facets: ["model", "memory", "color"],
+    quickFacets: ["color"],
     sortOptions: COMMON_SORT,
   };
 }

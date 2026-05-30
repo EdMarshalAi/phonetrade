@@ -69,6 +69,7 @@ export async function getNavCategories(): Promise<NavCategory[]> {
     .from("categories")
     .select("slug,title,icon_url,sort")
     .eq("is_published", true)
+    .is("parent_slug", null)
     .neq("slug", "trade-in")
     .order("sort", { ascending: true });
   return ((data ?? []) as NavCategory[]).map((c) => ({ slug: c.slug, title: c.title, icon_url: c.icon_url ?? null }));

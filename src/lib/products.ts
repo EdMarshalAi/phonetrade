@@ -101,10 +101,18 @@ export async function getProductsByCategory(
   slug: CategorySlug
 ): Promise<Product[]> {
   if (!supabase) return mockByCategory(slug);
-  const base =
-    slug === "used"
-      ? supabase.from("products").select("*").eq("is_used", true)
+
+  let base;
+  if (slug === "used") {
+    base = supabase.from("products").select("*").eq("is_used", true);
+  } else {
+    // Двухуровневый каталог: для родительской категории собираем товары всех её серий.
+    const { data: children } = await supabase.from("categories").select("slug").eq("parent_slug", slug);
+    const childSlugs = (children ?? []).map((c) => c.slug as string);
+    base = childSlugs.length > 0
+      ? supabase.from("products").select("*").in("category_slug", [slug, ...childSlugs])
       : supabase.from("products").select("*").eq("category_slug", slug);
+  }
   const { data, error } = await base
     .eq("status", "published")
     .is("deleted_at", null)

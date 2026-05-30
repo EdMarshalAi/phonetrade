@@ -40,6 +40,7 @@ export type CategoryRow = {
   title: string;
   image: string;
   subtitle: string | null;
+  parent_slug?: string | null;
 };
 
 export function rowToProduct(r: ProductRow): Product {
@@ -84,6 +85,7 @@ export function rowToCategory(r: CategoryRow): Category {
     title: r.title,
     image: r.image,
     subtitle: r.subtitle ?? undefined,
+    parentSlug: r.parent_slug ?? null,
   };
 }
 
