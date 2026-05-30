@@ -12,7 +12,7 @@ import { Modal } from "@/components/admin/Modal";
 import { AdminButton, Field, TextInput, Switch } from "@/components/admin/form";
 import { Download, Upload } from "lucide-react";
 import { calculatePrices, margin, type PricingSettings } from "@/lib/pricing/calculate";
-import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, updateProductCost, setProductOverride, type PricingSettingsInput } from "./actions";
+import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, recalcSelected, updateProductCost, setProductOverride, type PricingSettingsInput } from "./actions";
 import { exportPricing, parsePricingFile, applyPricingImport, bulkUpdateCost, type ImportPreviewRow, type BulkOp } from "./io-actions";
 
 function downloadBase64(filename: string, base64: string, mime: string) {
@@ -27,7 +27,18 @@ function downloadBase64(filename: string, base64: string, mime: string) {
   URL.revokeObjectURL(url);
 }
 
-export type CourseInfo = { usd: number | null; eur: number | null; prevUsd: number | null; date: string | null; fetchedAt: string | null };
+export type CourseInfo = { usd: number | null; eur: number | null; prevUsd: number | null; prevEur: number | null; date: string | null; fetchedAt: string | null };
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.round(diff / 60000);
+  if (min < 1) return "только что";
+  if (min < 60) return `${min} мин назад`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `${h} ч назад`;
+  return `${Math.round(h / 24)} дн назад`;
+}
 export type PricingRow = {
   id: string; sku: string | null; title: string; color: string | null; memory: string | null;
   category_slug: string | null; image: string | null; status: string | null;
@@ -73,6 +84,7 @@ export function PricingShell({
   const settingsForCalc: PricingSettings = settings;
 
   const delta = course.usd && course.prevUsd ? ((course.usd - course.prevUsd) / course.prevUsd) * 100 : null;
+  const deltaEur = course.eur && course.prevEur ? ((course.eur - course.prevEur) / course.prevEur) * 100 : null;
 
   const filtered = rows.filter((r) => {
     if (cat && r.category_slug !== cat) return false;
@@ -89,27 +101,34 @@ export function PricingShell({
   });
 
   // ── действия с курсом/формулой ──
+  // Сохранение курса НЕ пересчитывает цены — это делает отдельная кнопка «Пересчитать всё».
   const applyWorking = async (rate: number) => {
     setBusy(true);
     const res = await setWorkingRate(rate);
     setBusy(false);
     if (res.error) return toast.error(res.error);
-    toast.success(`Курс обновлён. Пересчитано: ${res.recalculated ?? 0}`);
+    toast.success("Рабочий курс сохранён. Нажмите «Пересчитать всё», чтобы применить к ценам.");
     router.refresh();
   };
-  const onRefreshCbr = async () => {
+  // Одна кнопка «Из ЦБ +%»: берёт свежий курс ЦБ и ставит рабочий = ЦБ × (1+%). Без пересчёта.
+  const applyFromCbr = async (markup: number) => {
+    setMarkupOpen(false);
     setBusy(true);
-    const res = await refreshCbrRate();
-    setBusy(false);
-    if (res.error) {
-      toast.error(`Не удалось обновить курс ЦБ: ${res.error}`);
-      return;
+    const r = await refreshCbrRate();
+    if (r.error || r.usd == null) {
+      setBusy(false);
+      return toast.error(`Не удалось получить курс ЦБ: ${r.error ?? ""}`);
     }
-    const d = res.date ? res.date.split("-").reverse().join(".") : "";
-    toast.success(`Курс ЦБ обновлён${d ? ` на ${d}` : ""}: USD ${res.usd?.toFixed(2)} ₽ · EUR ${res.eur?.toFixed(2)} ₽`);
+    const value = +(r.usd * (1 + markup / 100)).toFixed(4);
+    const res = await setWorkingRate(value);
+    setBusy(false);
+    if (res.error) return toast.error(res.error);
+    setWorking(String(value));
+    toast.success(`Рабочий курс: ${value} ₽ (ЦБ ${r.usd.toFixed(2)} + ${markup}%). Нажмите «Пересчитать всё», чтобы применить.`);
     router.refresh();
   };
   const onRecalcAll = async () => {
+    if (!confirm("Пересчитать цены всех товаров по текущей формуле?")) return;
     setBusy(true);
     const res = await recalcAllPrices();
     setBusy(false);
@@ -156,6 +175,18 @@ export function PricingShell({
   const allVisibleSelected = filtered.length > 0 && filtered.every((r) => sel.has(r.id));
   const toggleAll = () => setSel((s) => { const n = new Set(s); if (allVisibleSelected) filtered.forEach((r) => n.delete(r.id)); else filtered.forEach((r) => n.add(r.id)); return n; });
 
+  const onRecalcSelected = async () => {
+    const ids = [...sel];
+    if (!ids.length) return;
+    setBusy(true);
+    const res = await recalcSelected(ids);
+    setBusy(false);
+    if (res.error) return toast.error(res.error);
+    toast.success(`Пересчитано: ${res.recalculated ?? 0}`);
+    setSel(new Set());
+    router.refresh();
+  };
+
   const runBulk = async (op: BulkOp, label: string) => {
     const ids = [...sel];
     if (!ids.length) return;
@@ -174,8 +205,8 @@ export function PricingShell({
       {/* ── Шапка с курсами ── */}
       <div className="sticky top-14 z-20 -mx-4 border-b border-border/60 bg-bg/90 px-4 py-3 backdrop-blur-sm lg:-mx-8 lg:px-8">
         <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
-          <Tile label="USD ЦБ" value={course.usd ? `${course.usd.toFixed(2)} ₽` : "—"} delta={delta} />
-          <Tile label="EUR ЦБ" value={course.eur ? `${course.eur.toFixed(2)} ₽` : "—"} />
+          <Tile label="USD ЦБ" value={course.usd ? `${course.usd.toFixed(2)} ₽` : "—"} delta={delta} sub={course.fetchedAt ? `обновлено ${relativeTime(course.fetchedAt)}` : undefined} />
+          <Tile label="EUR ЦБ" value={course.eur ? `${course.eur.toFixed(2)} ₽` : "—"} delta={deltaEur} />
           <div>
             <p className="text-[11px] uppercase tracking-wide text-ink-subtle">Рабочий курс USD</p>
             <div className="mt-1 flex items-center gap-2">
@@ -190,9 +221,10 @@ export function PricingShell({
               <div className="relative">
                 <AdminButton type="button" size="sm" variant="outline" onClick={() => setMarkupOpen((o) => !o)}>Из ЦБ ▾</AdminButton>
                 {markupOpen ? (
-                  <div className="absolute left-0 top-full z-30 mt-1 w-36 rounded-lg border border-border/70 bg-white py-1 shadow-lg">
+                  <div className="absolute left-0 top-full z-30 mt-1 w-44 rounded-lg border border-border/70 bg-white py-1 shadow-lg">
+                    <p className="px-3 py-1 text-[11px] text-ink-subtle">Свежий курс ЦБ + поправка:</p>
                     {MARKUPS.map((m) => (
-                      <button key={m} type="button" onClick={() => { setMarkupOpen(false); if (course.usd) { const v = +(course.usd * (1 + m / 100)).toFixed(4); setWorking(String(v)); applyWorking(v); } }} className="block w-full px-3 py-1.5 text-left text-[13px] text-ink hover:bg-surface">
+                      <button key={m} type="button" onClick={() => applyFromCbr(m)} className="block w-full px-3 py-1.5 text-left text-[13px] text-ink hover:bg-surface">
                         ЦБ + {m}%
                       </button>
                     ))}
@@ -216,8 +248,7 @@ export function PricingShell({
                 </div>
               ) : null}
             </div>
-            <AdminButton type="button" variant="outline" size="sm" onClick={onRefreshCbr} loading={busy}><RefreshCw className="h-4 w-4" strokeWidth={1.75} /> Курс ЦБ</AdminButton>
-            <AdminButton type="button" size="sm" onClick={onRecalcAll} loading={busy}>Пересчитать всё</AdminButton>
+            <AdminButton type="button" size="sm" onClick={onRecalcAll} loading={busy}><RefreshCw className="h-4 w-4" strokeWidth={1.75} /> Пересчитать всё</AdminButton>
           </div>
         </div>
       </div>
@@ -368,6 +399,7 @@ export function PricingShell({
           <BulkBtn label="Округлить" onClick={() => { const v = numPrompt("Округлить закупку до, ₽ (1000/500/100)", 1000); if (v != null && v > 0) runBulk({ type: "round", value: v }, `Округление до ${v}`); }} />
           <BulkBtn label="Курс закупа" onClick={() => { const v = numPrompt("Курс закупа для выбранных"); if (v != null && v > 0) runBulk({ type: "set_rate", value: v }, `Курс закупа = ${v}`); }} />
           <BulkBtn label="Сбросить к формуле" onClick={() => runBulk({ type: "reset_formula" }, "Сброс ручной фиксации")} />
+          <BulkBtn label="Пересчитать выбранные" onClick={onRecalcSelected} />
           <AdminButton type="button" variant="outline" size="sm" onClick={() => setSel(new Set())}>Отмена</AdminButton>
         </div>
       ) : null}
@@ -386,7 +418,7 @@ function fmtShort(n: number | null): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1).replace(".", ",")}т` : String(n);
 }
 
-function Tile({ label, value, delta }: { label: string; value: string; delta?: number | null }) {
+function Tile({ label, value, delta, sub }: { label: string; value: string; delta?: number | null; sub?: string }) {
   const up = delta != null && delta > 0.01;
   const down = delta != null && delta < -0.01;
   return (
@@ -401,6 +433,7 @@ function Tile({ label, value, delta }: { label: string; value: string; delta?: n
           </span>
         ) : null}
       </p>
+      {sub ? <p className="mt-0.5 text-[11px] text-ink-subtle">{sub}</p> : null}
     </div>
   );
 }
@@ -453,7 +486,7 @@ function FormulaModal({ open, onClose, initial, course, onSaved }: { open: boole
     const res = await updatePricingSettings(v);
     setSaving(false);
     if (res.error) return toast.error(res.error);
-    toast.success(`Формула сохранена. Пересчитано: ${res.recalculated ?? 0}`);
+    toast.success("Формула сохранена. Нажмите «Пересчитать всё», чтобы применить к ценам.");
     onSaved();
   };
 
@@ -465,7 +498,7 @@ function FormulaModal({ open, onClose, initial, course, onSaved }: { open: boole
 
   return (
     <Modal open={open} onClose={onClose} title="Формула расчёта цен" className="max-w-2xl"
-      footer={<div className="flex items-center gap-3"><span className="text-[12px] text-ink-subtle">Применится ко всем товарам без ручной фиксации</span><AdminButton type="button" loading={saving} onClick={save}>Сохранить и пересчитать</AdminButton></div>}>
+      footer={<div className="flex items-center gap-3"><span className="text-[12px] text-ink-subtle">Сохраняет формулу. Цены не меняются, пока не нажмёте «Пересчитать всё».</span><AdminButton type="button" loading={saving} onClick={save}>Сохранить</AdminButton></div>}>
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-3">
           {numField("Рабочий курс USD", "working_usd_rate", course.usd ? `ЦБ: ${course.usd.toFixed(2)}` : undefined)}

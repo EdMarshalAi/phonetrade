@@ -56,30 +56,25 @@ async function checkLowMargin() {
   } catch {}
 }
 
-/** Сохранить формулу и пересчитать все товары без ручной фиксации. */
-export async function updatePricingSettings(input: PricingSettingsInput): Promise<{ error?: string; recalculated?: number }> {
+/** Сохранить формулу. Пересчёт цен НЕ запускается — отдельной кнопкой. */
+export async function updatePricingSettings(input: PricingSettingsInput): Promise<{ error?: string }> {
   const parsed = settingsSchema.safeParse(input);
   if (!parsed.success) return { error: "Проверьте значения формулы" };
   const admin = await requireAdmin([...ROLES]);
   try {
-    let count = 0;
     await adminMutation({
       roles: [...ROLES],
       action: "settings_change",
       entityType: "settings",
       entityId: "pricing_settings",
       changes: parsed.data,
-      revalidate: ["/", "/catalog"],
+      revalidate: ["/admin/catalog/pricing"],
       run: async (db) => {
         const { error } = await db.from("pricing_settings").update({ ...parsed.data, updated_at: new Date().toISOString(), updated_by: admin.id }).eq("id", 1);
         if (error) throw error;
-        const { data } = await db.rpc("recalculate_all_prices", { p_reason: "formula_change", p_user_id: admin.id });
-        count = typeof data === "number" ? data : 0;
       },
     });
-    await notifyRecalc(count, parsed.data.working_usd_rate);
-    await checkLowMargin();
-    return { recalculated: count };
+    return {};
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка сохранения формулы" };
   }
@@ -111,34 +106,50 @@ export async function recalcAllPrices(): Promise<{ error?: string; recalculated?
   }
 }
 
-/** Обновить рабочий курс вручную и пересчитать. */
-export async function setWorkingRate(rate: number): Promise<{ error?: string; recalculated?: number }> {
-  return updatePricingSettingsRate(rate);
-}
-
-async function updatePricingSettingsRate(rate: number): Promise<{ error?: string; recalculated?: number }> {
+/** Сохранить рабочий курс. Пересчёт НЕ запускается — отдельной кнопкой. */
+export async function setWorkingRate(rate: number): Promise<{ error?: string }> {
   const admin = await requireAdmin([...ROLES]);
   if (!Number.isFinite(rate) || rate <= 0) return { error: "Некорректный курс" };
   try {
-    let count = 0;
     await adminMutation({
       roles: [...ROLES],
       action: "settings_change",
       entityType: "settings",
       entityId: "pricing_settings",
       changes: { working_usd_rate: rate },
-      revalidate: ["/", "/catalog"],
+      revalidate: ["/admin/catalog/pricing"],
       run: async (db) => {
         const { error } = await db.from("pricing_settings").update({ working_usd_rate: rate, updated_at: new Date().toISOString(), updated_by: admin.id }).eq("id", 1);
         if (error) throw error;
-        const { data } = await db.rpc("recalculate_all_prices", { p_reason: "fx_recalc", p_user_id: admin.id });
+      },
+    });
+    return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Ошибка сохранения курса" };
+  }
+}
+
+/** Пересчитать только выбранные товары. */
+export async function recalcSelected(ids: string[]): Promise<{ error?: string; recalculated?: number }> {
+  const admin = await requireAdmin([...ROLES]);
+  if (!ids.length) return { error: "Не выбраны товары" };
+  try {
+    let count = 0;
+    await adminMutation({
+      roles: [...ROLES],
+      action: "update",
+      entityType: "pricing",
+      entityId: "recalc_selected",
+      changes: { count: ids.length },
+      revalidate: ["/", "/catalog"],
+      run: async (db) => {
+        const { data } = await db.rpc("recalculate_all_prices", { p_reason: "fx_recalc", p_user_id: admin.id, p_ids: ids });
         count = typeof data === "number" ? data : 0;
       },
     });
-    await checkLowMargin();
     return { recalculated: count };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Ошибка обновления курса" };
+    return { error: e instanceof Error ? e.message : "Ошибка пересчёта" };
   }
 }
 

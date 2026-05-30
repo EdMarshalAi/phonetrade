@@ -50,6 +50,7 @@ export default async function PricingPage() {
     usd: num(latest?.usd),
     eur: num(latest?.eur),
     prevUsd: num(prev?.usd),
+    prevEur: num(prev?.eur),
     date: (latest?.date as string) ?? null,
     fetchedAt: (latest?.fetched_at as string) ?? null,
   };
