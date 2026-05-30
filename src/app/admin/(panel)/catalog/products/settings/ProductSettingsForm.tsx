@@ -16,11 +16,11 @@ import { DEFAULT_CARD_DISPLAY } from "@/lib/content";
 import { saveProductRegistry } from "./actions";
 
 const TABS = [
-  { key: "card", label: "Карточка" },
   { key: "options", label: "Опции" },
   { key: "badges", label: "Бейджики" },
   { key: "blocks", label: "Блоки под товаром" },
   { key: "availability", label: "Наличие" },
+  { key: "card", label: "Карточка" },
 ] as const;
 
 const CORNERS: { value: "tl" | "tr" | "bl" | "br"; label: string }[] = [
@@ -67,7 +67,7 @@ export function ProductSettingsForm({
   initialCardDisplay?: CardDisplay;
 }) {
   const router = useRouter();
-  const [tab, setTab] = React.useState<Tab>("card");
+  const [tab, setTab] = React.useState<Tab>("options");
   const [options, setOptions] = React.useState<ProductOption[]>(initialOptions);
   const [badges, setBadges] = React.useState<ProductBadge[]>(initialBadges);
   const [blocks, setBlocks] = React.useState<InfoBlock[]>(initialBlocks);
@@ -125,43 +125,41 @@ export function ProductSettingsForm({
       </div>
 
       {tab === "card" ? (
-        <div className="space-y-5">
-          <Panel className="space-y-3 p-5">
-            <p className="text-[14px] font-semibold text-ink">Что показывать на карточке</p>
-            <p className="-mt-1 text-[13px] text-ink-muted">Применяется к карточкам товара на главной, в каталоге и в подборках.</p>
-            <ToggleRow checked={card.cash} onChange={(v) => setCardField({ cash: v })} title="Цена наличными" hint="Красная цена" />
-            <ToggleRow checked={card.card} onChange={(v) => setCardField({ card: v })} title="Цена картой" />
-            <ToggleRow checked={card.credit} onChange={(v) => setCardField({ credit: v })} title="Строка «В кредит — от …/мес»" />
-            <ToggleRow checked={card.old_price} onChange={(v) => setCardField({ old_price: v })} title="Старая цена (зачёркнутая)" hint="Показывается, если задана и больше текущей" />
-            <ToggleRow checked={card.badges} onChange={(v) => setCardField({ badges: v })} title="Бейджи" hint="Раскладываются по углам (см. вкладку «Бейджики»)" />
-          </Panel>
-          <Panel className="space-y-3 p-5">
-            <p className="text-[14px] font-semibold text-ink">Опции на карточке</p>
-            <p className="-mt-1 text-[13px] text-ink-muted">Какие опции выводить доп. строками. У опции в её настройках можно задать тип товара (например «Состояние» — только Б/У).</p>
-            {options.length === 0 ? (
-              <p className="text-[13px] text-ink-subtle">Опций пока нет — добавьте на вкладке «Опции».</p>
-            ) : (
+        <div className="space-y-4">
+          <p className="text-[13px] text-ink-muted">Что показывать на карточках товара — на главной, в каталоге и подборках.</p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Panel className="space-y-3 p-5">
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Цены и бейджи</span>
               <div className="space-y-1.5">
-                {options.map((o) => (
-                  <ToggleRow
-                    key={o.key}
-                    checked={card.options.includes(o.key)}
-                    onChange={() => toggleCardOption(o.key)}
-                    title={o.label}
-                    hint={o.applies_to && o.applies_to !== "both" ? `Только ${o.applies_to === "used" ? "Б/У" : "новые"}` : "Все товары"}
-                  />
-                ))}
+                <ToggleRow checked={card.cash} onChange={(v) => setCardField({ cash: v })} title="Цена наличными" hint="Красная цена" />
+                <ToggleRow checked={card.card} onChange={(v) => setCardField({ card: v })} title="Цена картой" />
+                <ToggleRow checked={card.credit} onChange={(v) => setCardField({ credit: v })} title="В кредит — от …/мес" />
+                <ToggleRow checked={card.old_price} onChange={(v) => setCardField({ old_price: v })} title="Старая цена" hint="Зачёркнутая, если больше текущей" />
+                <ToggleRow checked={card.badges} onChange={(v) => setCardField({ badges: v })} title="Бейджи" hint="По углам (см. «Бейджики»)" />
               </div>
-            )}
-          </Panel>
-          <Panel className="space-y-1.5 p-5">
-            <p className="text-[14px] font-semibold text-ink">Генерация артикула (SKU)</p>
-            <p className="text-[13px] text-ink-muted">
-              Формула: <code className="rounded bg-surface px-1.5 py-0.5">PH{"{код категории}"}-{"{номер}"}</code>, например <b>PH584-1042</b>.
-              «PH» — магазин, 3 цифры — код категории, последние цифры — уникальный номер (не повторяется).
-              Кнопка «Сгенерировать» рядом с полем «Артикул» в карточке товара подбирает уникальный SKU автоматически.
-            </p>
-          </Panel>
+            </Panel>
+            <Panel className="space-y-3 p-5">
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Опции на карточке</span>
+              {options.length === 0 ? (
+                <p className="text-[13px] text-ink-subtle">Опций пока нет — добавьте на вкладке «Опции».</p>
+              ) : (
+                <div className="max-h-[340px] space-y-1.5 overflow-auto pr-1">
+                  {options.map((o) => (
+                    <ToggleRow
+                      key={o.key}
+                      checked={card.options.includes(o.key)}
+                      onChange={() => toggleCardOption(o.key)}
+                      title={o.label}
+                      hint={o.applies_to && o.applies_to !== "both" ? `Только ${o.applies_to === "used" ? "Б/У" : "новые"}` : "Все товары"}
+                    />
+                  ))}
+                </div>
+              )}
+            </Panel>
+          </div>
+          <p className="text-[12px] text-ink-subtle">
+            Артикул (SKU) формируется по формуле <code className="rounded bg-surface px-1.5 py-0.5">PH{"{код}"}-{"{номер}"}</code> (напр. <b>PH584-1042</b>) — кнопкой «Сгенерировать» в карточке товара.
+          </p>
         </div>
       ) : tab === "options" ? (
         <Panel className="divide-y divide-border/60">

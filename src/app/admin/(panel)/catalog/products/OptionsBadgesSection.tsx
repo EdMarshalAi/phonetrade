@@ -39,6 +39,46 @@ export function OptionsBadgesSection({
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {options.map((opt) => {
+              // Аккумулятор — свободное значение (любой % от 0 до 100), не справочник:
+              // число + ползунок, пишется в колонку battery и выводится на карточке как «%».
+              if (opt.field === "battery") {
+                return (
+                  <Field key={opt.key} label={`${opt.label}, %`} hint="Любое значение 0–100 — выводится на карточке">
+                    <Controller
+                      control={control}
+                      name="battery"
+                      render={({ field }) => {
+                        const num = field.value == null || field.value === "" ? null : Number(field.value);
+                        return (
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="range"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={num ?? 0}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                              className="h-1.5 flex-1 cursor-pointer accent-[var(--color-ink)]"
+                            />
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={num ?? ""}
+                                onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                                placeholder="—"
+                                className="h-10 w-16 rounded-lg border border-border bg-white px-2 text-right text-[13px] text-ink tabular-nums outline-none focus:border-ink/40"
+                              />
+                              <span className="text-[13px] text-ink-subtle">%</span>
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
+                  </Field>
+                );
+              }
               const name = (isBaseField(opt.field) ? opt.field : `options.${opt.key}`) as
                 | BaseField
                 | `options.${string}`;

@@ -407,7 +407,6 @@ export function PricingShell({
                             ) : (
                               <>
                                 <EditableNum value={r.cost_rub} onSave={(v) => saveCost(r, v, r.cost_rate)} />
-                                {r.cost_usd ? <div className="text-[11px] text-ink-subtle">${r.cost_usd.toFixed(0)}</div> : null}
                               </>
                             )}
                           </td>
