@@ -35,6 +35,8 @@ export function ProductCard({ product, className }: Props) {
             : product.options?.[o.key],
     }))
     .filter((o) => o.value);
+  const colorOpt = cardOptions.find((o) => o.key === "color");
+  const otherOptions = cardOptions.filter((o) => o !== colorOpt);
   const { enabled: favEnabled, has: favHas, toggle: favToggle } = useFavorites();
   const [added, setAdded] = React.useState(false);
   const addedTimer = React.useRef<number | null>(null);
@@ -167,11 +169,12 @@ export function ProductCard({ product, className }: Props) {
       <h3 className="text-[15px] font-semibold leading-snug tracking-tight text-ink line-clamp-2 min-h-[44px]">
         {product.title}
       </h3>
-      <p className="mt-1 text-xs text-ink-subtle capitalize">{product.color}</p>
+      {/* Цвет — как подпись, но только если опция «Цвет» включена в настройках карточки */}
+      {colorOpt ? <p className="mt-1 text-xs text-ink-subtle capitalize">{colorOpt.value}</p> : null}
 
-      {cardOptions.length > 0 ? (
+      {otherOptions.length > 0 ? (
         <dl className="mt-3 space-y-1 text-xs text-ink-muted">
-          {cardOptions.map((o) => (
+          {otherOptions.map((o) => (
             <div key={o.key} className="flex gap-1.5">
               <dt className="text-ink-subtle">{o.label}:</dt>
               <dd className="line-clamp-1">{o.value}</dd>
