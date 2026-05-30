@@ -36,7 +36,6 @@ const TABS = [
   { key: "price", label: "Цены и наличие" },
   { key: "related", label: "Сопутствующие" },
   { key: "description", label: "Описание" },
-  { key: "used", label: "Состояние (Б/У)" },
   { key: "seo", label: "SEO" },
   { key: "variants", label: "Связанные товары" },
   { key: "gallery", label: "Галерея" },
@@ -188,7 +187,6 @@ export function ProductForm({
   };
 
   const visibleTabs = TABS.filter((t) => {
-    if (t.key === "used") return type === "used";
     if (t.key === "variants" || t.key === "gallery") return isEdit;
     return true;
   });
@@ -491,34 +489,6 @@ export function ProductForm({
         ) : null}
       </div>
 
-      {/* Состояние (Б/У) */}
-      <div hidden={tab !== "used"} className="space-y-5">
-        <Panel className="space-y-4 p-5">
-          <Field label="Описание состояния">
-            <Textarea placeholder="Ни разу не разбирался, полностью в оригинале, все функции работают…" {...register("condition_text")} />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Категория состояния">
-              <Controller
-                control={control}
-                name="condition_category"
-                render={({ field }) => (
-                  <Select value={field.value ?? ""} onChange={(e) => field.onChange(e.target.value || undefined)}>
-                    <option value="">— Не указано —</option>
-                    <option value="perfect">Идеальное</option>
-                    <option value="good">Хорошее</option>
-                    <option value="fair">Удовлетворительное</option>
-                  </Select>
-                )}
-              />
-            </Field>
-            <Field label="Аккумулятор, %">
-              <TextInput type="number" min={0} max={100} {...register("battery")} />
-            </Field>
-          </div>
-        </Panel>
-      </div>
-
       {/* SEO */}
       <div hidden={tab !== "seo"} className="space-y-5">
         <Panel className="space-y-4 p-5">
@@ -538,7 +508,6 @@ export function ProductForm({
           <RelatedProductsManager
             productId={product!.id}
             currentGroupId={(product as ProductValue & { variant_group_id?: string | null }).variant_group_id ?? null}
-            currentModel={(watch("model") as string) ?? null}
             products={allProducts}
           />
         </div>

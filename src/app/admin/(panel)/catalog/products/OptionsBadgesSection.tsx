@@ -127,6 +127,20 @@ export function OptionsBadgesSection({
             })}
           </div>
         )}
+        <Field label="Категория состояния (Б/У)" hint="Группа для фильтра — выбирается только для Б/У">
+          <Controller
+            control={control}
+            name="condition_category"
+            render={({ field }) => (
+              <Select value={(field.value as string) ?? ""} onChange={(e) => field.onChange(e.target.value || undefined)}>
+                <option value="">— Не указано —</option>
+                <option value="perfect">Идеальное</option>
+                <option value="good">Хорошее</option>
+                <option value="fair">Удовлетворительное</option>
+              </Select>
+            )}
+          />
+        </Field>
       </Panel>
 
       <Panel className="space-y-4 p-5">

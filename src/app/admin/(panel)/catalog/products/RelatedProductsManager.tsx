@@ -4,7 +4,7 @@ import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, X, Sparkles, Search } from "lucide-react";
+import { Plus, X, Search } from "lucide-react";
 import { Panel } from "@/components/admin/ui";
 import { AdminButton } from "@/components/admin/form";
 import { cn } from "@/lib/utils/cn";
@@ -19,12 +19,10 @@ import type { RelatedOption } from "./ProductForm";
 export function RelatedProductsManager({
   productId,
   currentGroupId,
-  currentModel,
   products,
 }: {
   productId: string;
   currentGroupId: string | null;
-  currentModel: string | null;
   products: RelatedOption[];
 }) {
   const router = useRouter();
@@ -49,14 +47,6 @@ export function RelatedProductsManager({
 
   const add = (id: string) => setMembers((m) => (m.includes(id) ? m : [...m, id]));
   const remove = (id: string) => setMembers((m) => m.filter((x) => x !== id));
-
-  const addByModel = () => {
-    if (!currentModel) return toast.error("У товара не задана модель");
-    const ids = products.filter((p) => p.id !== productId && p.model === currentModel).map((p) => p.id);
-    if (!ids.length) return toast.error("Не нашёл товаров с такой же моделью");
-    setMembers((m) => Array.from(new Set([...m, ...ids])));
-    toast.success(`Добавлено по модели «${currentModel}»: ${ids.length}`);
-  };
 
   const candidates = products.filter((p) => {
     if (p.id === productId || members.includes(p.id)) return false;
@@ -83,15 +73,12 @@ export function RelatedProductsManager({
         <p className="mt-1 text-[13px] text-ink-muted">
           Объедините варианты этого товара по цвету и памяти — на сайте они станут переключателями.
           Связь двусторонняя: товары попадут в общую группу и будут ссылаться друг на друга.
-          Если ничего не выбрать — сработает авто-объединение по модели.
+          Объединяются только те товары, что вы выберете вручную (авто-подбора нет).
         </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <AdminButton type="button" variant="outline" size="sm" onClick={addByModel}>
-          <Sparkles className="h-4 w-4" strokeWidth={1.75} /> Подтянуть по модели{currentModel ? ` «${currentModel}»` : ""}
-        </AdminButton>
-        <span className="text-[12px] text-ink-subtle">Выбрано: {members.length}</span>
+        <span className="text-[12px] text-ink-subtle">Выбрано связанных: {members.length}</span>
       </div>
 
       {/* Текущий товар */}

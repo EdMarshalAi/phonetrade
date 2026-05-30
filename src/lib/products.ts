@@ -253,13 +253,15 @@ export async function getVariantsForProduct(product: Product): Promise<{
   colors: Product[];
   memories: Product[];
 }> {
+  // Только явная группа «Связанные товары» (собирается вручную в админке).
+  // Никакого авто-объединения по model — иначе товары без model слипаются.
+  if (!product.variantGroupId) return { colors: [], memories: [] };
   if (!supabase) return mockVariants(product);
-  // Явная группа «Связанные товары» приоритетнее авто-объединения по model.
-  const query = product.variantGroupId
-    ? supabase.from("products").select("*").eq("variant_group_id", product.variantGroupId)
-    : supabase.from("products").select("*").eq("model", product.model);
-  const { data, error } = await query;
-  if (error || !data || data.length === 0) return mockVariants(product);
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .eq("variant_group_id", product.variantGroupId);
+  if (error || !data || data.length === 0) return { colors: [], memories: [] };
   const siblings = (data as ProductRow[]).map(rowToProduct);
   return {
     colors: siblings.filter((p) => p.memory === product.memory),
