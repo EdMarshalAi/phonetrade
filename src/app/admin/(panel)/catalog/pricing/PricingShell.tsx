@@ -230,8 +230,8 @@ export function PricingShell({
         <span className="ml-auto text-[12px] text-ink-subtle">Показано: {filtered.length} из {rows.length}</span>
       </div>
 
-      {/* ── Таблица ── */}
-      <div className="overflow-x-auto rounded-lg border border-border/60 bg-white">
+      {/* ── Таблица (десктоп) ── */}
+      <div className="hidden overflow-x-auto rounded-lg border border-border/60 bg-white lg:block">
         <table className="w-full min-w-[1100px] text-[13px]">
           <thead className="bg-surface/60 text-ink-subtle">
             <tr className="[&>th]:px-3 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-medium">
@@ -293,7 +293,64 @@ export function PricingShell({
         </table>
       </div>
 
-      <p className="text-[12px] text-ink-subtle">Закупка/курс редактируются прямо в таблице — цены пересчитываются автоматически. Б/У товары в прайс не входят. Массовые операции и импорт/экспорт — в следующем обновлении.</p>
+      {/* ── Карточки (мобильные) ── */}
+      <div className="space-y-3 lg:hidden">
+        {filtered.length === 0 ? (
+          <div className="rounded-lg border border-border/60 bg-white px-4 py-10 text-center text-ink-muted">Нет товаров по фильтру.</div>
+        ) : filtered.map((r) => {
+          const m = margin(r.price_cash ?? 0, r.cost_rub);
+          const low = m != null && m.percent < settings.min_margin_percent;
+          return (
+            <div key={r.id} className={cn("rounded-xl border border-border/60 bg-white p-3", sel.has(r.id) && "ring-1 ring-ink/30")}>
+              <div className="flex items-start gap-3">
+                <input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} className="mt-1.5" aria-label="Выбрать" />
+                <span className="inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-white">
+                  {r.image ? <Image src={r.image} alt="" width={36} height={36} unoptimized className="size-9 object-contain" /> : null}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <Link href={`/admin/catalog/products/${r.id}/edit`} className="block truncate text-[14px] font-medium text-ink hover:underline">{r.title}</Link>
+                  <div className="truncate text-[11.5px] text-ink-subtle">{[r.sku, r.color, r.memory].filter(Boolean).join(" · ") || "—"}</div>
+                </div>
+                <button type="button" onClick={() => onToggleOverride(r)} className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded-sm border", r.price_override ? "border-ink/30 bg-ink text-white" : "border-border bg-white text-ink-subtle")} title={r.price_override ? "Снять фиксацию" : "Зафиксировать"}>
+                  <Lock className="h-4 w-4" strokeWidth={1.75} />
+                </button>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-[13px]">
+                <label className="flex items-center justify-between gap-2">
+                  <span className="text-ink-subtle">Закупка ₽</span>
+                  <EditableNum value={r.cost_rub} disabled={r.price_override} onSave={(v) => saveCost(r, v, r.cost_rate)} />
+                </label>
+                <label className="flex items-center justify-between gap-2">
+                  <span className="text-ink-subtle">Курс</span>
+                  <EditableNum value={r.cost_rate} step="0.0001" disabled={r.price_override} onSave={(v) => saveCost(r, r.cost_rub, v)} />
+                </label>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-ink-subtle">Нал</span>
+                  <span className="font-semibold text-sale tabular-nums">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-ink-subtle">Картой</span>
+                  <span className="tabular-nums">{r.price_card != null ? formatPrice(r.price_card) : "—"}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-ink-subtle">$ зак.</span>
+                  <span className="tabular-nums text-ink-muted">{r.cost_usd ? `$${r.cost_usd.toFixed(2)}` : "—"}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-ink-subtle">Маржа</span>
+                  <span className={cn("tabular-nums", low ? "font-semibold text-sale" : "text-ink-muted")}>{m ? `${m.percent.toFixed(0)}%` : "—"}</span>
+                </div>
+                <div className="col-span-2 flex items-center justify-between gap-2 border-t border-border/50 pt-2 text-[12px] text-ink-muted">
+                  <span>Кредит 6/12/24</span>
+                  <span className="tabular-nums">{[r.credit_6m_monthly, r.credit_12m_monthly, r.credit_24m_monthly].every((x) => x == null) ? "—" : `${fmtShort(r.credit_6m_monthly)} / ${fmtShort(r.credit_12m_monthly)} / ${fmtShort(r.credit_24m_monthly)}`}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-[12px] text-ink-subtle">Закупка/курс редактируются прямо здесь — цены пересчитываются автоматически. Б/У товары в прайс не входят.</p>
 
       {/* ── Массовые действия ── */}
       {sel.size > 0 ? (
