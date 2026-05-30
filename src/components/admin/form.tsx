@@ -108,6 +108,7 @@ export function Select({
   const [mounted, setMounted] = React.useState(false);
   const [rect, setRect] = React.useState<{ top: number; left: number; width: number } | null>(null);
   const btnRef = React.useRef<HTMLButtonElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
   const opts = React.useMemo(() => parseOptions(children), [children]);
   const current = String(value ?? "");
   const selected = opts.find((o) => o.value === current);
@@ -125,12 +126,18 @@ export function Select({
   React.useEffect(() => {
     if (!open) return;
     place();
-    const close = () => setOpen(false);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
+    // Закрываем при скролле СТРАНИЦЫ (меню fixed — иначе оторвётся от кнопки),
+    // но НЕ при скролле внутри самого меню (иначе длинный список не прокрутить).
+    const onScroll = (e: Event) => {
+      if (menuRef.current && e.target instanceof Node && menuRef.current.contains(e.target)) return;
+      setOpen(false);
+    };
+    const onResize = () => setOpen(false);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
     return () => {
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
     };
   }, [open, place]);
 
@@ -158,7 +165,8 @@ export function Select({
             <>
               <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} aria-hidden />
               <div
-                className="fixed z-[61] max-h-64 overflow-auto rounded-sm border border-border/70 bg-white py-1 shadow-lg"
+                ref={menuRef}
+                className="fixed z-[61] max-h-64 overflow-auto overscroll-contain rounded-sm border border-border/70 bg-white py-1 shadow-lg"
                 style={{ top: rect.top, left: rect.left, width: rect.width }}
               >
                 {opts.map((o) => (

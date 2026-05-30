@@ -10,7 +10,7 @@ import { RefreshCw, Lock } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format-price";
 import { calculatePrices, margin, type PricingSettings } from "@/lib/pricing/calculate";
-import { recalcProductPrices } from "./actions";
+import { recalcProductPrices, generateSku } from "./actions";
 import { productSchema, type ProductInput, type ProductFormValues } from "@/lib/admin/schemas";
 import { slugify } from "@/lib/admin/slug";
 import { Field, TextInput, Textarea, Select, Switch, ToggleRow, FormError, AdminButton } from "@/components/admin/form";
@@ -80,6 +80,7 @@ export function ProductForm({
   const router = useRouter();
   const [recalcing, setRecalcing] = React.useState(false);
   const [historyOpen, setHistoryOpen] = React.useState(false);
+  const [genningSku, setGenningSku] = React.useState(false);
   const [tab, setTab] = React.useState<TabKey>("main");
   const [formError, setFormError] = React.useState<string | null>(null);
   const slugTouched = React.useRef(isEdit);
@@ -248,8 +249,26 @@ export function ProductForm({
                 )}
               />
             </Field>
-            <Field label="Артикул (SKU)">
-              <TextInput placeholder="IP17PRO-256-ORANGE" {...register("sku")} />
+            <Field label="Артикул (SKU)" hint="PH{код категории}-{номер}, напр. PH584-1042">
+              <div className="flex items-center gap-2">
+                <TextInput placeholder="PH584-1042" {...register("sku")} />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const cat = watch("category_slug");
+                    if (!cat) return toast.error("Сначала выберите категорию");
+                    setGenningSku(true);
+                    const res = await generateSku(cat);
+                    setGenningSku(false);
+                    if (res.error) return toast.error(res.error);
+                    if (res.sku) { setValue("sku", res.sku); toast.success(`SKU: ${res.sku}`); }
+                  }}
+                  disabled={genningSku}
+                  className="inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface disabled:opacity-60"
+                >
+                  {genningSku ? "Генерация…" : "Сгенерировать"}
+                </button>
+              </div>
             </Field>
           </div>
           <Field label="Модель" hint="Линейка для фильтра (напр. iPhone 17 Pro)">

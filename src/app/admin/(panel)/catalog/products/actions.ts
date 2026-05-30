@@ -183,6 +183,24 @@ export async function updateProduct(id: string, input: ProductInput): Promise<{ 
   redirect("/admin/catalog/products");
 }
 
+/** Сгенерировать уникальный SKU по категории (кнопка рядом с полем «Артикул»). */
+export async function generateSku(categorySlug: string): Promise<{ sku?: string; error?: string }> {
+  await requireAdmin([...STAFF]);
+  const { buildSku } = await import("@/lib/admin/sku");
+  try {
+    const db = createSupabaseAdminClient();
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const num = 1000 + Math.floor(Math.random() * 9000);
+      const candidate = buildSku(categorySlug, num);
+      const { data } = await db.from("products").select("id").eq("sku", candidate).maybeSingle();
+      if (!data) return { sku: candidate };
+    }
+    return { error: "Не удалось подобрать уникальный SKU, попробуйте ещё раз" };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Ошибка генерации SKU" };
+  }
+}
+
 /** Пересчитать цены одного товара по текущей формуле (кнопка «Обновить из формулы»). */
 export async function recalcProductPrices(id: string): Promise<{ error?: string }> {
   try {

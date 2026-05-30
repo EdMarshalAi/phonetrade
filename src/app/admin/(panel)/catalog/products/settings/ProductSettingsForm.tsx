@@ -154,6 +154,14 @@ export function ProductSettingsForm({
               </div>
             )}
           </Panel>
+          <Panel className="space-y-1.5 p-5">
+            <p className="text-[14px] font-semibold text-ink">Генерация артикула (SKU)</p>
+            <p className="text-[13px] text-ink-muted">
+              Формула: <code className="rounded bg-surface px-1.5 py-0.5">PH{"{код категории}"}-{"{номер}"}</code>, например <b>PH584-1042</b>.
+              «PH» — магазин, 3 цифры — код категории, последние цифры — уникальный номер (не повторяется).
+              Кнопка «Сгенерировать» рядом с полем «Артикул» в карточке товара подбирает уникальный SKU автоматически.
+            </p>
+          </Panel>
         </div>
       ) : tab === "options" ? (
         <Panel className="divide-y divide-border/60">

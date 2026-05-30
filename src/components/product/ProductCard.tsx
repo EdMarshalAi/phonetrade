@@ -27,7 +27,12 @@ export function ProductCard({ product, className }: Props) {
     .map((o) => ({
       key: o.key,
       label: o.label,
-      value: o.field ? ((product as unknown as Record<string, unknown>)[o.field] as string | undefined) : product.options?.[o.key],
+      value:
+        o.field === "battery"
+          ? product.battery != null ? `${product.battery}%` : undefined
+          : o.field
+            ? ((product as unknown as Record<string, unknown>)[o.field] as string | undefined)
+            : product.options?.[o.key],
     }))
     .filter((o) => o.value);
   const { enabled: favEnabled, has: favHas, toggle: favToggle } = useFavorites();
@@ -164,7 +169,7 @@ export function ProductCard({ product, className }: Props) {
       </h3>
       <p className="mt-1 text-xs text-ink-subtle capitalize">{product.color}</p>
 
-      {cardOptions.length > 0 || (product.isUsed && typeof product.battery === "number") ? (
+      {cardOptions.length > 0 ? (
         <dl className="mt-3 space-y-1 text-xs text-ink-muted">
           {cardOptions.map((o) => (
             <div key={o.key} className="flex gap-1.5">
@@ -172,12 +177,6 @@ export function ProductCard({ product, className }: Props) {
               <dd className="line-clamp-1">{o.value}</dd>
             </div>
           ))}
-          {product.isUsed && typeof product.battery === "number" && (
-            <div className="flex gap-1.5">
-              <dt className="text-ink-subtle">Аккумулятор:</dt>
-              <dd className="font-medium text-ink">{product.battery}%</dd>
-            </div>
-          )}
         </dl>
       ) : null}
 
