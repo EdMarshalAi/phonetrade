@@ -65,6 +65,14 @@ npm run seed     # залить каталог из моков в Supabase (tsx 
 
 **MCP.** Сервер `phonetrade-supabase` в `~/.claude.json` (бинарь `selfhosted-supabase-mcp`, та же схема, что у других проектов; доступен после перезапуска Claude Code) — инструменты `mcp__phonetrade-supabase__*` для работы с БД. ⚠️ Сервер `selfhosted-supabase` (IP `155.212.211.29`) — **другой проект, не трогать**.
 
+## Контент-страницы, поиск, SEO
+
+**Статические страницы — из админки.** `/admin/content/pages` пишет в `static_pages` (slug, title, content-HTML, meta, status). Опубликованная страница сразу отдаётся по `/{slug}` через катч-олл `(site)/[slug]/page.tsx` (`getStaticPage`) — отдельный роут заводить не нужно. Уже есть и работают: `/about`, `/delivery`, `/warranty`, `/trade-in`, `/loyalty`, `/contacts`, `/privacy`, `/offer`, `/consent`, `/service-rules`. `/blog` и `/blog/[slug]` — отдельные роуты (таблицы блога). `/new` (товары `is_new`) и `/used` (Б/У, CatalogShell) — отдельные коллекционные роуты.
+
+**Поиск.** `searchProducts()` (матч по всем словам в title/model/цвете/памяти/категории) → страница `/search?q=` (грид `ProductCard`, пустые состояния). `SearchInput` отправляет на `/search`; запрос логируется в `search_queries` (`trackSearch`) и виден в аналитике «Поведение».
+
+**SEO.** `src/app/sitemap.ts` (ISR `revalidate=3600`) собирает главную, `/catalog`, `/new`, `/used`, `/blog`, все категории, опубликованные товары, **все опубликованные `static_pages`** и посты блога — новая страница из админки попадает в карту автоматически (в течение часа). `src/app/robots.ts` — allow всё, disallow `/admin /account /cart /auth /search`. Базовый URL — `NEXT_PUBLIC_SITE_URL` (фолбэк `http://31.129.97.8`).
+
 ## Не реализовано
 
-Реальный Supabase Auth (сейчас мок на localStorage); запись заказов из корзины в БД (таблицы готовы); персистентность корзины; поиск (поле в хедере есть, страницы результатов нет); нормальный домен + HTTPS для сайта (сейчас по IP на :80). Многие маршруты из хедера/футера ещё ведут в 404: `/about`, `/blog`, `/delivery`, `/warranty`, `/trade-in`, `/loyalty`, `/contacts`, `/used`, `/catalog` и юридические страницы. Детальный статус — в `README.md` → «Статус реализации».
+Персистентность корзины между сессиями; нормальный домен + HTTPS (сейчас по IP на :80). Реальный Supabase Auth, запись заказов из корзины в БД и поиск — **сделаны** (оформление чинилось: лишняя колонка `customer_phone` в insert рушила все заказы). Детальный статус — в `README.md` → «Статус реализации».
