@@ -60,3 +60,66 @@ export async function uploadImage(formData: FormData): Promise<UploadResult> {
   const { data } = db.storage.from(bucket).getPublicUrl(path);
   return { url: data.publicUrl, path };
 }
+
+/** Разрешённые типы для импорта по прямой ссылке (строже, чем при загрузке файла). */
+const URL_ALLOWED: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/webp": "webp",
+};
+
+/**
+ * Импортирует изображение по прямой ссылке в Storage и возвращает публичный URL.
+ * Безопасность: только http(s); тип проверяется по реальному Content-Type ответа
+ * (PNG/JPG/WebP); лимит 8 МБ; таймаут 10 с. «Что попало» не пройдёт.
+ */
+export async function uploadImageFromUrl(
+  rawUrl: string,
+  bucket: AdminBucket = "general",
+  folder = ""
+): Promise<UploadResult> {
+  await requireAdmin();
+
+  let parsed: URL;
+  try {
+    parsed = new URL((rawUrl || "").trim());
+  } catch {
+    return { error: "Некорректная ссылка" };
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return { error: "Ссылка должна начинаться с http:// или https://" };
+  }
+
+  let resp: Response;
+  try {
+    resp = await fetch(parsed.toString(), { redirect: "follow", signal: AbortSignal.timeout(10000) });
+  } catch {
+    return { error: "Не удалось загрузить файл по ссылке" };
+  }
+  if (!resp.ok) return { error: `Файл недоступен по ссылке (HTTP ${resp.status})` };
+
+  const contentType = (resp.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+  const ext = URL_ALLOWED[contentType];
+  if (!ext) {
+    return { error: "Можно загрузить только изображение PNG, JPG или WebP" };
+  }
+
+  const buf = await resp.arrayBuffer();
+  if (buf.byteLength === 0) return { error: "Файл по ссылке пустой" };
+  if (buf.byteLength > MAX_BYTES) return { error: "Файл больше 8 МБ" };
+
+  const rawName = parsed.pathname.split("/").pop()?.replace(/\.[^.]+$/, "") || "image";
+  const base = slugify(rawName) || "image";
+  const rand = crypto.randomUUID().slice(0, 8);
+  const path = `${folder ? folder.replace(/^\/|\/$/g, "") + "/" : ""}${base}-${rand}.${ext}`;
+
+  const db = createSupabaseAdminClient();
+  const { error } = await db.storage.from(bucket).upload(path, new Uint8Array(buf), {
+    contentType,
+    upsert: false,
+  });
+  if (error) return { error: error.message };
+
+  const { data } = db.storage.from(bucket).getPublicUrl(path);
+  return { url: data.publicUrl, path };
+}

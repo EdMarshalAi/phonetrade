@@ -166,7 +166,7 @@ export function ProductSettingsForm({
           <p className="mb-3 text-[13px] text-ink-muted">
             Блоки на странице товара (самовывоз, доставка, гарантия, trade-in). Блок со ссылкой выделяется тёмной плашкой.
           </p>
-          <BlocksEditor value={blocks} onChange={setBlocks} withHref />
+          <BlocksEditor value={blocks} onChange={setBlocks} withHref onDone={save} saving={saving} />
         </div>
       ) : (
         <Panel className="space-y-4 p-5">
@@ -192,8 +192,8 @@ export function ProductSettingsForm({
         onClose={() => setEditOption(null)}
         title="Опция"
         footer={
-          <AdminButton type="button" onClick={() => setEditOption(null)}>
-            Готово
+          <AdminButton type="button" loading={saving} onClick={() => { setEditOption(null); void save(); }}>
+            Готово и сохранить
           </AdminButton>
         }
       >
@@ -213,8 +213,8 @@ export function ProductSettingsForm({
         onClose={() => setEditBadge(null)}
         title="Бейдж"
         footer={
-          <AdminButton type="button" onClick={() => setEditBadge(null)}>
-            Готово
+          <AdminButton type="button" loading={saving} onClick={() => { setEditBadge(null); void save(); }}>
+            Готово и сохранить
           </AdminButton>
         }
       >

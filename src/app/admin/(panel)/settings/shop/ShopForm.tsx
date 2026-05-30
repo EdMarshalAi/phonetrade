@@ -217,7 +217,7 @@ export function ShopForm({ initial }: { initial: ShopGeneral }) {
         open={editC !== null}
         onClose={() => setEditC(null)}
         title="Контакт"
-        footer={<AdminButton type="button" onClick={() => setEditC(null)}>Готово</AdminButton>}
+        footer={<AdminButton type="button" loading={saving} onClick={() => { setEditC(null); void save(); }}>Готово и сохранить</AdminButton>}
       >
         {editC !== null && contacts[editC] ? (
           <div className="space-y-4">

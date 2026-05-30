@@ -26,10 +26,15 @@ export function BlocksEditor({
   value,
   onChange,
   withHref = false,
+  onDone,
+  saving = false,
 }: {
   value: InfoBlock[];
   onChange: (next: InfoBlock[]) => void;
   withHref?: boolean;
+  /** Если задан — кнопка в модалке закрывает и сохраняет (без повторного «Сохранить»). */
+  onDone?: () => void;
+  saving?: boolean;
 }) {
   const [edit, setEdit] = React.useState<number | null>(null);
   const patch = (i: number, p: Partial<InfoBlock>) =>
@@ -78,7 +83,15 @@ export function BlocksEditor({
         open={edit !== null}
         onClose={() => setEdit(null)}
         title="Блок"
-        footer={<AdminButton type="button" onClick={() => setEdit(null)}>Готово</AdminButton>}
+        footer={
+          <AdminButton
+            type="button"
+            loading={saving}
+            onClick={() => { setEdit(null); onDone?.(); }}
+          >
+            {onDone ? "Готово и сохранить" : "Готово"}
+          </AdminButton>
+        }
       >
         {edit !== null && value[edit] ? (
           <div className="space-y-4">

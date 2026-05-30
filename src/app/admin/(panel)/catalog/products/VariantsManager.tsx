@@ -4,12 +4,12 @@ import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Loader2, Upload, Star, ImageOff, Pencil, Check, X } from "lucide-react";
+import { Plus, Loader2, Upload, Star, ImageOff, Pencil, Check, X, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Panel, PanelHeader, PanelTitle } from "@/components/admin/ui";
 import { Field, TextInput, AdminButton } from "@/components/admin/form";
 import { DeleteButton } from "@/components/admin/DeleteButton";
-import { uploadImage } from "@/lib/admin/upload-actions";
+import { uploadImage, uploadImageFromUrl } from "@/lib/admin/upload-actions";
 import {
   createVariant,
   updateVariant,
@@ -451,7 +451,31 @@ export function GallerySection({
   const router = useRouter();
   const fileRef = React.useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = React.useState(false);
+  const [urlMode, setUrlMode] = React.useState(false);
+  const [urlValue, setUrlValue] = React.useState("");
   const [settingPrimary, setSettingPrimary] = React.useState<string | null>(null);
+
+  const handleUrl = async () => {
+    const u = urlValue.trim();
+    if (!u) return;
+    setUploading(true);
+    const res = await uploadImageFromUrl(u, "product-images", `products/${productId}`);
+    if (res.error || !res.url) {
+      setUploading(false);
+      toast.error(res.error ?? "Не удалось загрузить");
+      return;
+    }
+    const addRes = await addProductImage(productId, res.url);
+    setUploading(false);
+    if (addRes.error) {
+      toast.error(addRes.error);
+      return;
+    }
+    setUrlValue("");
+    setUrlMode(false);
+    toast.success("Фото добавлено по ссылке");
+    router.refresh();
+  };
 
   const handleFile = async (file: File) => {
     setUploading(true);
@@ -493,19 +517,32 @@ export function GallerySection({
     <Panel>
       <PanelHeader>
         <PanelTitle>Галерея</PanelTitle>
-        <button
-          type="button"
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="inline-flex h-8 items-center gap-2 rounded-sm border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface disabled:opacity-60"
-        >
-          {uploading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Upload className="h-4 w-4" strokeWidth={1.75} />
-          )}
-          Загрузить фото
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex h-8 items-center gap-2 rounded-sm border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface disabled:opacity-60"
+          >
+            {uploading && !urlMode ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" strokeWidth={1.75} />
+            )}
+            Загрузить фото
+          </button>
+          <button
+            type="button"
+            onClick={() => setUrlMode((m) => !m)}
+            disabled={uploading}
+            className={cn(
+              "inline-flex h-8 items-center gap-2 rounded-sm border px-3 text-[13px] disabled:opacity-60",
+              urlMode ? "border-ink/30 bg-ink/[0.04] text-ink" : "border-border bg-white text-ink hover:bg-surface"
+            )}
+          >
+            <Link2 className="h-4 w-4" strokeWidth={1.75} /> По ссылке
+          </button>
+        </div>
         <input
           ref={fileRef}
           type="file"
@@ -521,6 +558,33 @@ export function GallerySection({
           }}
         />
       </PanelHeader>
+
+      {urlMode ? (
+        <div className="flex items-center gap-2 border-b border-border/60 px-5 py-3">
+          <input
+            type="url"
+            value={urlValue}
+            onChange={(e) => setUrlValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void handleUrl();
+              }
+            }}
+            placeholder="https://…/photo.jpg — PNG, JPG или WebP"
+            className="h-9 flex-1 rounded-sm border border-border bg-white px-2.5 text-[13px] text-ink outline-none focus:border-ink/40"
+          />
+          <button
+            type="button"
+            onClick={() => void handleUrl()}
+            disabled={uploading || !urlValue.trim()}
+            className="inline-flex h-9 items-center gap-2 rounded-sm border border-ink bg-ink px-3 text-[13px] font-medium text-white hover:bg-ink/90 disabled:opacity-50"
+          >
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Добавить
+          </button>
+        </div>
+      ) : null}
 
       {images.length === 0 ? (
         <div className="px-5 py-10 text-center text-[14px] text-ink-muted">
