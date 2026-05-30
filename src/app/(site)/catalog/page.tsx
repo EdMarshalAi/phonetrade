@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { getCategories } from "@/lib/products";
 import { getProductsByCategory } from "@/lib/products";
-import { getCategoryConfig } from "@/lib/catalog/category-config";
 import { plural } from "@/lib/utils/plural";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +25,7 @@ export default async function CatalogPage() {
   );
   // Только верхний уровень (родительские/standalone) — серии доступны внутри.
   const items = categories
-    .map((c, i) => ({ ...c, count: counts[i], desc: getCategoryConfig(c.slug)?.description }))
+    .map((c, i) => ({ ...c, count: counts[i] }))
     .filter((c) => !c.parentSlug);
 
   return (

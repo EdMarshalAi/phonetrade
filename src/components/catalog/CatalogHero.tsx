@@ -1,10 +1,13 @@
 import * as React from "react";
+import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 type Props = {
   title: string;
   description: string;
   total: number;
+  /** Родительская категория для хлебных крошек (если это подкатегория). */
+  parent?: { title: string; href: string } | null;
 };
 
 function formatTotal(n: number): string {
@@ -16,7 +19,7 @@ function formatTotal(n: number): string {
   return `${n} товаров`;
 }
 
-export function CatalogHero({ title, description, total }: Props) {
+export function CatalogHero({ title, description, total, parent = null }: Props) {
   return (
     <section className="bg-bg">
       <div className="container-page pt-10 md:pt-14 pb-6 md:pb-8">
@@ -24,10 +27,18 @@ export function CatalogHero({ title, description, total }: Props) {
           aria-label="Хлебные крошки"
           className="flex items-center gap-1.5 text-xs text-ink-subtle mb-4"
         >
-          <a href="/" className="hover:text-ink transition-colors">
+          <Link href="/" className="hover:text-ink transition-colors">
             Главная
-          </a>
+          </Link>
           <ChevronRight className="size-3.5" aria-hidden />
+          {parent ? (
+            <>
+              <Link href={parent.href} className="hover:text-ink transition-colors">
+                {parent.title}
+              </Link>
+              <ChevronRight className="size-3.5" aria-hidden />
+            </>
+          ) : null}
           <span className="text-ink">{title}</span>
         </nav>
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">

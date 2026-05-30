@@ -11,7 +11,6 @@ import {
 } from "@/lib/catalog/filters";
 import { useCatalogFilters } from "@/lib/catalog/use-catalog-filters";
 import { CatalogHero } from "@/components/catalog/CatalogHero";
-import { SubcategoryRail } from "@/components/catalog/SubcategoryRail";
 import { QuickFilterBar } from "@/components/catalog/QuickFilterBar";
 import { ActiveFilterChips } from "@/components/catalog/ActiveFilterChips";
 import { FilterDrawer } from "@/components/catalog/FilterDrawer";
@@ -25,13 +24,15 @@ type Props = {
   facetOptions: FacetOptions;
   /** SEO-блок (HTML) из админки. Если задан — заменяет config.seo. */
   seoHtml?: string | null;
-  /** Подкатегории (для родительской категории) — ссылки на дочерние страницы. */
-  subcategories?: { slug: string; title: string }[];
+  /** Чипы-вкладки подкатегорий (показываются одинаково на родителе и детях). */
+  tabs?: { label: string; href: string; active?: boolean; count?: number }[];
+  /** Родитель для хлебных крошек (если текущая категория — подкатегория). */
+  breadcrumbParent?: { title: string; href: string } | null;
 };
 
 const PAGE_SIZE = 12;
 
-export function CatalogShell({ config, products, facetOptions, seoHtml, subcategories = [] }: Props) {
+export function CatalogShell({ config, products, facetOptions, seoHtml, tabs = [], breadcrumbParent = null }: Props) {
   const { filters, sort, setSort, toggleValue, reset, setFilters } =
     useCatalogFilters();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
@@ -59,34 +60,31 @@ export function CatalogShell({ config, products, facetOptions, seoHtml, subcateg
         title={config.title}
         description={config.description}
         total={filteredAndSorted.length}
+        parent={breadcrumbParent}
       />
 
-      {subcategories.length > 0 && (
+      {tabs.length > 0 && (
         <section className="bg-bg">
           <div className="container-page pb-2 pt-1">
             <div className="flex flex-wrap gap-2">
-              {subcategories.map((s) => (
+              {tabs.map((t) => (
                 <Link
-                  key={s.slug}
-                  href={`/category/${s.slug}`}
-                  className="inline-flex items-center rounded-full border border-border/70 bg-white px-4 py-2 text-[13.5px] font-medium text-ink transition-colors hover:border-ink/40 hover:bg-surface"
+                  key={t.href}
+                  href={t.href}
+                  aria-current={t.active ? "page" : undefined}
+                  className={
+                    t.active
+                      ? "inline-flex items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-[13.5px] font-medium text-white"
+                      : "inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-white px-4 py-2 text-[13.5px] font-medium text-ink transition-colors hover:border-ink/40 hover:bg-surface"
+                  }
                 >
-                  {s.title}
+                  {t.label}
+                  {t.count != null ? (
+                    <span className={t.active ? "text-white/60 tabular-nums" : "text-ink-subtle tabular-nums"}>{t.count}</span>
+                  ) : null}
                 </Link>
               ))}
             </div>
-          </div>
-        </section>
-      )}
-
-      {facetOptions.model && facetOptions.model.length > 0 && (
-        <section className="bg-bg">
-          <div className="container-page pb-4">
-            <SubcategoryRail
-              options={facetOptions.model}
-              selected={filters.model}
-              onToggle={(v) => toggleValue("model", v)}
-            />
           </div>
         </section>
       )}

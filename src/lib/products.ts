@@ -97,6 +97,39 @@ export async function getHeroProduct(): Promise<Product> {
   return iphones[0] ?? FEATURED_IPHONES[3];
 }
 
+/** Количество опубликованных товаров по каждому category_slug (для чипов подкатегорий). */
+export async function getProductCountsByCategory(): Promise<Record<string, number>> {
+  if (!supabase) return {};
+  const { data, error } = await supabase
+    .from("products")
+    .select("category_slug")
+    .eq("status", "published")
+    .is("deleted_at", null)
+    .neq("type", "used") // Б/У считаем отдельно (через is_used ниже не нужно — used имеют свои категории)
+    .limit(10000);
+  // используем обычный запрос и считаем на стороне приложения (надёжно для self-hosted)
+  const counts: Record<string, number> = {};
+  if (!error && data) {
+    for (const r of data as { category_slug: string | null }[]) {
+      if (r.category_slug) counts[r.category_slug] = (counts[r.category_slug] ?? 0) + 1;
+    }
+  }
+  // Б/У товары (type='used') — у них свои категории (…-used), посчитаем тоже
+  const { data: usedData } = await supabase
+    .from("products")
+    .select("category_slug")
+    .eq("status", "published")
+    .is("deleted_at", null)
+    .eq("type", "used")
+    .limit(10000);
+  if (usedData) {
+    for (const r of usedData as { category_slug: string | null }[]) {
+      if (r.category_slug) counts[r.category_slug] = (counts[r.category_slug] ?? 0) + 1;
+    }
+  }
+  return counts;
+}
+
 export async function getProductsByCategory(
   slug: CategorySlug
 ): Promise<Product[]> {

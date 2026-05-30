@@ -1,50 +1,70 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { getCategoryConfig, type FilterFacet } from "@/lib/catalog/category-config";
+import type { FilterFacet, CategoryConfig } from "@/lib/catalog/category-config";
 import { extractFacetOptions } from "@/lib/catalog/filters";
-import { getProductsByCategory } from "@/lib/products";
+import { getProductsByCategory, getCategories, getProductCountsByCategory } from "@/lib/products";
 import { getCategoryMeta } from "@/lib/content";
 import { CatalogShell } from "@/components/catalog/CatalogShell";
 
 export const dynamic = "force-dynamic";
 
-const KNOWN_FACETS: FilterFacet[] = ["model", "memory", "color", "sim", "condition", "battery"];
+// «Б/У» — виртуальная коллекция всех товаров type='used'. Настройки (название,
+// описание, фильтры, SEO) берутся из категории-строки `used` в админке, если она
+// заведена; иначе — разумный дефолт. Хардкода нет.
+const ALL_FACETS: FilterFacet[] = ["model", "memory", "color", "sim", "condition", "battery"];
+const QUICK_FACETS: FilterFacet[] = ["color", "battery"];
+const KNOWN_FACETS = new Set<string>(ALL_FACETS);
 
 export async function generateMetadata(): Promise<Metadata> {
-  const config = getCategoryConfig("used");
-  if (!config) return {};
-  return { title: config.title, description: config.description };
+  const meta = await getCategoryMeta("used");
+  return {
+    title: meta?.title || "Б/У техника",
+    description: meta?.description ?? undefined,
+  };
 }
 
 export default async function UsedPage() {
-  const config = getCategoryConfig("used");
-  if (!config) notFound();
-
-  const [products, meta] = await Promise.all([
+  const [products, meta, allCategories, counts] = await Promise.all([
     getProductsByCategory("used"),
     getCategoryMeta("used"),
+    getCategories().catch(() => []),
+    getProductCountsByCategory().catch(() => ({} as Record<string, number>)),
   ]);
 
-  const enabledFacets =
+  const title = meta?.title || "Б/У техника";
+  const description = meta?.description || "Проверенные Б/У устройства Apple с магазинной гарантией PhoneTrade.";
+  const facets: FilterFacet[] =
     meta?.available_filters && meta.available_filters.length > 0
-      ? (meta.available_filters.filter((f): f is FilterFacet =>
-          (KNOWN_FACETS as string[]).includes(f)
-        ) as FilterFacet[])
-      : config.facets;
-  const effectiveConfig = {
-    ...config,
-    facets: enabledFacets,
-    quickFacets: config.quickFacets.filter((f) => enabledFacets.includes(f)),
+      ? (meta.available_filters.filter((f) => KNOWN_FACETS.has(f)) as FilterFacet[])
+      : ALL_FACETS;
+
+  const config: CategoryConfig = {
+    slug: "used",
+    title,
+    description,
+    facets,
+    quickFacets: QUICK_FACETS.filter((f) => facets.includes(f)),
+    sortOptions: ["popular", "price-asc", "price-desc", "new", "battery-desc"],
   };
 
-  const facetOptions = extractFacetOptions(products, effectiveConfig.facets);
+  // Чипы: «Все Б/У» (активно) + категории Б/У из БД (дети iphone-used) с количеством.
+  const usedChildren = allCategories.filter((c) => c.parentSlug === "iphone-used");
+  const tabs =
+    usedChildren.length > 0
+      ? [
+          { label: "Все Б/У", href: "/used", active: true, count: products.length },
+          ...usedChildren.map((c) => ({ label: c.title, href: `/category/${c.slug}`, count: counts[c.slug] ?? 0 })),
+        ]
+      : [];
+
+  const facetOptions = extractFacetOptions(products, config.facets);
 
   return (
     <CatalogShell
-      config={effectiveConfig}
+      config={config}
       products={products}
       facetOptions={facetOptions}
       seoHtml={meta?.seo_text ?? null}
+      tabs={tabs}
     />
   );
 }

@@ -101,25 +101,30 @@ export async function getNavCategories(): Promise<NavCategory[]> {
 
 export interface CategoryMeta {
   title: string;
+  description: string | null;
+  subtitle: string | null;
   icon_url: string | null;
   seo_text: string | null;
   available_filters: string[] | null;
 }
 
-/** Мета категории из БД (иконка + SEO-текст + включённые фильтры). */
+/** Мета категории из БД (название, описание, иконка, SEO-текст, фильтры). */
 export async function getCategoryMeta(slug: string): Promise<CategoryMeta | null> {
   if (!supabase) return null;
   const { data } = await supabase
     .from("categories")
-    .select("title,icon_url,seo_text,available_filters")
+    .select("title,description,subtitle,icon_url,seo_text,available_filters")
     .eq("slug", slug)
     .maybeSingle();
   if (!data) return null;
+  const d = data as Record<string, unknown>;
   return {
-    ...(data as Omit<CategoryMeta, "available_filters">),
-    available_filters: Array.isArray((data as { available_filters?: unknown }).available_filters)
-      ? ((data as { available_filters: string[] }).available_filters)
-      : null,
+    title: (d.title as string) ?? slug,
+    description: (d.description as string | null) ?? null,
+    subtitle: (d.subtitle as string | null) ?? null,
+    icon_url: (d.icon_url as string | null) ?? null,
+    seo_text: (d.seo_text as string | null) ?? null,
+    available_filters: Array.isArray(d.available_filters) ? (d.available_filters as string[]) : null,
   };
 }
 
