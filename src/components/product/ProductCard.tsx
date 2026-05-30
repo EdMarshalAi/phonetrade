@@ -30,9 +30,11 @@ export function ProductCard({ product, className }: Props) {
       value:
         o.field === "battery"
           ? product.battery != null ? `${product.battery}%` : undefined
-          : o.field
-            ? ((product as unknown as Record<string, unknown>)[o.field] as string | undefined)
-            : product.options?.[o.key],
+          : o.field === "condition"
+            ? (product.conditionText || product.condition || undefined)
+            : o.field
+              ? ((product as unknown as Record<string, unknown>)[o.field] as string | undefined)
+              : product.options?.[o.key],
     }))
     .filter((o) => o.value);
   const colorOpt = cardOptions.find((o) => o.key === "color");

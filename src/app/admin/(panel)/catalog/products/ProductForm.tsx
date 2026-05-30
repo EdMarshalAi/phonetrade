@@ -68,7 +68,7 @@ export function ProductForm({
   priceHistory = [],
 }: {
   product?: ProductValue;
-  categories: { slug: string; title: string }[];
+  categories: { slug: string; title: string; parent_slug?: string | null }[];
   variants?: Variant[];
   images?: ProductImage[];
   optionDefs?: ProductOption[];
@@ -232,13 +232,7 @@ export function ProductForm({
                 control={control}
                 name="category_slug"
                 render={({ field }) => (
-                  <Select value={field.value} onChange={field.onChange} hasError={!!errors.category_slug}>
-                    {categories.map((c) => (
-                      <option key={c.slug} value={c.slug}>
-                        {c.title}
-                      </option>
-                    ))}
-                  </Select>
+                  <CategoryPicker value={field.value} onChange={field.onChange} categories={categories} hasError={!!errors.category_slug} />
                 )}
               />
             </Field>
@@ -568,6 +562,58 @@ export function ProductForm({
         </Link>
       </div>
     </form>
+  );
+}
+
+/* ── Выбор категории: раздельно категория и подкатегория ──────────────────── */
+function CategoryPicker({
+  value,
+  onChange,
+  categories,
+  hasError,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  categories: { slug: string; title: string; parent_slug?: string | null }[];
+  hasError?: boolean;
+}) {
+  const parents = categories.filter((c) => !c.parent_slug);
+  const childrenOf = (slug: string) => categories.filter((c) => c.parent_slug === slug);
+  const current = categories.find((c) => c.slug === value);
+  // Родитель выбранной категории (или сама, если она верхнего уровня)
+  const initialParent = current ? (current.parent_slug ?? current.slug) : "";
+  const [parent, setParent] = React.useState(initialParent);
+  React.useEffect(() => { setParent(current ? (current.parent_slug ?? current.slug) : ""); }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const kids = parent ? childrenOf(parent) : [];
+  const subValue = current?.parent_slug === parent ? current.slug : "";
+
+  return (
+    <div className="space-y-2">
+      <Select
+        value={parent}
+        hasError={hasError}
+        onChange={(e) => {
+          const p = e.target.value;
+          setParent(p);
+          const k = childrenOf(p);
+          onChange(k.length ? "" : p); // есть подкатегории — ждём выбор; иначе категория = сама
+        }}
+      >
+        <option value="">— Категория —</option>
+        {parents.map((c) => (
+          <option key={c.slug} value={c.slug}>{c.title}</option>
+        ))}
+      </Select>
+      {kids.length > 0 ? (
+        <Select value={subValue} onChange={(e) => onChange(e.target.value)}>
+          <option value="">— Подкатегория —</option>
+          {kids.map((c) => (
+            <option key={c.slug} value={c.slug}>{c.title}</option>
+          ))}
+        </Select>
+      ) : null}
+    </div>
   );
 }
 

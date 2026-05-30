@@ -4,7 +4,7 @@ import * as React from "react";
 import { Controller, type Control } from "react-hook-form";
 import type { ProductFormValues } from "@/lib/admin/schemas";
 import type { ProductOption, ProductBadge } from "@/lib/content";
-import { Field, Select } from "@/components/admin/form";
+import { Field, Select, Textarea } from "@/components/admin/form";
 import { Panel, PanelTitle } from "@/components/admin/ui";
 import { cn } from "@/lib/utils/cn";
 
@@ -75,6 +75,27 @@ export function OptionsBadgesSection({
                           </div>
                         );
                       }}
+                    />
+                  </Field>
+                );
+              }
+              // Состояние Б/У — свободный текст (как у владельца в прайсе), не справочник.
+              // Пишется в condition_text и выводится на карточке для Б/У-товаров.
+              if (opt.field === "condition") {
+                return (
+                  <Field key={opt.key} label={opt.label} hint="Свободное описание состояния — выводится на карточке Б/У">
+                    <Controller
+                      control={control}
+                      name="condition_text"
+                      render={({ field }) => (
+                        <Textarea
+                          value={(field.value as string) ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || undefined)}
+                          placeholder="Опишите состояние: внешний вид, царапины, потёртости, работающие функции"
+                          maxLength={500}
+                          className="min-h-[72px]"
+                        />
+                      )}
                     />
                   </Field>
                 );

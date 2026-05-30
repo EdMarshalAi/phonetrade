@@ -21,7 +21,7 @@ export default async function EditProductPage({
   const db = createSupabaseAdminClient();
   const [{ data: prod }, { data: cats }, { data: varRows }, { data: allProd }, { data: settings }, { data: rate }, { data: history }, optionDefs, badgeDefs] = await Promise.all([
     db.from("products").select("*").eq("id", id).maybeSingle(),
-    db.from("categories").select("slug,title,markup_percent,min_margin_rub").order("sort"),
+    db.from("categories").select("slug,title,parent_slug,markup_percent,min_margin_rub").order("sort"),
     db.from("product_variants").select("*").eq("product_id", id).order("sort_order"),
     db.from("products").select("id,title,category_slug,image,color,memory,model,variant_group_id").is("deleted_at", null).order("sort"),
     db.from("pricing_settings").select("*").eq("id", 1).maybeSingle(),
@@ -43,7 +43,7 @@ export default async function EditProductPage({
     : null;
 
   if (!prod) notFound();
-  const categories = (cats ?? []) as { slug: string; title: string }[];
+  const categories = (cats ?? []) as { slug: string; title: string; parent_slug: string | null }[];
   const categoryPricing = Object.fromEntries(
     (cats ?? []).map((c) => [c.slug as string, { markup_percent: Number(c.markup_percent ?? 10), min_margin_rub: Number(c.min_margin_rub ?? 0) }])
   );
