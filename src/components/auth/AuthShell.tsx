@@ -37,6 +37,7 @@ export function AuthShell() {
   const [phone, setPhone] = React.useState("+7 ");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [consent, setConsent] = React.useState({ oferta: false, pd: false, marketing: false });
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
 
@@ -60,11 +61,15 @@ export function AuthShell() {
       setError("Как к вам обращаться?");
       return;
     }
+    if (mode === "register" && (!consent.oferta || !consent.pd)) {
+      setError("Необходимо принять оферту и согласие на обработку персональных данных");
+      return;
+    }
 
     setPending(true);
     try {
       if (mode === "register") {
-        await register({ name, phone, email, password });
+        await register({ name, phone, email, password, consentMarketing: consent.marketing });
       } else {
         await login(phone, password);
       }
@@ -201,6 +206,23 @@ export function AuthShell() {
                   value={password}
                   onChange={setPassword}
                 />
+
+                {mode === "register" && (
+                  <div className="space-y-2 pt-1">
+                    <label className="flex items-start gap-2.5 text-[12.5px] leading-snug text-ink-muted cursor-pointer">
+                      <input type="checkbox" checked={consent.oferta} onChange={(e) => setConsent((c) => ({ ...c, oferta: e.target.checked }))} className="mt-0.5 size-4 shrink-0 accent-[var(--color-ink)]" />
+                      <span>Принимаю <a href="/offer" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">оферту</a> и <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">политику конфиденциальности</a></span>
+                    </label>
+                    <label className="flex items-start gap-2.5 text-[12.5px] leading-snug text-ink-muted cursor-pointer">
+                      <input type="checkbox" checked={consent.pd} onChange={(e) => setConsent((c) => ({ ...c, pd: e.target.checked }))} className="mt-0.5 size-4 shrink-0 accent-[var(--color-ink)]" />
+                      <span>Даю <a href="/consent" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">согласие на обработку персональных данных</a></span>
+                    </label>
+                    <label className="flex items-start gap-2.5 text-[12.5px] leading-snug text-ink-subtle cursor-pointer">
+                      <input type="checkbox" checked={consent.marketing} onChange={(e) => setConsent((c) => ({ ...c, marketing: e.target.checked }))} className="mt-0.5 size-4 shrink-0 accent-[var(--color-ink)]" />
+                      <span>Хочу получать акции и новинки (необязательно)</span>
+                    </label>
+                  </div>
+                )}
 
                 {error && (
                   <p className="text-[13px] text-sale" role="alert">

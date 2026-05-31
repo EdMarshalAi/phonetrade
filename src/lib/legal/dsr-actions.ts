@@ -15,6 +15,44 @@ export type SubmitDataRequestInput = {
 
 export type SubmitDataRequestResult = { ok?: boolean; error?: string };
 
+export type MyConsent = {
+  consent_type: string;
+  consent_purpose: string | null;
+  given_at: string | null;
+  source_action: string | null;
+};
+
+/** Активные согласия пользователя (по телефону/email) для личного кабинета. */
+export async function getMyConsents(phone?: string, email?: string): Promise<MyConsent[]> {
+  const ph = phone ? phone.replace(/\D/g, "") : "";
+  const em = email?.trim() || "";
+  if (!ph && !em) return [];
+  const db = createSupabaseAdminClient();
+  try {
+    const ors: string[] = [];
+    if (ph) ors.push(`user_phone.eq.${ph}`);
+    if (em) ors.push(`user_email.eq.${em}`);
+    const { data } = await db
+      .from("data_consents")
+      .select("consent_type,consent_purpose,given_at,source_action,revoked_at")
+      .or(ors.join(","))
+      .is("revoked_at", null)
+      .order("given_at", { ascending: false });
+    const rows = (data ?? []) as (MyConsent & { revoked_at: string | null })[];
+    // Последнее активное согласие по каждому типу.
+    const seen = new Set<string>();
+    const out: MyConsent[] = [];
+    for (const r of rows) {
+      if (seen.has(r.consent_type)) continue;
+      seen.add(r.consent_type);
+      out.push({ consent_type: r.consent_type, consent_purpose: r.consent_purpose, given_at: r.given_at, source_action: r.source_action });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
 function normalizePhone(phone: string): string {
   return phone.replace(/\D/g, "");
 }

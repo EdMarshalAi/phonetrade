@@ -21,19 +21,28 @@ export interface PromoValue {
   per_customer_limit: number | null;
   only_new_customers: boolean;
   is_active: boolean;
+  applies_to: "all" | "categories" | "products";
+  applies_to_ids: string[];
 }
 
 function dateInput(iso: string | null): string {
   return iso ? new Date(iso).toISOString().slice(0, 10) : "";
 }
 
-export function PromoForm({ promo }: { promo?: PromoValue }) {
+export function PromoForm({
+  promo,
+  categories = [],
+}: {
+  promo?: PromoValue;
+  categories?: { slug: string; title: string }[];
+}) {
   const isEdit = !!promo;
   const [formError, setFormError] = React.useState<string | null>(null);
   const {
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<PromoFormValues, unknown, PromoInput>({
     resolver: zodResolver(promoSchema),
@@ -48,8 +57,11 @@ export function PromoForm({ promo }: { promo?: PromoValue }) {
       per_customer_limit: promo?.per_customer_limit ?? undefined,
       only_new_customers: promo?.only_new_customers ?? false,
       is_active: promo?.is_active ?? true,
+      applies_to: promo?.applies_to ?? "all",
+      applies_to_ids: promo?.applies_to_ids ?? [],
     },
   });
+  const appliesTo = watch("applies_to");
 
   const onSubmit = async (values: PromoInput) => {
     setFormError(null);
@@ -103,6 +115,48 @@ export function PromoForm({ promo }: { promo?: PromoValue }) {
           <Controller control={control} name="only_new_customers" render={({ field }) => <Switch checked={!!field.value} onChange={field.onChange} label="Только новым клиентам" />} />
           <Controller control={control} name="is_active" render={({ field }) => <Switch checked={!!field.value} onChange={field.onChange} label="Активен" />} />
         </div>
+      </Panel>
+
+      <Panel className="space-y-4 p-5">
+        <Field label="Область применения" hint="К каким товарам применяется скидка">
+          <Controller control={control} name="applies_to" render={({ field }) => (
+            <Select value={field.value} onChange={field.onChange}>
+              <option value="all">Все товары</option>
+              <option value="categories">Только определённые категории</option>
+              <option value="products">Только определённые товары</option>
+            </Select>
+          )} />
+        </Field>
+
+        {appliesTo === "categories" && (
+          <Controller control={control} name="applies_to_ids" render={({ field }) => {
+            const ids = field.value ?? [];
+            const toggle = (slug: string) =>
+              field.onChange(ids.includes(slug) ? ids.filter((s) => s !== slug) : [...ids, slug]);
+            return (
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                {categories.map((c) => (
+                  <label key={c.slug} className="flex items-center gap-2.5 text-[14px] text-ink">
+                    <input type="checkbox" checked={ids.includes(c.slug)} onChange={() => toggle(c.slug)} className="size-4 accent-[var(--color-ink)]" />
+                    {c.title}
+                  </label>
+                ))}
+              </div>
+            );
+          }} />
+        )}
+
+        {appliesTo === "products" && (
+          <Controller control={control} name="applies_to_ids" render={({ field }) => (
+            <Field label="ID товаров" hint="Через запятую — ID из адреса товара /product/…">
+              <TextInput
+                placeholder="iphone-17-pro, ipad-air-m3"
+                value={(field.value ?? []).join(", ")}
+                onChange={(e) => field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
+              />
+            </Field>
+          )} />
+        )}
       </Panel>
       <div className="flex items-center gap-2">
         <AdminButton type="submit" loading={isSubmitting}>{isEdit ? "Сохранить" : "Создать промокод"}</AdminButton>

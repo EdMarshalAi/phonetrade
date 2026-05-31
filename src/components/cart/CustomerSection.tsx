@@ -49,18 +49,6 @@ export function CustomerSection({ state, onChange, errors, showErrors, loggedIn,
         <AuthPanel defaultPhone={state.phone} login={login} register={register} />
       ) : (
         <>
-          <div className="flex flex-wrap gap-2 mb-5">
-            <TypeBtn active={state.customerType === "person"} onClick={() => onChange({ customerType: "person" })}>Физическое лицо</TypeBtn>
-            <TypeBtn active={state.customerType === "company"} onClick={() => onChange({ customerType: "company" })}>Юридическое лицо</TypeBtn>
-          </div>
-
-          {state.customerType === "company" && (
-            <div className="grid sm:grid-cols-2 gap-3 mb-3">
-              <Field id="companyName" label="Название компании" required autoComplete="organization" placeholder="ООО «Ромашка»" value={state.companyName ?? ""} onChange={(v) => onChange({ companyName: v })} error={err("companyName")} />
-              <Field id="companyInn" label="ИНН" required inputMode="numeric" placeholder="10 или 12 цифр" value={state.companyInn ?? ""} onChange={(v) => onChange({ companyInn: v })} error={err("companyInn")} />
-            </div>
-          )}
-
           <div className="grid sm:grid-cols-2 gap-3">
             <Field id="phone" label="Телефон" required type="tel" inputMode="tel" autoComplete="tel" placeholder="+7 ___ ___-__-__" value={state.phone} onChange={(v) => onChange({ phone: v })} error={err("phone")} />
             <Field id="email" label="E-mail" type="email" inputMode="email" autoComplete="email" placeholder="вы@почта.ру" value={state.email} onChange={(v) => onChange({ email: v })} error={err("email")} />
@@ -92,13 +80,14 @@ function AuthPanel({
 }: {
   defaultPhone: string;
   login: (phone: string, password: string) => Promise<void>;
-  register: (input: { name: string; phone: string; email?: string; password: string }) => Promise<void>;
+  register: (input: { name: string; phone: string; email?: string; password: string; consentMarketing?: boolean }) => Promise<void>;
 }) {
   const [mode, setMode] = React.useState<"login" | "register">("login");
   const [name, setName] = React.useState("");
   const [phone, setPhone] = React.useState(defaultPhone || "+7 ");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const [consent, setConsent] = React.useState({ oferta: false, pd: false, marketing: false });
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
 
@@ -107,9 +96,11 @@ function AuthPanel({
     if (normalizePhone(phone).length < 11) return setError("Укажите корректный номер телефона");
     if (password.length < 6) return setError("Пароль — минимум 6 символов");
     if (mode === "register" && !name.trim()) return setError("Укажите имя");
+    if (mode === "register" && (!consent.oferta || !consent.pd))
+      return setError("Необходимо принять оферту и согласие на обработку персональных данных");
     setPending(true);
     try {
-      if (mode === "register") await register({ name, phone, email, password });
+      if (mode === "register") await register({ name, phone, email, password, consentMarketing: consent.marketing });
       else await login(phone, password);
       // успех → провайдер обновит user, секция перерисуется в «Вы вошли…»
     } catch (e) {
@@ -144,6 +135,20 @@ function AuthPanel({
         />
       </div>
 
+      {mode === "register" ? (
+        <div className="mt-4 space-y-2">
+          <ConsentRow checked={consent.oferta} onChange={(v) => setConsent((c) => ({ ...c, oferta: v }))}>
+            Принимаю <a href="/offer" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">оферту</a> и <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">политику конфиденциальности</a>
+          </ConsentRow>
+          <ConsentRow checked={consent.pd} onChange={(v) => setConsent((c) => ({ ...c, pd: v }))}>
+            Даю <a href="/consent" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">согласие на обработку персональных данных</a>
+          </ConsentRow>
+          <ConsentRow checked={consent.marketing} onChange={(v) => setConsent((c) => ({ ...c, marketing: v }))} subtle>
+            Хочу получать акции и новинки (необязательно)
+          </ConsentRow>
+        </div>
+      ) : null}
+
       {error ? <p className="mt-3 text-[12px] text-sale" role="alert">{error}</p> : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -169,6 +174,15 @@ function AuthPanel({
 
 /* ── Мелкие контролы ─────────────────────────────────────────────────────────── */
 
+function ConsentRow({ checked, onChange, children, subtle }: { checked: boolean; onChange: (v: boolean) => void; children: React.ReactNode; subtle?: boolean }) {
+  return (
+    <label className={cn("flex items-start gap-2.5 text-[12.5px] leading-snug cursor-pointer", subtle ? "text-ink-subtle" : "text-ink-muted")}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 size-4 shrink-0 accent-[var(--color-ink)]" />
+      <span>{children}</span>
+    </label>
+  );
+}
+
 function SegBtn({ active, onClick, icon, title, hint }: { active: boolean; onClick: () => void; icon: React.ReactNode; title: string; hint: string }) {
   return (
     <button
@@ -185,21 +199,6 @@ function SegBtn({ active, onClick, icon, title, hint }: { active: boolean; onCli
         <span className="text-sm font-semibold">{title}</span>
       </div>
       <p className="mt-1 text-[12px] text-ink-muted leading-snug">{hint}</p>
-    </button>
-  );
-}
-
-function TypeBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center h-10 px-5 rounded-full text-sm font-medium transition-colors border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40",
-        active ? "bg-ink text-white border-ink" : "bg-white text-ink border-border hover:border-ink/30"
-      )}
-    >
-      {children}
     </button>
   );
 }

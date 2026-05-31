@@ -153,6 +153,8 @@ export const promoSchema = z.object({
   per_customer_limit: z.coerce.number().int().min(0).nullable().optional(),
   only_new_customers: z.boolean().default(false),
   is_active: z.boolean().default(true),
+  applies_to: z.enum(["all", "categories", "products"]).default("all"),
+  applies_to_ids: z.array(z.string()).default([]),
 });
 export type PromoInput = z.infer<typeof promoSchema>;
 export type PromoFormValues = z.input<typeof promoSchema>;

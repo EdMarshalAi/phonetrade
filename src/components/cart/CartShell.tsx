@@ -13,6 +13,8 @@ import { MAX_QTY } from "@/lib/cart/constants";
 import { pluralizeItems } from "@/lib/utils/plural";
 import type { CartItem, CheckoutState } from "@/lib/cart/types";
 import { placeOrder } from "@/lib/cart/order-actions";
+import { validatePromoCode } from "@/lib/cart/promo-actions";
+import { computePromoDiscount, type ValidatedPromo } from "@/lib/cart/promo";
 import { trackFunnel } from "@/lib/analytics/track";
 import { useCart } from "@/components/providers/CartProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -45,6 +47,19 @@ export function CartShell({
   const [submitPending, setSubmitPending] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [consent, setConsent] = React.useState({ oferta: false, pd: false, marketing: false });
+  // Авторизованный пользователь дал согласия при регистрации — в корзине их не спрашиваем.
+  const showConsent = !user;
+  React.useEffect(() => {
+    if (user) setConsent({ oferta: true, pd: true, marketing: false });
+  }, [user]);
+  const [promo, setPromo] = React.useState<ValidatedPromo | null>(null);
+  const applyPromo = React.useCallback(async (code: string): Promise<string | null> => {
+    const res = await validatePromoCode(code);
+    if (res.error || !res.promo) return res.error ?? "Не удалось применить промокод";
+    setPromo(res.promo);
+    return null;
+  }, []);
+  const clearPromo = React.useCallback(() => setPromo(null), []);
   const [undo, setUndo] = React.useState<{ item: CartItem } | null>(null);
   const prefilled = React.useRef(false);
 
@@ -132,7 +147,8 @@ export function CartShell({
         ? items.reduce((acc, i) => acc + (i.product.priceCard - i.product.priceCash) * i.qty, 0)
         : 0;
     const surcharge = payMethod?.surcharge ? Math.round((subtotal * payMethod.surcharge) / 100) : 0;
-    const total = subtotal + surcharge;
+    const promoDiscount = computePromoDiscount(promo, items, base).amount;
+    const total = Math.max(0, subtotal + surcharge - promoDiscount);
 
     placeOrder({
       items: items.map((i) => ({
@@ -153,6 +169,8 @@ export function CartShell({
       subtotal,
       discountCash,
       total,
+      promoCode: promo?.code,
+      promoDiscount,
       consentOferta: consent.oferta,
       consentPd: consent.pd,
       consentMarketing: consent.marketing,
@@ -297,6 +315,10 @@ export function CartShell({
               payments={settings.payments}
               consent={consent}
               onConsent={(patch) => setConsent((c) => ({ ...c, ...patch }))}
+              showConsent={showConsent}
+              promo={promo}
+              onApplyPromo={applyPromo}
+              onClearPromo={clearPromo}
             />
             {submitPending && (
               <p className="text-[13px] text-ink-muted text-center animate-pulse px-2">

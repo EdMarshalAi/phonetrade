@@ -7,6 +7,7 @@ import { pluralizeItems } from "@/lib/utils/plural";
 import { resolveIcon } from "@/lib/admin/icons";
 import type { CartItem, CheckoutState } from "@/lib/cart/types";
 import type { InfoBlock, CartDeliveryOption, CartPaymentMethod } from "@/lib/content";
+import { computePromoDiscount, type ValidatedPromo } from "@/lib/cart/promo";
 import { cn } from "@/lib/utils/cn";
 
 export type Consent = { oferta: boolean; pd: boolean; marketing: boolean };
@@ -22,11 +23,11 @@ type Props = {
   payments: CartPaymentMethod[];
   consent: Consent;
   onConsent: (patch: Partial<Consent>) => void;
-};
-
-const PROMO_CODES: Record<string, number> = {
-  PHONE10: 0.1,
-  BELGOROD5: 0.05,
+  /** Показывать чекбоксы согласий (только гостям; авторизованные дали при регистрации). */
+  showConsent?: boolean;
+  promo: ValidatedPromo | null;
+  onApplyPromo: (code: string) => Promise<string | null>;
+  onClearPromo: () => void;
 };
 
 const CREDIT_MONTHS = 24;
@@ -42,6 +43,10 @@ export function OrderSummary({
   payments,
   consent,
   onConsent,
+  showConsent = true,
+  promo,
+  onApplyPromo,
+  onClearPromo,
 }: Props) {
   const deliveryOpt = delivery.find((d) => d.key === state.delivery);
   const paymentOpt = payments.find((p) => p.key === state.payment);
@@ -49,12 +54,9 @@ export function OrderSummary({
   const DELIVERY_LABEL: Record<string, string> = Object.fromEntries(
     delivery.map((d) => [d.key, d.label])
   );
-  const [promoOpen, setPromoOpen] = React.useState(false);
   const [promoInput, setPromoInput] = React.useState("");
-  const [promo, setPromo] = React.useState<{ code: string; rate: number } | null>(
-    null
-  );
   const [promoError, setPromoError] = React.useState<string | null>(null);
+  const [promoPending, setPromoPending] = React.useState(false);
 
   const totalQty = items.reduce((acc, i) => acc + i.qty, 0);
   // Сумма по выбранной базе цены (наличными/картой) выбранного способа оплаты.
@@ -68,25 +70,23 @@ export function OrderSummary({
     deliveryOpt && deliveryOpt.price > 0 && !(deliveryOpt.freeFrom > 0 && subtotal >= deliveryOpt.freeFrom)
       ? deliveryOpt.price
       : 0;
-  const promoDiscount = promo ? Math.round(subtotal * promo.rate) : 0;
+  const promoCalc = computePromoDiscount(promo, items, base);
+  const promoDiscount = promoCalc.amount;
   const total = Math.max(0, subtotal + surchargeAmount + deliveryPrice - promoDiscount);
   const monthly = Math.ceil(total / CREDIT_MONTHS);
 
-  const applyPromo = () => {
-    const code = promoInput.trim().toUpperCase();
-    if (!code) return;
-    const rate = PROMO_CODES[code];
-    if (!rate) {
-      setPromo(null);
-      setPromoError("Промокод не найден");
-      return;
-    }
-    setPromo({ code, rate });
+  const applyPromo = async () => {
+    const code = promoInput.trim();
+    if (!code || promoPending) return;
+    setPromoPending(true);
     setPromoError(null);
+    const err = await onApplyPromo(code);
+    setPromoPending(false);
+    if (err) setPromoError(err);
   };
 
   const clearPromo = () => {
-    setPromo(null);
+    onClearPromo();
     setPromoInput("");
     setPromoError(null);
   };
@@ -101,68 +101,7 @@ export function OrderSummary({
           </span>
         </div>
 
-        {!promoOpen && !promo && (
-          <button
-            type="button"
-            onClick={() => setPromoOpen(true)}
-            className="text-[13px] text-ink underline-offset-4 hover:underline mb-5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-          >
-            Использовать промокод
-          </button>
-        )}
-
-        {promoOpen && !promo && (
-          <div className="mb-5">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={promoInput}
-                onChange={(e) => {
-                  setPromoInput(e.target.value);
-                  setPromoError(null);
-                }}
-                onKeyDown={(e) => e.key === "Enter" && applyPromo()}
-                placeholder="Промокод"
-                aria-label="Промокод"
-                className={cn(
-                  "flex-1 h-10 px-3 rounded-xl bg-surface text-sm text-ink uppercase placeholder:normal-case placeholder:text-ink-subtle outline-none focus:bg-white focus:ring-2 transition-colors",
-                  promoError
-                    ? "ring-2 ring-sale/50 focus:ring-sale/60"
-                    : "focus:ring-ink/15"
-                )}
-              />
-              <button
-                type="button"
-                onClick={applyPromo}
-                className="h-10 px-4 rounded-xl bg-ink text-white text-sm font-medium hover:bg-ink/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-              >
-                Применить
-              </button>
-            </div>
-            {promoError && (
-              <p className="mt-1.5 text-[12px] text-sale">{promoError}</p>
-            )}
-          </div>
-        )}
-
-        {promo && (
-          <div className="flex items-center justify-between gap-2 mb-5 rounded-xl bg-surface px-3 py-2">
-            <span className="text-[13px] text-ink">
-              Промокод{" "}
-              <span className="font-semibold">{promo.code}</span> применён
-            </span>
-            <button
-              type="button"
-              onClick={clearPromo}
-              aria-label="Убрать промокод"
-              className="inline-flex size-7 items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-            >
-              <X className="size-3.5" />
-            </button>
-          </div>
-        )}
-
-        <dl className="space-y-2.5 text-sm pb-5 border-b border-dashed border-border/70">
+        <dl className="space-y-2.5 text-sm pb-5 border-b border-dashed border-border/70 mt-4">
           <div className="flex justify-between gap-3">
             <dt className="text-ink-muted">
               Товары · {base === "card" ? "цена картой" : "цена наличными"}
@@ -211,14 +150,65 @@ export function OrderSummary({
           </span>
         </div>
         {state.payment === "credit" ? (
-          <p className="text-right text-[12px] text-ink-muted mb-6">
+          <p className="text-right text-[12px] text-ink-muted mb-4">
             ≈ {formatPrice(monthly)}/мес на {CREDIT_MONTHS} мес
           </p>
         ) : (
-          <div className="mb-6" />
+          <div className="mb-4" />
         )}
 
-        {/* Согласия (152-ФЗ) — две обязательные независимые галочки + опциональная */}
+        {/* Промокод — под ценой */}
+        <div className="mb-6">
+          {promo ? (
+            <div className="flex items-center justify-between gap-2 rounded-xl bg-surface px-3 py-2">
+              <span className="text-[13px] text-ink">
+                Промокод <span className="font-semibold">{promo.code}</span>
+                {promoDiscount > 0 ? " применён" : ""}
+              </span>
+              <button
+                type="button"
+                onClick={clearPromo}
+                aria-label="Убрать промокод"
+                className="inline-flex size-7 items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={promoInput}
+                onChange={(e) => {
+                  setPromoInput(e.target.value);
+                  setPromoError(null);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && applyPromo()}
+                placeholder="Промокод"
+                aria-label="Промокод"
+                className={cn(
+                  "flex-1 h-10 px-3 rounded-xl bg-surface text-sm text-ink uppercase placeholder:normal-case placeholder:text-ink-subtle outline-none focus:bg-white focus:ring-2 transition-colors",
+                  promoError ? "ring-2 ring-sale/50 focus:ring-sale/60" : "focus:ring-ink/15"
+                )}
+              />
+              <button
+                type="button"
+                onClick={applyPromo}
+                disabled={promoPending}
+                className="h-10 px-4 rounded-xl bg-ink text-white text-sm font-medium hover:bg-ink/85 transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+              >
+                {promoPending ? "…" : "Применить"}
+              </button>
+            </div>
+          )}
+          {promoError && <p className="mt-1.5 text-[12px] text-sale">{promoError}</p>}
+          {promo && promoDiscount === 0 && promoCalc.note && (
+            <p className="mt-1.5 text-[12px] text-ink-muted">{promoCalc.note}</p>
+          )}
+        </div>
+
+        {/* Согласия (152-ФЗ) — только гостям; авторизованные дали при регистрации */}
+        {showConsent && (
         <div className="mb-4 space-y-2.5">
           <label className="flex items-start gap-2.5 text-[12.5px] leading-snug text-ink-muted cursor-pointer">
             <input type="checkbox" checked={consent.oferta} onChange={(e) => onConsent({ oferta: e.target.checked })} className="mt-0.5 size-4 shrink-0 accent-[var(--color-ink)]" />
@@ -233,11 +223,12 @@ export function OrderSummary({
             <span>Хочу получать акции и новинки (необязательно)</span>
           </label>
         </div>
+        )}
 
         <button
           type="button"
           onClick={onSubmit}
-          disabled={!consent.oferta || !consent.pd}
+          disabled={showConsent && (!consent.oferta || !consent.pd)}
           className="inline-flex w-full items-center justify-center gap-2 h-12 px-7 rounded-2xl bg-ink text-white text-sm font-medium hover:bg-ink/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Подтвердить заказ
@@ -248,7 +239,7 @@ export function OrderSummary({
             Заполните выделенные поля, чтобы продолжить
           </p>
         )}
-        {attempted && errorCount === 0 && (!consent.oferta || !consent.pd) && (
+        {showConsent && attempted && errorCount === 0 && (!consent.oferta || !consent.pd) && (
           <p className="mt-2 text-[12px] text-sale text-center" role="alert">
             Необходимо принять оферту и согласие на обработку персональных данных
           </p>

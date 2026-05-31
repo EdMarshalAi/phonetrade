@@ -18,6 +18,8 @@ function normalize(input: PromoInput) {
     per_customer_limit: input.per_customer_limit ?? null,
     only_new_customers: input.only_new_customers ?? false,
     is_active: input.is_active ?? true,
+    applies_to: input.applies_to ?? "all",
+    applies_to_ids: (input.applies_to ?? "all") === "all" ? [] : input.applies_to_ids ?? [],
   };
 }
 

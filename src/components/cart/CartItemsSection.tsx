@@ -66,9 +66,11 @@ export function CartItemsSection({ items, onQty, onRemove }: Props) {
                 >
                   {product.title}
                 </a>
-                <span className="text-[11px] text-ink-subtle tabular-nums shrink-0">
-                  #{product.id.toUpperCase()}
-                </span>
+                {product.sku ? (
+                  <span className="text-[11px] text-ink-subtle tabular-nums shrink-0">
+                    Арт. {product.sku}
+                  </span>
+                ) : null}
               </div>
               <p className="mt-0.5 text-xs text-ink-subtle">
                 {product.color}

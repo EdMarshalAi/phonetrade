@@ -20,6 +20,8 @@ export type RegisterInput = {
   phone: string;
   email?: string;
   password: string;
+  /** Согласие на рекламные рассылки (необязательно). Оферта и обработка ПД — обязательны при регистрации. */
+  consentMarketing?: boolean;
 };
 
 type AuthContextValue = {

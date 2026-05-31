@@ -3,8 +3,55 @@
 import * as React from "react";
 import { Check, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { submitDataRequest } from "@/lib/legal/dsr-actions";
+import { submitDataRequest, getMyConsents, type MyConsent } from "@/lib/legal/dsr-actions";
 import { DSR_TYPES, type DsrType } from "@/lib/legal/dsr";
+
+const CONSENT_LABELS: Record<string, string> = {
+  offer_acceptance: "Оферта и политика конфиденциальности",
+  pd_processing: "Обработка персональных данных",
+  marketing: "Рекламные и информационные рассылки",
+};
+const REVOKE_EMAIL = "den_street69@mail.ru";
+
+function MyConsents({ user }: { user: { phone?: string; email?: string } | null }) {
+  const [consents, setConsents] = React.useState<MyConsent[] | null>(null);
+  React.useEffect(() => {
+    if (!user) return;
+    getMyConsents(user.phone, user.email).then(setConsents).catch(() => setConsents([]));
+  }, [user]);
+
+  if (!user || !consents || consents.length === 0) return null;
+
+  const fmt = (d: string | null) =>
+    d ? new Date(d).toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" }) : "—";
+
+  return (
+    <div className="rounded-3xl bg-white border border-border/60 p-6 md:p-8">
+      <h2 className="text-lg font-semibold text-ink">Мои согласия</h2>
+      <p className="mt-1 text-[13px] text-ink-muted">Согласия, которые вы дали при регистрации и оформлении заказов.</p>
+      <ul className="mt-5 divide-y divide-border/60">
+        {consents.map((c) => (
+          <li key={c.consent_type} className="flex items-start justify-between gap-4 py-3.5">
+            <div>
+              <p className="text-[14px] font-medium text-ink">{CONSENT_LABELS[c.consent_type] ?? c.consent_type}</p>
+              {c.consent_purpose ? <p className="mt-0.5 text-[12px] text-ink-muted">{c.consent_purpose}</p> : null}
+            </div>
+            <span className="shrink-0 whitespace-nowrap text-right text-[12px] text-ink-muted">
+              дано<br />
+              <span className="text-ink">{fmt(c.given_at)}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-5 rounded-2xl bg-surface px-4 py-3 text-[13px] leading-relaxed text-ink-muted">
+        Отозвать любое согласие можно, направив запрос на электронную почту{" "}
+        <a href={`mailto:${REVOKE_EMAIL}`} className="text-ink underline underline-offset-2">{REVOKE_EMAIL}</a>{" "}
+        или оформив обращение ниже. Отзыв согласия на обработку ПД, необходимых для исполнения заказа,
+        может ограничить доступ к части сервисов.
+      </p>
+    </div>
+  );
+}
 import { cn } from "@/lib/utils/cn";
 
 const TYPE_ORDER: DsrType[] = ["access", "rectify", "delete", "revoke", "export"];
@@ -79,6 +126,7 @@ export function PrivacySection() {
 
   return (
     <div className="flex flex-col gap-5">
+      <MyConsents user={user ? { phone: user.phone, email: user.email } : null} />
       <div className="rounded-3xl bg-white border border-border/60 p-6 md:p-8">
         <div className="flex items-start gap-3 mb-6">
           <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface text-ink">

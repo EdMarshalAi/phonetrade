@@ -26,6 +26,7 @@ export type PlaceOrderInput = {
   subtotal: number;
   discountCash: number;
   total: number;
+  promoDiscount?: number;
   consentOferta?: boolean;
   consentPd?: boolean;
   consentMarketing?: boolean;
@@ -126,7 +127,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       status: "new",
       subtotal: input.subtotal,
       discount_cash: input.discountCash,
-      discount_promo: 0,
+      discount_promo: input.promoDiscount ?? 0,
       total: input.total,
       promo_code: input.promoCode ?? null,
       created_at: new Date().toISOString(),
@@ -135,6 +136,16 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     if (orderError) {
       console.error("[placeOrder] insert order error:", orderError);
       return { error: "Не удалось создать заказ. Попробуйте ещё раз." };
+    }
+
+    // Счётчик использований промокода (best-effort).
+    if (input.promoCode) {
+      try {
+        const { data: pc } = await db.from("promo_codes").select("used_count").eq("code", input.promoCode).maybeSingle();
+        if (pc) await db.from("promo_codes").update({ used_count: (pc.used_count ?? 0) + 1 }).eq("code", input.promoCode);
+      } catch {
+        /* ignore */
+      }
     }
 
     // 152-ФЗ: фиксируем согласия в реестре с метаданными (IP/UA/страница/действие).
