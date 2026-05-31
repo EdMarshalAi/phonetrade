@@ -30,21 +30,6 @@ export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | nul
 
   const returnTo = params.get("returnTo") || "/account";
 
-  // Уже авторизован (по серверной cookie-сессии или клиентской) — сразу в кабинет,
-  // не показываем форму входа.
-  const authed = clientUser ?? initialUser;
-  React.useEffect(() => {
-    if (authed) router.replace(returnTo);
-  }, [authed, router, returnTo]);
-  if (authed || (!ready && initialUser)) {
-    return (
-      <section className="bg-surface">
-        <div className="container-page flex min-h-[40vh] items-center justify-center py-16 text-sm text-ink-muted">
-          Перенаправляем в личный кабинет…
-        </div>
-      </section>
-    );
-  }
   const [mode, setMode] = React.useState<Mode>(
     params.get("mode") === "register" ? "register" : "login"
   );
@@ -56,6 +41,13 @@ export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | nul
   const [consent, setConsent] = React.useState({ oferta: false, pd: false, marketing: false });
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
+
+  // Уже авторизован (по серверной cookie-сессии или клиентской) — сразу в кабинет,
+  // не показываем форму входа. ВАЖНО: все хуки объявлены выше этого возврата.
+  const authed = clientUser ?? initialUser;
+  React.useEffect(() => {
+    if (authed) router.replace(returnTo);
+  }, [authed, router, returnTo]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,6 +88,16 @@ export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | nul
       setPending(false);
     }
   };
+
+  if (authed || (!ready && initialUser)) {
+    return (
+      <section className="bg-surface">
+        <div className="container-page flex min-h-[40vh] items-center justify-center py-16 text-sm text-ink-muted">
+          Перенаправляем в личный кабинет…
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="bg-surface">
