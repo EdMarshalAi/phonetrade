@@ -9,6 +9,7 @@
  *  - новые iPhone           → по category_slug (каждая категория = модель);
  *  - Б/У iPhone             → по category_slug;
  *  - Samsung                → по category_slug (+ чиним память из названия);
+ *  - iPad                   → по подкатегории ipad-* (+ чиним память из названия);
  *  - MacBook (mac)          → по «Air/Pro + размер + чип» из названия;
  *  - Apple Watch (watch)    → по «модель + размер корпуса» из названия.
  * Группа создаётся только при ≥2 участниках. id групп детерминированы (vg-…),
@@ -59,6 +60,14 @@ function samsungMemory(title: string): string | null {
   return m ? `${m[1]}GB` : null;
 }
 
+// iPad: вытащить объём накопителя из названия (64/128/256/512/1024) — для пустой памяти.
+function ipadMemory(title: string): string | null {
+  const m = title.match(/\b(64|128|256|512|1024)\b/);
+  return m ? `${m[1]}GB` : null;
+}
+
+const FILTER = "category_slug.like.iphone%,category_slug.like.samsung%,category_slug.like.ipad%,category_slug.eq.mac,category_slug.eq.watch";
+
 async function main() {
   loadEnv();
   const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
@@ -66,17 +75,21 @@ async function main() {
     .from("products")
     .select("id,title,category_slug,type,memory,color,variant_group_id")
     .is("deleted_at", null)
-    .or("category_slug.like.iphone%,category_slug.like.samsung%,category_slug.eq.mac,category_slug.eq.watch")
+    .or(FILTER)
     .limit(5000);
   if (error) throw error;
   const rows = (data ?? []) as Row[];
 
-  // 1) Фикс памяти Samsung из названия (до группировки).
+  // 1) Фикс памяти из названия (до группировки): Samsung — перепутанная,
+  //    iPad — пустая.
   const memFixes: { id: string; memory: string }[] = [];
   for (const p of rows) {
     if (p.category_slug.startsWith("samsung")) {
       const fixed = samsungMemory(p.title);
       if (fixed && fixed !== p.memory) { memFixes.push({ id: p.id, memory: fixed }); p.memory = fixed; }
+    } else if (p.category_slug.startsWith("ipad") && !(p.memory && p.memory.trim())) {
+      const fixed = ipadMemory(p.title);
+      if (fixed) { memFixes.push({ id: p.id, memory: fixed }); p.memory = fixed; }
     }
   }
 
@@ -84,6 +97,7 @@ async function main() {
   const keyOf = (p: Row): string | null => {
     if (p.category_slug.startsWith("iphone")) return `vg-${p.category_slug}`;     // new + used
     if (p.category_slug.startsWith("samsung")) return `vg-${p.category_slug}`;
+    if (p.category_slug.startsWith("ipad-")) return `vg-${p.category_slug}`;       // подкатегории iPad = модели
     if (p.category_slug === "mac") { const k = macKey(p.title); return k ? `vg-mac-${k}` : null; }
     if (p.category_slug === "watch") { const k = watchKey(p.title); return k ? `vg-watch-${k}` : null; }
     return null;
@@ -104,7 +118,7 @@ async function main() {
   // ── Отчёт ──
   console.log(`\n=== ПЛАН ОБЪЕДИНЕНИЯ ${DRY ? "(dry-run)" : ""} ===`);
   console.log(`Товаров в выборке: ${rows.length}, групп ≥2: ${final.length}, одиночек (без группы): ${skippedSingles.length}, не распознано: ${ungrouped.length}`);
-  if (memFixes.length) console.log(`\nФикс памяти Samsung (${memFixes.length}): ${memFixes.map((f) => `${f.id}→${f.memory}`).join(", ")}`);
+  if (memFixes.length) console.log(`\nФикс памяти (${memFixes.length}): ${memFixes.map((f) => `${f.id}→${f.memory}`).join(", ")}`);
   const section = (title: string, pred: (k: string, m: Row[]) => boolean) => {
     const items = final.filter(([k, m]) => pred(k, m));
     if (!items.length) return;
@@ -119,6 +133,7 @@ async function main() {
   section("Новые iPhone", (k, m) => k.startsWith("vg-iphone") && !isUsed(m));
   section("Б/У iPhone", (k, m) => k.startsWith("vg-iphone") && isUsed(m));
   section("Samsung", (k) => k.startsWith("vg-samsung"));
+  section("iPad", (k) => k.startsWith("vg-ipad-"));
   section("MacBook", (k) => k.startsWith("vg-mac-"));
   section("Apple Watch", (k) => k.startsWith("vg-watch-"));
   if (skippedSingles.length) console.log(`\nОдиночки (группа не создаётся): ${skippedSingles.join("; ")}`);
@@ -127,14 +142,14 @@ async function main() {
 
   // ── Применение ──
   const now = new Date().toISOString();
-  // Сначала фикс памяти Samsung.
+  // Сначала фикс памяти.
   for (const f of memFixes) {
     const { error: e } = await db.from("products").update({ memory: f.memory, updated_at: now }).eq("id", f.id);
     if (e) throw e;
   }
-  // Затем группы. Снимаем variant_group_id у всех целевых строк, потом проставляем заново.
-  const allTargetIds = rows.map((p) => p.id);
-  const { error: clr } = await db.from("products").update({ variant_group_id: null, updated_at: now }).in("id", allTargetIds);
+  // Затем группы. Снимаем variant_group_id у всех целевых строк фильтром по
+  // категориям (не списком id — иначе «URI too long»), потом проставляем заново.
+  const { error: clr } = await db.from("products").update({ variant_group_id: null, updated_at: now }).is("deleted_at", null).or(FILTER);
   if (clr) throw clr;
   let applied = 0, members = 0;
   for (const [vg, m] of final) {
