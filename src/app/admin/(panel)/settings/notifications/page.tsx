@@ -3,15 +3,17 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/admin/ui";
 import { NotificationsForm } from "./NotificationsForm";
+import { getAdminEmails } from "./actions";
 
 export const metadata: Metadata = { title: "Уведомления" };
 
 export default async function NotificationsPage() {
   await requireAdmin(["admin"]);
   const db = createSupabaseAdminClient();
-  const [{ data }, { data: ints }] = await Promise.all([
-    db.from("notifications_config").select("trigger, telegram_chat_ids, email_recipients, template, is_enabled"),
+  const [{ data }, { data: ints }, adminEmails] = await Promise.all([
+    db.from("notifications_config").select("trigger, telegram_chat_ids, email_recipients, template, is_enabled, channels"),
     db.from("integrations").select("key, config, is_enabled").in("key", ["telegram", "smtp"]),
+    getAdminEmails(),
   ]);
   const rows = (data ?? []) as Array<{
     trigger: string;
@@ -19,6 +21,7 @@ export default async function NotificationsPage() {
     email_recipients: string[];
     template: string;
     is_enabled: boolean;
+    channels: { telegram: boolean; email: boolean } | null;
   }>;
   const intMap = Object.fromEntries(((ints ?? []) as { key: string; config: Record<string, unknown>; is_enabled: boolean }[]).map((i) => [i.key, i]));
   const tg = intMap["telegram"];
@@ -35,7 +38,7 @@ export default async function NotificationsPage() {
         title="Уведомления"
         description="Какие события и в какие каналы уведомлять. Каналы (Telegram-бот, почта) настраиваются в разделе «Интеграции»."
       />
-      <NotificationsForm rows={rows} channels={channels} />
+      <NotificationsForm rows={rows} channels={channels} adminEmails={adminEmails} />
     </>
   );
 }

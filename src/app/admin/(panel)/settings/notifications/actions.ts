@@ -2,6 +2,7 @@
 
 import { adminMutation } from "@/lib/admin/mutations";
 import { getAdminUser } from "@/lib/admin/auth";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendTelegram } from "@/lib/admin/telegram";
 
 export type NotificationTrigger =
@@ -20,6 +21,7 @@ export interface NotificationConfig {
   email_recipients: string[];
   template: string;
   is_enabled: boolean;
+  channels: { telegram: boolean; email: boolean };
 }
 
 export async function saveNotification(
@@ -32,7 +34,7 @@ export async function saveNotification(
       action: "update",
       entityType: "notifications_config",
       entityId: trigger,
-      changes: { is_enabled: config.is_enabled },
+      changes: { channels: config.channels, is_enabled: config.is_enabled },
       run: async (db) => {
         const { error } = await db.from("notifications_config").upsert(
           {
@@ -41,6 +43,7 @@ export async function saveNotification(
             email_recipients: config.email_recipients,
             template: config.template,
             is_enabled: config.is_enabled,
+            channels: config.channels,
           },
           { onConflict: "trigger" }
         );
@@ -50,6 +53,46 @@ export async function saveNotification(
     return {};
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка сохранения" };
+  }
+}
+
+export interface NotificationLog {
+  id: number;
+  trigger: string;
+  channel: string;
+  recipient: string | null;
+  status: string;
+  detail: string | null;
+  created_at: string;
+}
+
+/** Логи отправок (пагинация) — по запросу, чтобы не грузить страницу. */
+export async function getNotificationLogs(page = 1): Promise<{ rows: NotificationLog[]; total: number; error?: string }> {
+  const admin = await getAdminUser();
+  if (!admin) return { rows: [], total: 0, error: "Нет доступа" };
+  try {
+    const db = createSupabaseAdminClient();
+    const size = 25;
+    const from = (Math.max(1, page) - 1) * size;
+    const { data, count } = await db
+      .from("notification_logs")
+      .select("id,trigger,channel,recipient,status,detail,created_at", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(from, from + size - 1);
+    return { rows: (data ?? []) as NotificationLog[], total: count ?? 0 };
+  } catch (e) {
+    return { rows: [], total: 0, error: e instanceof Error ? e.message : "Ошибка" };
+  }
+}
+
+/** Email активных админов — для выбора получателей. */
+export async function getAdminEmails(): Promise<string[]> {
+  try {
+    const db = createSupabaseAdminClient();
+    const { data } = await db.from("admin_users").select("email").eq("is_active", true);
+    return ((data ?? []) as { email: string | null }[]).map((a) => a.email).filter((e): e is string => !!e);
+  } catch {
+    return [];
   }
 }
 
