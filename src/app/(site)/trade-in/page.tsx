@@ -3,7 +3,7 @@ import { HelpCircle, MapPin, Wallet } from "lucide-react";
 import { getActiveTradeInModels } from "@/lib/trade-in/trade-in-actions";
 import { TradeInQuiz } from "@/components/trade-in/TradeInQuiz";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Trade-in iPhone в Белгороде — узнать цену за 2 минуты | PhoneTrade",
