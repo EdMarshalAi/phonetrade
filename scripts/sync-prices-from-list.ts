@@ -27,9 +27,35 @@ const MK = (cat: string) => cat.startsWith("ipad") ? 20 : cat === "mac" ? 15 : 1
 
 function memOf(s: string): string | null {
   s = s.toLowerCase();
-  if (/(\d+)\s*(?:tb|тб)/.test(s) || /\b1024\b/.test(s)) return "1TB";
-  const gb = s.match(/(\d{2,4})\s*(?:gb|гб)/) || s.match(/\b(64|128|256|512)\b/);
-  return gb ? `${gb[1]}GB` : null;
+  if (/(\d+)\s*(?:tb|тб)/.test(s)) return "1TB";
+  const gb = s.match(/(\d{2,4})\s*(?:gb|гб)/) || s.match(/\b(64|128|256|512|1024)\b/);
+  if (!gb) return null;
+  return gb[1] === "1024" ? "1TB" : `${gb[1]}GB`;
+}
+
+// Канонический токен цвета (RU и EN/прайс → одно значение). Цена в прайсе
+// зависит от цвета (silver/white дороже), поэтому матчим по цвету.
+function canon(c: string): string {
+  c = c.toLowerCase();
+  if (/silver|серебр/.test(c)) return "silver";
+  if (/starlight|сияющ|звезд/.test(c)) return "white";          // starlight ≈ наш «белый/сияющая звезда»
+  if (/cloud|бел|white/.test(c)) return "white";
+  if (/midnight|тёмн|темн|ноч/.test(c)) return "black";          // midnight/тёмная ночь ≈ наш «чёрный»
+  if (/чёрн|черн|black|space\s*black|space\s*gray|space\s*grey|космич|серый космос/.test(c)) return "black";
+  if (/sage|зелён|зелен|green/.test(c)) return "green";
+  if (/lavender|лаванд/.test(c)) return "lavender";
+  if (/ultramarine|ультрамарин/.test(c)) return "ultramarine";
+  if (/teal|бирюз/.test(c)) return "teal";
+  if (/голуб|sky\s*blue|lightblue/.test(c)) return "blue";
+  if (/син|blue/.test(c)) return "blue";
+  if (/orange|оранж/.test(c)) return "orange";
+  if (/фиолет|purple|violet/.test(c)) return "purple";
+  if (/pink|розов/.test(c)) return "pink";
+  if (/yellow|жёлт|желт/.test(c)) return "yellow";
+  if (/natural|натуральн/.test(c)) return "natural";
+  if (/gold|золот/.test(c)) return "gold";
+  if (/gray|grey|сер/.test(c)) return "gray";
+  return c.replace(/[^a-zа-я]/g, "");
 }
 function simOf(s: string, base: string, isAir: boolean): string {
   s = s.toLowerCase();
@@ -39,14 +65,18 @@ function simOf(s: string, base: string, isAir: boolean): string {
 }
 function iphoneKey(raw: string): string | null {
   const s = raw.toLowerCase();
+  const mem0 = memOf(s);
+  if (/\b16e\b/.test(s)) return mem0 ? `iphone-16e|${mem0}|${canon(s)}|${simOf(s, "16", false)}` : null;
   const b = s.match(/(?:^|\s)(1[3-7])(?:\s|pro|air|plus|\+|gb|гб|tb|\d|$)/); if (!b) return null;
-  const base = b[1], mem = memOf(s); if (!mem) return null;
+  const base = b[1], mem = mem0; if (!mem) return null;
   const isMax = /pro\s*max|promax|pm/.test(s), isPro = !isMax && /pro/.test(s), isAir = /air/.test(s), isPlus = /plus|\d\+/.test(s);
   let cat: string | null = null;
   if (base === "17") cat = isMax ? "iphone-17-pro-max" : isPro ? "iphone-17-pro" : isAir ? "iphone-air" : "iphone-17";
-  else if (["16", "15", "14", "13"].includes(base)) cat = isMax || isPro || isPlus ? null : `iphone-${base}`;
-  if (!cat) return null;
-  return `${cat}|${mem}|${simOf(s, base, isAir)}`;
+  else { // 13–16: базовый или вариант (-plus/-pro/-pro-max) — в прайсе из них есть только 16 plus
+    const v = isMax ? "-pro-max" : isPro ? "-pro" : isPlus ? "-plus" : "";
+    cat = `iphone-${base}${v}`;
+  }
+  return `${cat}|${mem}|${canon(s)}|${simOf(s, base, isAir)}`;
 }
 function macLine(raw: string): string | null {
   const s = raw.toLowerCase();
@@ -77,7 +107,7 @@ function ipadKeyList(raw: string): string | null {
   else if (/mini/.test(s)) sub = "ipad-mini-7";
   else if (/ipad\s*11|11\s*2025|a16/.test(s)) sub = "ipad-11";
   else if (/10\.2|10,2/.test(s)) sub = "ipad-10-2";
-  if (!sub) return null; return `${sub}|${mem}|${conn}`;
+  if (!sub) return null; return `${sub}|${mem}|${canon(s)}|${conn}`;
 }
 
 async function main() {
@@ -104,29 +134,37 @@ async function main() {
 
   const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
   const { data, error } = await db.from("products")
-    .select("id,title,category_slug,memory,sim,cost_rub,cost_rate,price_cash,price_override")
+    .select("id,title,category_slug,memory,color,sim,cost_rub,cost_rate,price_cash,price_override")
     .or("category_slug.like.iphone%,category_slug.like.ipad%,category_slug.eq.mac")
     .neq("type", "used").is("deleted_at", null).limit(5000);
   if (error) throw error;
 
   const keyFor = (p: any): string | null => {
     const cat = p.category_slug as string;
+    const col = canon(p.color ?? "");
     if (cat.startsWith("iphone")) {
-      // mis-sit: товар Plus/Pro/Max в базовой категории (напр. «16 plus» в iphone-16)
-      // — его цена в прайсе отдельная, надёжно не сопоставить → не трогаем.
-      if (["iphone-13", "iphone-14", "iphone-15", "iphone-16"].includes(cat) && /\b(plus|pro|max)\b/i.test(p.title)) return null;
-      return `${cat}|${p.memory}|${p.sim ?? "eSIM + SIM"}`;
+      const sim = p.sim ?? "eSIM + SIM";
+      if (cat === "iphone-16e") return `iphone-16e|${p.memory}|${col}|${sim}`;
+      // Вариант (Plus/Pro/Max), лежащий в базовой категории (напр. «16 plus» в iphone-16).
+      const baseM: Record<string, string> = { "iphone-13": "13", "iphone-14": "14", "iphone-15": "15", "iphone-16": "16" };
+      if (baseM[cat]) {
+        const t = String(p.title).toLowerCase();
+        const v = /pro\s*max/.test(t) ? "-pro-max" : /\bpro\b/.test(t) ? "-pro" : /plus/.test(t) ? "-plus" : "";
+        return `iphone-${baseM[cat]}${v}|${p.memory}|${col}|${sim}`;
+      }
+      return `${cat}|${p.memory}|${col}|${sim}`;
     }
     if (cat === "mac") { const line = macLine(p.title); return line ? `mac|${line}|${p.memory}` : null; }
-    if (cat.startsWith("ipad")) { const conn = /lte|cell|cellular|sim/i.test(p.title) ? "cell" : "wifi"; return `${cat}|${p.memory}|${conn}`; }
+    if (cat.startsWith("ipad")) { const conn = /lte|cell|cellular|sim/i.test(p.title) ? "cell" : "wifi"; return `${cat}|${p.memory}|${col}|${conn}`; }
     return null;
   };
 
   const changes: { id: string; title: string; oldCost: number | null; newCost: number; listCash: number; oldPrice: number | null }[] = [];
+  const noMatchTitles: string[] = [];
   let skipOverride = 0, noMatch = 0;
   for (const p of (data ?? []) as any[]) {
     const k = keyFor(p); const listCash = k ? list.get(k) : undefined;
-    if (listCash == null) { noMatch++; continue; }
+    if (listCash == null) { noMatch++; noMatchTitles.push(`${p.category_slug}  ${p.title}`); continue; }
     if (p.price_override) { skipOverride++; continue; }
     const rate = Number(p.cost_rate) || 76.84;
     const targetUsd = listCash / (RATE * (1 + MK(p.category_slug) / 100));
@@ -139,7 +177,12 @@ async function main() {
   console.log(`\nПозиций сопоставлено с прайсом и требует смены закупки: ${changes.length}`);
   console.log(`Пропущено: вне прайса=${noMatch}, с price_override=${skipOverride} (не трогаем).`);
   changes.slice(0, 200).forEach((c) => console.log(`  ${c.title.slice(0, 40).padEnd(40)} закупка ${String(c.oldCost).padStart(7)}→${String(c.newCost).padStart(7)}  (цена ${c.oldPrice}→прайс ${c.listCash})`));
-  if (DRY) { console.log("\n(dry-run: НЕ применено)"); return; }
+  if (DRY) {
+    console.log(`\nПозиции ВНЕ прайса (нет такой модели/конфигурации в прайсе) — ${noMatchTitles.length}:`);
+    noMatchTitles.sort().forEach((t) => console.log("   •", t));
+    console.log("\n(dry-run: НЕ применено)");
+    return;
+  }
 
   // Применяем закупки
   const now = new Date().toISOString();
