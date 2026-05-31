@@ -5,7 +5,7 @@ import { adminMutation } from "@/lib/admin/mutations";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { refreshAndStoreCbr } from "@/lib/pricing/cbr";
-import { sendTelegram, telegramRecipientsFor } from "@/lib/admin/telegram";
+import { notifyTelegram } from "@/lib/admin/telegram";
 
 const ROLES = ["admin", "manager"] as const;
 
@@ -24,8 +24,7 @@ export type PricingSettingsInput = z.infer<typeof settingsSchema>;
 
 async function notifyRecalc(count: number, rate: number) {
   try {
-    const chats = await telegramRecipientsFor("pricing_recalc_done");
-    await sendTelegram(`♻️ Пересчёт прайса завершён. Курс: ${rate} ₽/$. Затронуто товаров: ${count}.`, chats.length ? chats : undefined);
+    await notifyTelegram("pricing_recalc_done", `♻️ Пересчёт прайса завершён. Курс: ${rate} ₽/$. Затронуто товаров: ${count}.`);
   } catch {}
 }
 
@@ -51,10 +50,9 @@ async function checkLowMargin() {
       .filter((x) => x.below)
       .sort((a, b) => a.rub - b.rub);
     if (low.length === 0) return;
-    const chats = await telegramRecipientsFor("pricing_below_margin");
-    await sendTelegram(
-      `⚠️ ${low.length} товаров с маржой ниже минимума категории. Самый низкий: ${low[0].title} (${Math.round(low[0].rub)} ₽ при минимуме ${Math.round(low[0].min)} ₽).`,
-      chats.length ? chats : undefined
+    await notifyTelegram(
+      "pricing_below_margin",
+      `⚠️ ${low.length} товаров с маржой ниже минимума категории. Самый низкий: ${low[0].title} (${Math.round(low[0].rub)} ₽ при минимуме ${Math.round(low[0].min)} ₽).`
     );
   } catch {}
 }

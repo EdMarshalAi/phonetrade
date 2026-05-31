@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { sendTelegram, telegramRecipientsFor } from "@/lib/admin/telegram";
+import { notifyTelegram } from "@/lib/admin/telegram";
 import { DSR_TYPES, type DsrType } from "@/lib/legal/dsr";
 
 export type SubmitDataRequestInput = {
@@ -143,13 +143,12 @@ export async function submitDataRequest(
 
   // Уведомление в Telegram (best-effort).
   try {
-    const chats = await telegramRecipientsFor("data_request_new");
-    await sendTelegram(
+    await notifyTelegram(
+      "data_request_new",
       `🔐 Новое обращение по персональным данным\n` +
         `Тип: <b>${DSR_TYPES[input.requestType]}</b>\n` +
         `Контакт: ${email || phone || "—"}\n` +
-        `Срок ответа: 30 дней (152-ФЗ).`,
-      chats.length ? chats : undefined
+        `Срок ответа: 30 дней (152-ФЗ).`
     );
   } catch {
     /* ignore */

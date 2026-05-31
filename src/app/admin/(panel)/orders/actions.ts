@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { adminMutation } from "@/lib/admin/mutations";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin/auth";
-import { sendTelegram, telegramRecipientsFor } from "@/lib/admin/telegram";
+import { notifyTelegram } from "@/lib/admin/telegram";
 import { getOrderStatusConfig } from "@/lib/orders/status-config";
 
 const STAFF = ["admin", "manager"] as const;
@@ -56,8 +56,7 @@ export async function setOrderStatus(
 
   // Уведомление в Telegram при отмене (best-effort).
   if (toStatus === "cancelled") {
-    const chats = await telegramRecipientsFor("order_cancelled");
-    await sendTelegram(`❌ Заказ <b>${order.order_number ?? id}</b> отменён.`, chats.length ? chats : undefined);
+    await notifyTelegram("order_cancelled", `❌ Заказ <b>${order.order_number ?? id}</b> отменён.`);
   }
   return {};
 }

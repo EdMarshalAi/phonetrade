@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { sendTelegram, telegramRecipientsFor } from "@/lib/admin/telegram";
+import { notifyTelegram } from "@/lib/admin/telegram";
 import type { TradeInModel } from "@/lib/trade-in/options";
 
 const CONSENT_VERSION = "2026-01-15-v1";
@@ -175,14 +175,13 @@ export async function submitTradeInQuiz(input: QuizInput): Promise<QuizResult> {
 
   // Уведомление (best-effort).
   try {
-    const chats = await telegramRecipientsFor("new_lead_trade_in");
-    await sendTelegram(
+    await notifyTelegram(
+      "new_lead_trade_in",
       `🔄 Новая заявка trade-in <b>${lead.lead_number}</b>\n` +
         `Клиент: ${input.name.trim()} ${phone}\n` +
         `Модель: ${input.modelTitle} ${input.memoryGb}GB\n` +
         `Предв. цена: ${new Intl.NumberFormat("ru-RU").format(lead.estimated_price_rub)} ₽` +
-        (input.hasBreakage ? `\nПоломка: ${input.breakageDescription?.trim()}` : ""),
-      chats.length ? chats : undefined
+        (input.hasBreakage ? `\nПоломка: ${input.breakageDescription?.trim()}` : "")
     );
   } catch { /* ignore */ }
 

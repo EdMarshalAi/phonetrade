@@ -53,3 +53,26 @@ export async function telegramRecipientsFor(trigger: string): Promise<string[]> 
     return [];
   }
 }
+
+/**
+ * Отправка уведомления по триггеру с корректным гейтингом:
+ * — строка триггера в notifications_config ВЫКЛЮЧЕНА → не шлём;
+ * — строки нет → шлём (по умолчанию включено) в дефолтные чаты интеграции;
+ * — заданы свои chat_ids → шлём в них, иначе в дефолтные.
+ * Best-effort, не бросает. Возвращает число доставок.
+ */
+export async function notifyTelegram(trigger: string, text: string): Promise<number> {
+  try {
+    const db = createSupabaseAdminClient();
+    const { data } = await db
+      .from("notifications_config")
+      .select("telegram_chat_ids,is_enabled")
+      .eq("trigger", trigger)
+      .maybeSingle();
+    if (data && data.is_enabled === false) return 0;
+    const chats = (data?.telegram_chat_ids ?? []) as string[];
+    return await sendTelegram(text, chats.length ? chats : undefined);
+  } catch {
+    return 0;
+  }
+}

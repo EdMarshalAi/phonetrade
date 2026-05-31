@@ -5,7 +5,7 @@ import Papa from "papaparse";
 import { adminMutation } from "@/lib/admin/mutations";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { sendTelegram, telegramRecipientsFor } from "@/lib/admin/telegram";
+import { notifyTelegram } from "@/lib/admin/telegram";
 
 const ROLES = ["admin", "manager"] as const;
 const num = (v: unknown): number | null => (v == null || v === "" ? null : Number(v));
@@ -187,8 +187,7 @@ export async function applyPricingImport(items: { id: string; cost_rub: number |
       },
     });
     try {
-      const chats = await telegramRecipientsFor("pricing_import_done");
-      await sendTelegram(`📥 Импорт прайса: обновлено ${valid.length}. Сделал: ${admin.id}`, chats.length ? chats : undefined);
+      await notifyTelegram("pricing_import_done", `📥 Импорт прайса: обновлено ${valid.length}. Сделал: ${admin.id}`);
     } catch {}
     return { updated: valid.length };
   } catch (e) {

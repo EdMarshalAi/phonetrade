@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { sendTelegram, telegramRecipientsFor } from "@/lib/admin/telegram";
+import { notifyTelegram } from "@/lib/admin/telegram";
 
 const CONSENT_VERSION = "2026-01-15-v1";
 
@@ -224,14 +224,13 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
     // Уведомление в Telegram (best-effort, не блокирует ответ).
     try {
-      const chats = await telegramRecipientsFor("new_order");
       const deliveryLabel = input.deliveryMethod === "courier" ? "Курьер" : "Самовывоз";
-      await sendTelegram(
+      await notifyTelegram(
+        "new_order",
         `🛒 Новый заказ <b>${orderNumber}</b>\n` +
           `Клиент: ${input.name}, ${input.phone}\n` +
           `Сумма: ${input.total.toLocaleString("ru-RU")} ₽\n` +
-          `Оплата: ${input.paymentMethod}, ${deliveryLabel}`,
-        chats.length ? chats : undefined
+          `Оплата: ${input.paymentMethod}, ${deliveryLabel}`
       );
     } catch {
       // Не критично

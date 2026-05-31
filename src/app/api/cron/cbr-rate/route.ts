@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { refreshAndStoreCbr } from "@/lib/pricing/cbr";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { sendTelegram, telegramRecipientsFor } from "@/lib/admin/telegram";
+import { notifyTelegram } from "@/lib/admin/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -37,11 +37,10 @@ export async function GET(req: Request) {
     if (settings?.use_cbr_auto) {
       if (rates.bigChange) {
         try {
-          const chats = await telegramRecipientsFor("cbr_rate_big_change");
-          await sendTelegram(
+          await notifyTelegram(
+            "cbr_rate_big_change",
             `📊 Курс ЦБ изменился более чем на 5% за сутки (был ${rates.prevUsd} → стал ${rates.usd}). ` +
-              `Авто-обновление рабочего курса приостановлено — проверьте прайс вручную.`,
-            chats.length ? chats : undefined
+              `Авто-обновление рабочего курса приостановлено — проверьте прайс вручную.`
           );
         } catch {}
       } else {
@@ -56,8 +55,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, usd: rates.usd, eur: rates.eur, date: rates.date, bigChange: rates.bigChange, workingRateUpdated, recalculated });
   } catch (e) {
     try {
-      const chats = await telegramRecipientsFor("cbr_rate_fetch_failed");
-      await sendTelegram("❌ Не удалось получить курс ЦБ. Проверьте интеграцию прайса.", chats.length ? chats : undefined);
+      await notifyTelegram("cbr_rate_fetch_failed", "❌ Не удалось получить курс ЦБ. Проверьте интеграцию прайса.");
     } catch {}
     return NextResponse.json({ error: e instanceof Error ? e.message : "fetch failed" }, { status: 502 });
   }
