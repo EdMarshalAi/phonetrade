@@ -19,7 +19,6 @@ import {
   Bell,
   Plug,
   UserCog,
-  ListChecks,
   type LucideIcon,
 } from "lucide-react";
 import type { AdminRole } from "@/lib/admin/auth";
@@ -92,7 +91,6 @@ export const ADMIN_NAV: NavGroup[] = [
       { label: "Общие", href: "/admin/settings/shop", icon: Store, roles: ADMIN_ONLY },
       { label: "Навигация", href: "/admin/settings/navigation", icon: Menu, roles: ADMIN_ONLY },
       { label: "Корзина", href: "/admin/settings/cart", icon: ShoppingCart, roles: ADMIN_ONLY },
-      { label: "Статусы заказов", href: "/admin/settings/orders", icon: ListChecks, roles: ADMIN_ONLY },
       { label: "SEO", href: "/admin/settings/seo", icon: Search, roles: ADMIN_ONLY },
       { label: "Уведомления", href: "/admin/settings/notifications", icon: Bell, roles: ADMIN_ONLY },
       { label: "Интеграции", href: "/admin/settings/integrations", icon: Plug, roles: ADMIN_ONLY },

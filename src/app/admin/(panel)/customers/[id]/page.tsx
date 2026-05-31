@@ -6,9 +6,11 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader, Panel, PanelHeader, PanelTitle, StatusBadge } from "@/components/admin/ui";
 import { Table, THead, TH, TBody, TR, TD } from "@/components/admin/table";
 import { AdminButton } from "@/components/admin/form";
+import { DeleteButton } from "@/components/admin/DeleteButton";
 import { getOrderStatusConfig } from "@/lib/orders/status-config";
 import { LEAD_TYPE, LEAD_STATUS } from "../../leads/labels";
 import { CustomerTabs } from "./CustomerTabs";
+import { deleteCustomer } from "../actions";
 
 export const metadata: Metadata = { title: "Клиент" };
 const SEGMENT_LABEL: Record<string, string> = { new: "Новый", regular: "Постоянный", vip: "VIP" };
@@ -103,7 +105,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <PageHeader
         title={c.name || c.phone || "Клиент"}
         description={`${c.total_orders} заказ(ов) · ${money(c.total_spent)}`}
-        actions={<Link href="/admin/customers"><AdminButton variant="outline" size="sm"><ArrowLeft className="h-4 w-4" strokeWidth={1.75} /> К списку</AdminButton></Link>}
+        actions={
+          <div className="flex items-center gap-2">
+            <Link href="/admin/customers"><AdminButton variant="outline" size="sm"><ArrowLeft className="h-4 w-4" strokeWidth={1.75} /> К списку</AdminButton></Link>
+            <DeleteButton action={deleteCustomer.bind(null, id)} itemName={`клиента ${c.name || c.phone || ""}`} label="Удалить" redirectTo="/admin/customers" />
+          </div>
+        }
       />
       <div className="grid gap-5 lg:grid-cols-3">
         <Panel className="lg:col-span-1">

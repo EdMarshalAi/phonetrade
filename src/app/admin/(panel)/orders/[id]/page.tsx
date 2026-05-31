@@ -6,7 +6,9 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader, Panel, PanelHeader, PanelTitle, StatusBadge } from "@/components/admin/ui";
 import { Table, THead, TH, TBody, TR, TD } from "@/components/admin/table";
 import { AdminButton } from "@/components/admin/form";
+import { DeleteButton } from "@/components/admin/DeleteButton";
 import { OrderStatusControl, OrderNotes } from "../OrderControls";
+import { deleteOrder } from "../actions";
 import { ORDER_STATUS, orderStatusTone, PAYMENT_LABEL, DELIVERY_LABEL, PAYMENT_STATUS_LABEL } from "../labels";
 import { getOrderStatusConfig } from "@/lib/orders/status-config";
 
@@ -41,9 +43,12 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         title={`Заказ ${order.order_number ?? id.slice(0, 8)}`}
         description={`Создан ${dt(order.created_at)}`}
         actions={
-          <Link href="/admin/orders">
-            <AdminButton variant="outline" size="sm"><ArrowLeft className="h-4 w-4" strokeWidth={1.75} /> К списку</AdminButton>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/admin/orders">
+              <AdminButton variant="outline" size="sm"><ArrowLeft className="h-4 w-4" strokeWidth={1.75} /> К списку</AdminButton>
+            </Link>
+            <DeleteButton action={deleteOrder.bind(null, id)} itemName={`заказ ${order.order_number ?? id.slice(0, 8)}`} label="Удалить" redirectTo="/admin/orders" />
+          </div>
         }
       />
 

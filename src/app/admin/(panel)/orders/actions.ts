@@ -62,6 +62,43 @@ export async function setOrderStatus(
   return {};
 }
 
+/** Полное удаление заказа: позиции, история, сам заказ + вычет из статистики
+ * клиента. Из личного кабинета пропадает автоматически (ЛК читает заказы из БД). */
+export async function deleteOrder(id: string): Promise<{ error?: string }> {
+  try {
+    await adminMutation({
+      roles: [...STAFF],
+      action: "delete",
+      entityType: "order",
+      entityId: id,
+      revalidate: ["/admin/orders", "/admin/customers", "/account/orders"],
+      run: async (db) => {
+        const { data: order } = await db.from("orders").select("customer_id,total").eq("id", id).maybeSingle();
+        await db.from("order_items").delete().eq("order_id", id);
+        await db.from("order_status_history").delete().eq("order_id", id);
+        const { error } = await db.from("orders").delete().eq("id", id);
+        if (error) throw error;
+        // Вычитаем заказ из статистики клиента.
+        if (order?.customer_id) {
+          const { data: c } = await db.from("customers").select("total_orders,total_spent").eq("id", order.customer_id).maybeSingle();
+          if (c) {
+            await db
+              .from("customers")
+              .update({
+                total_orders: Math.max(0, (c.total_orders ?? 0) - 1),
+                total_spent: Math.max(0, (c.total_spent ?? 0) - (order.total ?? 0)),
+              })
+              .eq("id", order.customer_id);
+          }
+        }
+      },
+    });
+    return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Ошибка удаления" };
+  }
+}
+
 /* ── Manual order creation ──────────────────────────────────────────────── */
 
 export interface ManualOrderItem {

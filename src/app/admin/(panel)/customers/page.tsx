@@ -5,6 +5,7 @@ import { PageHeader, StatusBadge } from "@/components/admin/ui";
 import { EmptyState } from "@/components/admin/table";
 import { ListCard, LinkRow } from "@/components/admin/ListRow";
 import { SearchBox, FilterSelect, Pagination } from "@/components/admin/ListControls";
+import { ExportCustomers } from "./ExportCustomers";
 
 export const metadata: Metadata = { title: "Клиенты" };
 
@@ -44,7 +45,7 @@ export default async function CustomersPage({
 
   return (
     <>
-      <PageHeader title="Клиенты" description={`База клиентов. Всего: ${total}.`} />
+      <PageHeader title="Клиенты" description={`База клиентов. Всего: ${total}.`} actions={<ExportCustomers />} />
       <div className="flex flex-wrap items-center gap-2">
         <SearchBox placeholder="Имя, телефон, email…" />
         <FilterSelect param="segment" allLabel="Все сегменты" options={Object.entries(SEGMENT_LABEL).map(([value, label]) => ({ value, label }))} />
