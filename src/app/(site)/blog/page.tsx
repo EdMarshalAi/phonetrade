@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   description: "Статьи о технике Apple, новинках и советах от PhoneTrade.",
 };
 
+// ISR: новые статьи появляются без редеплоя.
+export const revalidate = 300;
+
 export default async function BlogIndexPage() {
   const posts = await getBlogPosts();
 

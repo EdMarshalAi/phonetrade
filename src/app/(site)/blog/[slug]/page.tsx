@@ -5,6 +5,9 @@ import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 import { getBlogPost } from "@/lib/content";
 
+// ISR: новая статья доступна без редеплоя.
+export const revalidate = 300;
+
 export async function generateMetadata({
   params,
 }: {
