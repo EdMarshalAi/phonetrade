@@ -50,7 +50,7 @@ export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash
             href={`/product/${product.id}`}
             className="relative shrink-0 size-24 sm:size-28 self-start overflow-hidden rounded-2xl bg-white ring-1 ring-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
           >
-            <Image src={product.image} alt={product.title} fill sizes="112px" className="object-contain p-3" unoptimized />
+            <Image src={product.image} alt={product.title} fill sizes="112px" className="object-contain p-3" />
           </a>
         );
 

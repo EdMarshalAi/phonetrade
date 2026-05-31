@@ -43,7 +43,6 @@ export function ProductGallery({ product }: Props) {
                   fill
                   sizes="80px"
                   className="object-contain p-1.5"
-                  unoptimized
                 />
               </button>
             </li>
@@ -70,7 +69,6 @@ export function ProductGallery({ product }: Props) {
               sizes="(min-width: 1024px) 55vw, 90vw"
               className="object-contain p-8 md:p-12"
               priority
-              unoptimized
             />
           </motion.div>
         </AnimatePresence>

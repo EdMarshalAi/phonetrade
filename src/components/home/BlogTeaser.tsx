@@ -225,7 +225,6 @@ export function BlogTeaser({ posts }: { posts?: BlogTeaserPost[] }) {
                   sizes="(min-width: 1024px) 66vw, 100vw"
                   className="object-cover transition-transform duration-[600ms] ease-[var(--ease-apple)] group-hover:scale-[1.04]"
                   priority
-                  unoptimized
                 />
                 <div
                   aria-hidden
@@ -271,7 +270,6 @@ export function BlogTeaser({ posts }: { posts?: BlogTeaserPost[] }) {
                     fill
                     sizes="(min-width: 1024px) 33vw, 100vw"
                     className="object-cover transition-transform duration-[600ms] ease-[var(--ease-apple)] group-hover:scale-[1.04]"
-                    unoptimized
                   />
                   <span className="absolute top-2.5 left-2.5 inline-flex items-center rounded-full bg-white/90 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-ink">
                     {p.category}
