@@ -7,7 +7,8 @@ export type NotificationTrigger =
   | "new_lead"
   | "low_stock"
   | "order_paid"
-  | "order_cancelled";
+  | "order_cancelled"
+  | "data_request_new";
 
 export interface NotificationConfig {
   telegram_chat_ids: string[];

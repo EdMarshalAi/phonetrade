@@ -8,6 +8,7 @@ import {
   LogOut,
   MapPin,
   Package,
+  ShieldCheck,
   User as UserIcon,
 } from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -17,6 +18,7 @@ const NAV = [
   { href: "/account", label: "Профиль", icon: UserIcon },
   { href: "/account/orders", label: "Мои заказы", icon: Package },
   { href: "/account/favorites", label: "Избранное", icon: Heart },
+  { href: "/account/privacy", label: "Конфиденциальность", icon: ShieldCheck },
 ];
 
 const SOON: { label: string; icon: typeof MapPin }[] = [];
