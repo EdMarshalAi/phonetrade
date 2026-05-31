@@ -10,7 +10,9 @@ import { BadgeRegistryProvider } from "@/components/product/ProductBadges";
 import { CardSettingsProvider } from "@/components/product/CardSettings";
 import { CookieConsentProvider } from "@/components/legal/CookieConsent";
 import { getShopContacts, getNavCategoryTree, getMenu, getProductBadges, getCardDisplay, getProductOptions, getMetrikaId, getSiteMaintenance } from "@/lib/content";
+import { getAdminUser } from "@/lib/admin/auth";
 import Image from "next/image";
+import Link from "next/link";
 
 /**
  * Публичный сайт: шапка, подвал и клиентские провайдеры.
@@ -34,8 +36,10 @@ export default async function SiteLayout({
     getSiteMaintenance(),
   ]);
 
-  // Режим технических работ — закрываем витрину для посетителей (админка работает отдельно).
-  if (maintenance.on) {
+  // Режим технических работ: посетители видят заглушку, а вошедший администратор —
+  // обычный сайт с красной плашкой сверху (чтобы проверять витрину во время работ).
+  const isAdmin = maintenance.on ? !!(await getAdminUser()) : false;
+  if (maintenance.on && !isAdmin) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center bg-surface px-6 text-center">
         <Image src="/brand/logo-mark-black.png" alt="PhoneTrade" width={56} height={56} className="size-14 object-contain opacity-90" />
@@ -59,6 +63,13 @@ export default async function SiteLayout({
             <CardSettingsProvider display={cardDisplay} options={cardOptions}>
               <CookieConsentProvider metrikaId={metrikaId}>
                 <div className="flex min-h-dvh flex-col">
+                  {maintenance.on && isAdmin ? (
+                    <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 bg-sale px-4 py-2 text-center text-[13px] font-medium text-white">
+                      <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-white" aria-hidden />
+                      Сайт в режиме технических работ — для посетителей он сейчас закрыт. Вы видите его как администратор.
+                      <Link href="/admin/settings/shop" className="underline underline-offset-2 hover:opacity-80">Выключить режим</Link>
+                    </div>
+                  ) : null}
                   <Header contacts={contacts} categoryTree={navTree} topLinks={topMenu} />
                   <main className="flex-1">{children}</main>
                   <Footer contacts={contacts} legalLinks={footerMenu} />
