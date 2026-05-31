@@ -10,7 +10,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { useAuth, normalizePhone } from "@/components/providers/AuthProvider";
+import { useAuth, normalizePhone, type AuthUser } from "@/components/providers/AuthProvider";
 import { cn } from "@/lib/utils/cn";
 
 type Mode = "login" | "register";
@@ -23,12 +23,28 @@ const PERKS = [
   { icon: Sparkles, text: "Быстрое оформление в один тап" },
 ];
 
-export function AuthShell() {
+export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | null }) {
   const router = useRouter();
   const params = useSearchParams();
-  const { login, register } = useAuth();
+  const { login, register, user: clientUser, ready } = useAuth();
 
   const returnTo = params.get("returnTo") || "/account";
+
+  // Уже авторизован (по серверной cookie-сессии или клиентской) — сразу в кабинет,
+  // не показываем форму входа.
+  const authed = clientUser ?? initialUser;
+  React.useEffect(() => {
+    if (authed) router.replace(returnTo);
+  }, [authed, router, returnTo]);
+  if (authed || (!ready && initialUser)) {
+    return (
+      <section className="bg-surface">
+        <div className="container-page flex min-h-[40vh] items-center justify-center py-16 text-sm text-ink-muted">
+          Перенаправляем в личный кабинет…
+        </div>
+      </section>
+    );
+  }
   const [mode, setMode] = React.useState<Mode>(
     params.get("mode") === "register" ? "register" : "login"
   );

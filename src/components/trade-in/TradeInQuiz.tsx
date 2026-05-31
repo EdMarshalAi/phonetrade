@@ -6,7 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, ChevronDown, RotateCcw } from "lucide-react";
 import { submitTradeInQuiz } from "@/lib/trade-in/trade-in-actions";
 import { EXTERNAL_OPTIONS, BATTERY_OPTIONS, KIT_OPTIONS, type TradeInModel } from "@/lib/trade-in/options";
-import { useAuth } from "@/components/providers/AuthProvider";
+import { useAuth, type AuthUser } from "@/components/providers/AuthProvider";
 import { cn } from "@/lib/utils/cn";
 
 const STEP_TITLES = [
@@ -32,10 +32,13 @@ const EMPTY: Data = {
   breakageDescription: "", icloud: "", kit: "", name: "", phone: "+7 ", email: "",
 };
 
-export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
+export function TradeInQuiz({ models, initialUser = null }: { models: TradeInModel[]; initialUser?: AuthUser | null }) {
   const router = useRouter();
   const reduce = useReducedMotion();
-  const { user } = useAuth();
+  const { user: clientUser } = useAuth();
+  // Сервер уже знает об авторизации (cookie-сессия) — используем сразу, не дожидаясь
+  // клиентского getSession(). Иначе авторизованному показывалась бы гостевая форма с телефоном.
+  const user = clientUser ?? initialUser;
   const [step, setStep] = React.useState(0);
   const [dir, setDir] = React.useState(1);
   const [d, setD] = React.useState<Data>(EMPTY);

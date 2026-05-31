@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getActiveTradeInModels } from "@/lib/trade-in/trade-in-actions";
 import { getTradeInSteps } from "@/lib/content";
+import { getStorefrontUser } from "@/lib/auth/server-user";
 import { TradeInQuiz } from "@/components/trade-in/TradeInQuiz";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +29,7 @@ const FALLBACK_STEPS = [
 ];
 
 export default async function TradeInPage() {
-  const [models, stepRows] = await Promise.all([getActiveTradeInModels(), getTradeInSteps()]);
+  const [models, stepRows, initialUser] = await Promise.all([getActiveTradeInModels(), getTradeInSteps(), getStorefrontUser()]);
   const steps = stepRows.length > 0 ? stepRows.map((s) => ({ n: s.step_number, title: s.title, description: s.description ?? "" })) : FALLBACK_STEPS;
 
   const faqLd = {
@@ -57,7 +58,7 @@ export default async function TradeInPage() {
       {/* Квиз */}
       <section id="quiz" className="scroll-mt-24 bg-white">
         <div className="container-page py-14 md:py-20">
-          <TradeInQuiz models={models} />
+          <TradeInQuiz models={models} initialUser={initialUser} />
         </div>
       </section>
 
