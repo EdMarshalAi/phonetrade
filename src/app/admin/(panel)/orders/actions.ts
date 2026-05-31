@@ -105,35 +105,24 @@ export async function createManualOrder(
         const order_number = `PT-${year}-${String(seq).padStart(4, "0")}`;
         const id = crypto.randomUUID();
 
-        // 2. Upsert customer by phone
-        let customer_id: string | null = null;
-        const { data: existingCustomer } = await d
-          .from("customers")
-          .select("id")
-          .eq("phone", input.phone)
-          .maybeSingle();
-        if (existingCustomer) {
-          customer_id = existingCustomer.id;
-        } else {
-          const { data: newCustomer } = await d
-            .from("customers")
-            .insert({
-              name: input.name,
-              phone: input.phone,
-              email: input.email || null,
-              customer_type: input.customerType,
-            })
-            .select("id")
-            .maybeSingle();
-          if (newCustomer) customer_id = newCustomer.id;
-        }
-
-        // 3. Compute totals
-        const subtotal = input.items.reduce(
-          (sum, it) => sum + it.price * it.qty,
-          0
-        );
+        // 2. Totals
+        const subtotal = input.items.reduce((sum, it) => sum + it.price * it.qty, 0);
         const total = subtotal;
+
+        // 3. Единый реестр «Клиенты» (та же RPC, что у витрины/заявок).
+        const phoneDigits = input.phone.replace(/\D/g, "");
+        let customer_id: string | null = null;
+        try {
+          const { data: cid } = await d.rpc("upsert_customer", {
+            p_phone: input.phone,
+            p_name: input.name,
+            p_email: input.email || null,
+            p_add_order_total: total,
+          });
+          customer_id = typeof cid === "string" ? cid : null;
+        } catch {
+          /* не критично */
+        }
 
         // 4. Insert order
         const { error: orderError } = await d.from("orders").insert({
@@ -141,7 +130,7 @@ export async function createManualOrder(
           order_number,
           customer_id,
           customer_name: input.name,
-          phone: input.phone,
+          phone: phoneDigits,
           customer_email: input.email || null,
           customer_type: input.customerType,
           delivery_method: input.deliveryMethod,
