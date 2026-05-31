@@ -5,15 +5,15 @@ import { Menu } from "@base-ui-components/react/menu";
 import {
   ChevronDown,
   Grid2x2,
+  MapPin,
   Menu as MenuIcon,
-  MessageCircle,
   Phone,
   Search,
-  Send,
   ShoppingBag,
   User,
   X,
 } from "lucide-react";
+import { resolveIcon } from "@/lib/admin/icons";
 import { SearchInput } from "@/components/layout/SearchInput";
 import type { CategorySlug } from "@/lib/data/products";
 import { useCart } from "@/components/providers/CartProvider";
@@ -114,6 +114,8 @@ export function Header({
   const email = contacts?.email?.trim();
   const emailShown = !!email && contacts?.email_enabled !== false;
   const hours = contacts?.working_hours || "Ежедневно 10:00–20:00";
+  const address = contacts?.address || "Белгород, ул. Попова, 36 (Универмаг «Белгород», 1 этаж)";
+  const contactLinks = (contacts?.contacts ?? []).filter((c) => c.enabled);
   // Реальные категории из БД (если переданы) — иначе встроенный дефолт.
   // Дерево (родитель + серии) приоритетнее — для вложенного меню.
   const catItems: CategoryMenuItem[] =
@@ -535,63 +537,41 @@ export function Header({
                   <p className="text-[12px] text-onDark-muted">{hours}</p>
                 </div>
               </a>
-              <a
-                href="https://wa.me/79040988877"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setContactOpen(false)}
-                className="flex items-center gap-3 py-3 border-b border-white/5"
-              >
-                <span
-                  aria-hidden
-                  className="inline-flex size-10 items-center justify-center rounded-xl bg-white/10 text-white"
-                >
-                  <MessageCircle className="size-[18px]" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[15px] font-semibold text-white">
-                    WhatsApp
-                  </p>
-                  <p className="text-[12px] text-onDark-muted">
-                    Напишите — ответим за 15 минут
-                  </p>
-                </div>
-              </a>
-              <a
-                href="https://t.me/phonetradebel"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setContactOpen(false)}
-                className="flex items-center gap-3 py-3 border-b border-white/5"
-              >
-                <span
-                  aria-hidden
-                  className="inline-flex size-10 items-center justify-center rounded-xl bg-white/10 text-white"
-                >
-                  <Send className="size-[18px]" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[15px] font-semibold text-white">
-                    Telegram
-                  </p>
-                  <p className="text-[12px] text-onDark-muted">
-                    Канал и личные сообщения
-                  </p>
-                </div>
-              </a>
+              {contactLinks.map((c) => {
+                const Icon = c.iconUrl ? null : resolveIcon(c.icon);
+                const external = /^https?:/.test(c.href);
+                return (
+                  <a
+                    key={c.id}
+                    href={c.href}
+                    target={external ? "_blank" : undefined}
+                    rel={external ? "noopener noreferrer" : undefined}
+                    onClick={() => setContactOpen(false)}
+                    className="flex items-center gap-3 py-3 border-b border-white/5"
+                  >
+                    <span aria-hidden className="inline-flex size-10 items-center justify-center rounded-xl bg-white/10 text-white">
+                      {c.iconUrl ? (
+                        <Image src={c.iconUrl} alt="" width={18} height={18} unoptimized className="size-[18px] object-contain" />
+                      ) : Icon ? (
+                        <Icon className="size-[18px]" />
+                      ) : null}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-[15px] font-semibold text-white">{c.label}</p>
+                    </div>
+                  </a>
+                );
+              })}
               <div className="flex items-start gap-3 py-3">
                 <span
                   aria-hidden
                   className="inline-flex size-10 items-center justify-center rounded-xl bg-white/10 text-white"
                 >
-                  <Phone className="size-[18px]" />
+                  <MapPin className="size-[18px]" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[15px] font-semibold text-white">
-                    Универмаг Белгород
-                  </p>
-                  <p className="text-[12px] text-onDark-muted leading-relaxed mt-0.5">
-                    ул. Попова, 36 · 1 этаж
+                  <p className="text-[12px] text-onDark-muted leading-relaxed">
+                    {address}
                   </p>
                 </div>
               </div>
