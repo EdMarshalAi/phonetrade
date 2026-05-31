@@ -26,9 +26,9 @@ const TOP_LINKS = [
   { href: "/about", label: "О компании" },
   { href: "/blog", label: "Блог" },
   { href: "/delivery", label: "Доставка" },
+  { href: "/payment", label: "Оплата" },
   { href: "/warranty", label: "Гарантия" },
   { href: "/trade-in", label: "Trade-in" },
-  { href: "/contacts", label: "Контакты" },
 ];
 
 type CategoryMenuItem = {
@@ -80,6 +80,7 @@ const MOBILE_SECTIONS: MobileSection[] = [
     items: [
       { href: "/trade-in", label: "Trade-in" },
       { href: "/delivery", label: "Доставка" },
+      { href: "/payment", label: "Оплата" },
       { href: "/warranty", label: "Гарантия" },
     ],
   },
