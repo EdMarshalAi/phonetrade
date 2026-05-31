@@ -32,11 +32,11 @@ export default async function StaticPage({
 
   return (
     <article className="container-page py-16 md:py-24">
-      <div className="mx-auto max-w-3xl">
+      <div className="w-full">
         <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-4xl">{page.title}</h1>
         {page.content ? (
           <div
-            className="prose prose-neutral mt-8 max-w-none"
+            className="prose prose-neutral mt-8 w-full max-w-none prose-headings:tracking-tight prose-img:rounded-2xl prose-img:max-w-3xl prose-table:w-full"
             dangerouslySetInnerHTML={{ __html: page.content }}
           />
         ) : null}

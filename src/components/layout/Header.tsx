@@ -28,7 +28,6 @@ const TOP_LINKS = [
   { href: "/delivery", label: "Доставка" },
   { href: "/warranty", label: "Гарантия" },
   { href: "/trade-in", label: "Trade-in" },
-  { href: "/loyalty", label: "Постоянным клиентам" },
   { href: "/contacts", label: "Контакты" },
 ];
 
@@ -88,7 +87,6 @@ const MOBILE_SECTIONS: MobileSection[] = [
     heading: "Информация",
     items: [
       { href: "/about", label: "О компании" },
-      { href: "/loyalty", label: "Постоянным клиентам" },
       { href: "/blog", label: "Блог" },
     ],
   },
