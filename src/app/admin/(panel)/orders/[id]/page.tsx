@@ -3,14 +3,16 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { PageHeader, Panel, PanelHeader, PanelTitle, StatusBadge } from "@/components/admin/ui";
+import { PageHeader, Panel, PanelHeader, PanelTitle } from "@/components/admin/ui";
 import { Table, THead, TH, TBody, TR, TD } from "@/components/admin/table";
 import { AdminButton } from "@/components/admin/form";
 import { DeleteButton } from "@/components/admin/DeleteButton";
 import { OrderStatusControl, OrderNotes } from "../OrderControls";
 import { deleteOrder } from "../actions";
-import { ORDER_STATUS, orderStatusTone, PAYMENT_LABEL, DELIVERY_LABEL, PAYMENT_STATUS_LABEL } from "../labels";
+import { ORDER_STATUS, PAYMENT_LABEL, DELIVERY_LABEL, PAYMENT_STATUS_LABEL } from "../labels";
 import { getOrderStatusConfig } from "@/lib/orders/status-config";
+import { colorEntry, ORDER_BADGE_BASE } from "@/lib/orders/statuses";
+import { cn } from "@/lib/utils/cn";
 
 export const metadata: Metadata = { title: "Заказ" };
 
@@ -35,7 +37,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const orderItems = (items ?? []) as Record<string, unknown>[];
   const log = (history ?? []) as Record<string, unknown>[];
   const labelOf = (k: string) => statuses.find((s) => s.key === k)?.label ?? ORDER_STATUS[k] ?? k;
-  const toneOf = (k: string) => statuses.find((s) => s.key === k)?.tone ?? orderStatusTone(k);
+  const colorOf = (k: string) => statuses.find((s) => s.key === k)?.color ?? "slate";
 
   return (
     <>
@@ -57,7 +59,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           <Panel>
             <PanelHeader>
               <PanelTitle>Состав заказа</PanelTitle>
-              <StatusBadge tone={toneOf(order.status)}>{labelOf(order.status)}</StatusBadge>
+              <span className={cn(ORDER_BADGE_BASE, colorEntry(colorOf(order.status)).badge)}>{labelOf(order.status)}</span>
             </PanelHeader>
             {orderItems.length === 0 ? (
               <div className="p-5 text-sm text-ink-muted">Позиции не записаны (заказ создан без детализации).</div>

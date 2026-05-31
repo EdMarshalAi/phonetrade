@@ -3,13 +3,15 @@ import Link from "next/link";
 import { Plus, Settings2 } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rangeFor } from "@/lib/admin/mutations";
-import { PageHeader, StatusBadge } from "@/components/admin/ui";
+import { PageHeader } from "@/components/admin/ui";
 import { EmptyState } from "@/components/admin/table";
 import { ListCard, LinkRow } from "@/components/admin/ListRow";
 import { AdminButton } from "@/components/admin/form";
 import { SearchBox, FilterSelect, Pagination } from "@/components/admin/ListControls";
-import { ORDER_STATUS, orderStatusTone, PAYMENT_LABEL, DELIVERY_LABEL } from "./labels";
+import { ORDER_STATUS, PAYMENT_LABEL, DELIVERY_LABEL } from "./labels";
 import { getOrderStatusConfig } from "@/lib/orders/status-config";
+import { colorEntry, ORDER_BADGE_BASE } from "@/lib/orders/statuses";
+import { cn } from "@/lib/utils/cn";
 
 export const metadata: Metadata = { title: "Заказы" };
 
@@ -61,7 +63,7 @@ export default async function OrdersPage({
   const total = count ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const labelOf = (k: string) => statuses.find((s) => s.key === k)?.label ?? ORDER_STATUS[k] ?? k;
-  const toneOf = (k: string) => statuses.find((s) => s.key === k)?.tone ?? orderStatusTone(k);
+  const colorOf = (k: string) => statuses.find((s) => s.key === k)?.color ?? "slate";
 
   return (
     <>
@@ -112,7 +114,7 @@ export default async function OrdersPage({
                   </div>
                 </div>
                 <div className="shrink-0 text-right text-[15px] font-semibold tabular-nums text-ink">{money(o.total)}</div>
-                <StatusBadge tone={toneOf(o.status)}>{labelOf(o.status)}</StatusBadge>
+                <span className={cn(ORDER_BADGE_BASE, colorEntry(colorOf(o.status)).badge)}>{labelOf(o.status)}</span>
               </LinkRow>
             ))}
           </ListCard>

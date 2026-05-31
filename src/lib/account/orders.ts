@@ -1,5 +1,3 @@
-import type { OrderStatusTone } from "@/lib/orders/statuses";
-
 export type OrderItem = {
   id: string;
   title: string;
@@ -16,8 +14,8 @@ export type Order = {
   statusKey: string;
   /** Название статуса для клиента (из настроек статусов заказа). */
   statusLabel: string;
-  /** Цвет бейджа статуса. */
-  statusTone: OrderStatusTone;
+  /** Ключ цвета бейджа статуса (из палитры ORDER_STATUS_COLORS). */
+  statusColor: string;
   items: OrderItem[];
   total: number;
   delivery: string;

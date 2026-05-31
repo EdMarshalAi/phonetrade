@@ -40,7 +40,7 @@ export async function getOrdersByPhone(phone: string): Promise<Order[]> {
       date: o.created_at.slice(0, 10),
       statusKey: o.status ?? "",
       statusLabel: def?.customerLabel || "В обработке",
-      statusTone: def?.tone ?? "neutral",
+      statusColor: def?.color ?? "slate",
       delivery: o.delivery_method === "courier" ? "Курьер по Белгороду" : "Самовывоз",
       total: o.total ?? 0,
       items: (o.order_items ?? []).map((it) => ({

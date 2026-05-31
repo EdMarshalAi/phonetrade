@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Package } from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { type Order } from "@/lib/account/orders";
-import { customerToneClass } from "@/lib/orders/statuses";
+import { colorEntry } from "@/lib/orders/statuses";
 import { getOrdersByPhone } from "@/lib/account/orders-server";
 import { formatPrice } from "@/lib/utils/format-price";
 import { pluralizeItems } from "@/lib/utils/plural";
@@ -89,7 +89,7 @@ export function OrdersSection() {
               <span
                 className={cn(
                   "inline-flex items-center h-7 px-3 rounded-full text-[12px] font-medium",
-                  customerToneClass(order.statusTone)
+                  colorEntry(order.statusColor).badge
                 )}
               >
                 {order.statusLabel}

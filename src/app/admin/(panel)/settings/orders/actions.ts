@@ -1,9 +1,7 @@
 "use server";
 
 import { adminMutation } from "@/lib/admin/mutations";
-import { DEFAULT_ORDER_STATUSES, type OrderStatusDef, type OrderStatusTone } from "@/lib/orders/statuses";
-
-const TONES: OrderStatusTone[] = ["neutral", "outline", "strong", "danger"];
+import { DEFAULT_ORDER_STATUSES, ORDER_COLOR_KEYS, type OrderStatusDef } from "@/lib/orders/statuses";
 
 function slugify(raw: string, fallback: string): string {
   const s = raw
@@ -29,7 +27,7 @@ export async function saveOrderStatuses(items: OrderStatusDef[]): Promise<{ erro
       key,
       label,
       customerLabel: (it.customerLabel ?? "").trim() || label,
-      tone: TONES.includes(it.tone) ? it.tone : "neutral",
+      color: ORDER_COLOR_KEYS.includes(it.color) ? it.color : "slate",
     });
   }
   if (clean.length === 0) {
