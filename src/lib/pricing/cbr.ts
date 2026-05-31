@@ -52,7 +52,9 @@ export async function refreshAndStoreCbr(): Promise<CbrRates & { bigChange: bool
   const db = createSupabaseAdminClient();
   await db
     .from("currency_rates")
-    .upsert({ date: rates.date, usd: rates.usd, eur: rates.eur, source: "cbr-xml-daily" }, { onConflict: "date,source" });
+    // fetched_at пишем всегда — чтобы «обновлён» отражал последнюю проверку ЦБ,
+    // даже если курс за выходные не изменился (иначе время «зависало» на дне смены курса).
+    .upsert({ date: rates.date, usd: rates.usd, eur: rates.eur, source: "cbr-xml-daily", fetched_at: new Date().toISOString() }, { onConflict: "date,source" });
   const bigChange = rates.prevUsd ? Math.abs(rates.usd - rates.prevUsd) / rates.prevUsd > 0.05 : false;
   return { ...rates, bigChange };
 }
