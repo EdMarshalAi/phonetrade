@@ -12,7 +12,6 @@ import {
   Newspaper,
   FileText,
   Ticket,
-  Percent,
   Users,
   Store,
   Menu,
@@ -68,7 +67,6 @@ export const ADMIN_NAV: NavGroup[] = [
       { label: "Товары", href: "/admin/catalog/products", icon: Package, roles: ALL },
       { label: "Прайс", href: "/admin/catalog/pricing", icon: Table2, roles: STAFF },
       { label: "Категории", href: "/admin/catalog/categories", icon: FolderTree, roles: ALL },
-      { label: "Бренды", href: "/admin/catalog/brands", icon: Tag, roles: ALL },
       { label: "Цены выкупа", href: "/admin/catalog/trade-in-prices", icon: Repeat, roles: STAFF },
     ],
   },
@@ -79,13 +77,13 @@ export const ADMIN_NAV: NavGroup[] = [
       { label: "Блоки на главной", href: "/admin/content/home-blocks", icon: LayoutGrid, roles: CONTENT },
       { label: "Блог", href: "/admin/content/blog", icon: Newspaper, roles: CONTENT },
       { label: "Страницы", href: "/admin/content/pages", icon: FileText, roles: CONTENT },
+      { label: "Бренды", href: "/admin/catalog/brands", icon: Tag, roles: CONTENT },
     ],
   },
   {
     label: "Промо",
     items: [
       { label: "Промокоды", href: "/admin/promotions/promo-codes", icon: Ticket, roles: STAFF },
-      { label: "Скидки и акции", href: "/admin/promotions/discounts", icon: Percent, roles: STAFF },
     ],
   },
   {
