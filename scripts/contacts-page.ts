@@ -16,8 +16,10 @@ function loadEnv() {
 }
 
 const BUCKET = "product-images";
-const PHOTO_SRC = "/Users/admin/Downloads/hf_20260531_105038_56a68cbc-403c-41e1-987d-521b421e0fe8.png";
-const PHOTO_PATH = "content/store-belgorod.png";
+// Оптимизированная версия (sips -Z 1400 -s format jpeg -s formatOptions 82) — ~490 КБ
+// вместо исходных 7.5 МБ PNG.
+const PHOTO_SRC = "/tmp/store-belgorod.jpg";
+const PHOTO_PATH = "content/store-belgorod.jpg";
 
 async function main() {
   loadEnv();
@@ -30,7 +32,7 @@ async function main() {
   const buf = readFileSync(PHOTO_SRC);
   const up = await db.storage
     .from(BUCKET)
-    .upload(PHOTO_PATH, buf, { contentType: "image/png", upsert: true });
+    .upload(PHOTO_PATH, buf, { contentType: "image/jpeg", upsert: true });
   if (up.error) throw up.error;
   const photoUrl = db.storage.from(BUCKET).getPublicUrl(PHOTO_PATH).data.publicUrl;
   console.log("Фото:", photoUrl);
