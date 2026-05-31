@@ -23,6 +23,7 @@ export function ProfileSection() {
   const [email, setEmail] = React.useState(user?.email ?? "");
   const [address, setAddress] = React.useState(user?.address ?? "");
   const [error, setError] = React.useState<string | null>(null);
+  const [saving, setSaving] = React.useState(false);
 
   // Профиль грузится из БД асинхронно — синхронизируем поля, когда пользователь готов.
   const uid = user?.id;
@@ -50,8 +51,6 @@ export function ProfileSection() {
     phone !== user.phone ||
     (email || "") !== (user.email ?? "") ||
     (address || "") !== (user.address ?? "");
-
-  const [saving, setSaving] = React.useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

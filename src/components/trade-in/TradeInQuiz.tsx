@@ -35,7 +35,7 @@ const EMPTY: Data = {
 export function TradeInQuiz({ models, initialUser = null }: { models: TradeInModel[]; initialUser?: AuthUser | null }) {
   const router = useRouter();
   const reduce = useReducedMotion();
-  const { user: clientUser } = useAuth();
+  const { user: clientUser, updateProfile } = useAuth();
   // Сервер уже знает об авторизации (cookie-сессия) — используем сразу, не дожидаясь
   // клиентского getSession(). Иначе авторизованному показывалась бы гостевая форма с телефоном.
   const user = clientUser ?? initialUser;
@@ -49,12 +49,17 @@ export function TradeInQuiz({ models, initialUser = null }: { models: TradeInMod
 
   const set = (patch: Partial<Data>) => setD((s) => ({ ...s, ...patch }));
 
-  // Авторизованный пользователь — подставляем контакты из профиля (один раз).
-  const prefilled = React.useRef(false);
+  // Авторизованный пользователь — подставляем контакты из профиля. Заполняем
+  // ТОЛЬКО пустые/дефолтные поля, поэтому эффект безопасно перезапускать при
+  // позднем появлении user (не затирает то, что ввёл пользователь руками).
   React.useEffect(() => {
-    if (!user || prefilled.current) return;
-    prefilled.current = true;
-    setD((s) => ({ ...s, name: s.name || user.name || "", phone: !s.phone || s.phone.trim() === "+7" ? user.phone || s.phone : s.phone, email: s.email || user.email || "" }));
+    if (!user) return;
+    setD((s) => ({
+      ...s,
+      name: s.name.trim() ? s.name : user.name || s.name,
+      phone: (!s.phone || s.phone.trim() === "+7") && user.phone ? user.phone : s.phone,
+      email: s.email.trim() ? s.email : user.email || s.email,
+    }));
   }, [user]);
   const selectedModel = models.find((m) => m.model_key === d.modelKey);
 
@@ -67,6 +72,9 @@ export function TradeInQuiz({ models, initialUser = null }: { models: TradeInMod
     }, 260);
   }, []);
 
+  const nameOk = d.name.trim().length > 0;
+  const phoneOk = d.phone.replace(/\D/g, "").length >= 11;
+
   const canProceed = (() => {
     switch (step) {
       case 0: return !!d.modelKey;
@@ -76,7 +84,7 @@ export function TradeInQuiz({ models, initialUser = null }: { models: TradeInMod
       case 4: return d.hasBreakage === false || (d.hasBreakage === true && d.breakageDescription.trim().length > 0);
       case 5: return !!d.icloud;
       case 6: return !!d.kit;
-      case 7: return d.name.trim().length > 0 && d.phone.replace(/\D/g, "").length >= 11 && (!!user || (consent.oferta && consent.pd));
+      case 7: return nameOk && phoneOk && (!!user || (consent.oferta && consent.pd));
       default: return false;
     }
   })();
@@ -99,6 +107,13 @@ export function TradeInQuiz({ models, initialUser = null }: { models: TradeInMod
       name: d.name, phone: d.phone, email: d.email || undefined, consentMarketing: consent.marketing,
     });
     if (res.error) { setPending(false); setError(res.error); return; }
+    // Авторизованный ввёл недостающие контакты — сохраним в профиль (без блокировки перехода).
+    if (user) {
+      const patch: { name?: string; phone?: string } = {};
+      if (d.name.trim() && d.name.trim() !== (user.name || "").trim()) patch.name = d.name.trim();
+      if (d.phone.trim() && d.phone.trim() !== (user.phone || "").trim()) patch.phone = d.phone.trim();
+      if (patch.name || patch.phone) updateProfile(patch).catch(() => {});
+    }
     router.push(`/trade-in/thank-you?lead=${encodeURIComponent(res.leadNumber || "")}`);
   };
 
@@ -217,12 +232,24 @@ export function TradeInQuiz({ models, initialUser = null }: { models: TradeInMod
             {step === 7 && (
               user ? (
                 <div className="mt-6 space-y-4">
-                  <div className="rounded-2xl border border-border/60 bg-surface/60 p-4">
+                  <div className="space-y-3 rounded-2xl border border-border/60 bg-surface/60 p-4">
                     <p className="text-[13px] text-ink-muted">Заявка будет оформлена на ваш аккаунт</p>
-                    <p className="mt-1 text-[15px] font-semibold text-ink">{d.name || user.name}</p>
-                    <p className="text-[14px] text-ink-muted">{d.phone || user.phone}</p>
+                    {nameOk ? (
+                      <p className="text-[15px] font-semibold text-ink">{d.name || user.name}</p>
+                    ) : (
+                      <input value={d.name} onChange={(e) => set({ name: e.target.value })} placeholder="Ваше имя" className="h-12 w-full rounded-xl bg-white px-4 text-[15px] text-ink outline-none ring-1 ring-border/60 focus:ring-2 focus:ring-ink/15" />
+                    )}
+                    {phoneOk ? (
+                      <p className="text-[14px] text-ink-muted">{d.phone || user.phone}</p>
+                    ) : (
+                      <input value={d.phone} onChange={(e) => set({ phone: e.target.value })} type="tel" inputMode="tel" placeholder="+7 ___ ___-__-__" className="h-12 w-full rounded-xl bg-white px-4 text-[15px] text-ink outline-none ring-1 ring-border/60 focus:ring-2 focus:ring-ink/15" />
+                    )}
                   </div>
-                  <p className="text-[13px] text-ink-subtle">Нажмите «Узнать цену» — покажем предварительную стоимость и заявка появится в личном кабинете.</p>
+                  <p className="text-[13px] text-ink-subtle">
+                    {nameOk && phoneOk
+                      ? "Нажмите «Узнать цену» — покажем предварительную стоимость и заявка появится в личном кабинете."
+                      : "Укажите контакт для связи — мы сохраним его в вашем профиле."}
+                  </p>
                 </div>
               ) : (
                 <div className="mt-6 space-y-3">
