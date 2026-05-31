@@ -8,6 +8,7 @@ import {
   LogOut,
   MapPin,
   Package,
+  Repeat,
   ShieldCheck,
   User as UserIcon,
 } from "lucide-react";
@@ -18,6 +19,7 @@ const NAV = [
   { href: "/account", label: "Профиль", icon: UserIcon },
   { href: "/account/orders", label: "Мои заказы", icon: Package },
   { href: "/account/favorites", label: "Избранное", icon: Heart },
+  { href: "/account/trade-in", label: "Trade-in заявки", icon: Repeat },
   { href: "/account/privacy", label: "Конфиденциальность", icon: ShieldCheck },
 ];
 

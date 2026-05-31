@@ -207,6 +207,29 @@ export type TradeInLeadView = {
   status: string;
 };
 
+export type MyTradeInLead = {
+  lead_number: string;
+  model_title: string;
+  memory_gb: number;
+  estimated_price_rub: number;
+  final_price_rub: number | null;
+  status: string;
+  created_at: string;
+};
+
+/** Заявки trade-in пользователя (по телефону) — для личного кабинета. */
+export async function getMyTradeInLeads(phone?: string): Promise<MyTradeInLead[]> {
+  const ph = phone ? digits(phone) : "";
+  if (!ph) return [];
+  const db = createSupabaseAdminClient();
+  const { data } = await db
+    .from("trade_in_leads")
+    .select("lead_number,model_title,memory_gb,estimated_price_rub,final_price_rub,status,created_at")
+    .eq("customer_phone", ph)
+    .order("created_at", { ascending: false });
+  return (data ?? []) as MyTradeInLead[];
+}
+
 /** Заявка по номеру — для страницы «Спасибо». */
 export async function getTradeInLeadByNumber(leadNumber: string): Promise<TradeInLeadView | null> {
   if (!leadNumber) return null;

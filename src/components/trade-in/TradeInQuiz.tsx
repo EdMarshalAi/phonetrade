@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
-import { ArrowLeft, ArrowRight, Check, RotateCcw } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, RotateCcw } from "lucide-react";
 import { submitTradeInQuiz } from "@/lib/trade-in/trade-in-actions";
 import { EXTERNAL_OPTIONS, BATTERY_OPTIONS, KIT_OPTIONS, type TradeInModel } from "@/lib/trade-in/options";
 import { cn } from "@/lib/utils/cn";
@@ -45,6 +45,15 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
   const set = (patch: Partial<Data>) => setD((s) => ({ ...s, ...patch }));
   const selectedModel = models.find((m) => m.model_key === d.modelKey);
 
+  // Автопереход на следующий шаг после выбора (если остались на этом же шаге).
+  const autoNext = React.useCallback((fromStep: number) => {
+    window.setTimeout(() => {
+      setDir(1);
+      setStep((c) => (c === fromStep && c < TOTAL - 1 ? c + 1 : c));
+      setError(null);
+    }, 260);
+  }, []);
+
   const canProceed = (() => {
     switch (step) {
       case 0: return !!d.modelKey;
@@ -60,20 +69,16 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
   })();
 
   const go = (n: number) => { setDir(n > step ? 1 : -1); setStep(n); setError(null); };
-
   const next = () => {
     if (!canProceed) return;
     if (step === 5 && d.icloud === "linked") { setRejected(true); return; }
-    if (step < TOTAL - 1) go(step + 1);
-    else submit();
+    if (step < TOTAL - 1) go(step + 1); else submit();
   };
   const back = () => { if (step > 0) go(step - 1); };
-
   const restart = () => { setD(EMPTY); setConsent({ oferta: false, pd: false, marketing: false }); setRejected(false); setStep(0); setError(null); };
 
   const submit = async () => {
-    setPending(true);
-    setError(null);
+    setPending(true); setError(null);
     const res = await submitTradeInQuiz({
       modelKey: d.modelKey, modelTitle: d.modelTitle, memoryGb: d.memoryGb,
       external: d.external, battery: d.battery, hasBreakage: !!d.hasBreakage,
@@ -98,12 +103,13 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
     );
   }
 
-  const slide = reduce
-    ? {}
-    : { initial: { opacity: 0, x: dir * 40 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: dir * -40 }, transition: { duration: 0.28, ease: [0.32, 0.72, 0, 1] as const } };
+  const slide = reduce ? {} : {
+    initial: { opacity: 0, x: dir * 36 }, animate: { opacity: 1, x: 0 }, exit: { opacity: 0, x: dir * -36 },
+    transition: { duration: 0.26, ease: [0.32, 0.72, 0, 1] as const },
+  };
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-2xl">
       {/* Прогресс */}
       <div className="mb-8">
         <div className="mb-2 flex items-center justify-between text-[13px] text-ink-muted">
@@ -115,18 +121,31 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
         </div>
       </div>
 
-      <div className="min-h-[320px]">
+      <div className="min-h-[300px]">
         <AnimatePresence mode="wait" custom={dir}>
           <motion.div key={step} {...slide}>
             <h2 className="text-2xl font-semibold tracking-[-0.02em] text-ink md:text-3xl">{STEP_TITLES[step]}</h2>
 
-            {/* Шаг 1 — модель */}
+            {/* Шаг 1 — модель (выпадающий список) */}
             {step === 0 && (
-              <div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                {models.map((m) => (
-                  <Tile key={m.model_key} selected={d.modelKey === m.model_key} onClick={() => { set({ modelKey: m.model_key, modelTitle: m.model_title, memoryGb: 0 }); }} title={m.model_title} />
-                ))}
-                {models.length === 0 && <p className="col-span-full text-ink-muted">Список моделей пуст — позвоните нам: +7 904 098-88-77</p>}
+              <div className="mt-6">
+                <div className="relative">
+                  <select
+                    aria-label="Модель iPhone"
+                    value={d.modelKey}
+                    onChange={(e) => {
+                      const m = models.find((x) => x.model_key === e.target.value);
+                      if (m) { set({ modelKey: m.model_key, modelTitle: m.model_title, memoryGb: 0 }); autoNext(0); }
+                    }}
+                    className="h-14 w-full appearance-none rounded-2xl border border-border bg-white px-4 pr-11 text-[16px] font-medium text-ink outline-none focus:border-ink/40 focus:ring-2 focus:ring-ink/15"
+                  >
+                    <option value="" disabled>Выберите модель iPhone…</option>
+                    {models.map((m) => <option key={m.model_key} value={m.model_key}>{m.model_title}</option>)}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-ink-muted" aria-hidden />
+                </div>
+                {d.modelTitle && <p className="mt-3 text-[13px] text-ink-muted">Выбрано: <span className="font-medium text-ink">{d.modelTitle}</span></p>}
+                {models.length === 0 && <p className="mt-3 text-ink-muted">Список моделей пуст — позвоните нам: +7 (904) 098-88-77</p>}
               </div>
             )}
 
@@ -134,7 +153,7 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
             {step === 1 && (
               <div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                 {(selectedModel?.memories ?? []).map((mem) => (
-                  <Tile key={mem.memory_gb} selected={d.memoryGb === mem.memory_gb} onClick={() => set({ memoryGb: mem.memory_gb })} title={mem.memory_gb >= 1024 ? "1 TB" : `${mem.memory_gb} GB`} />
+                  <Tile key={mem.memory_gb} selected={d.memoryGb === mem.memory_gb} onClick={() => { set({ memoryGb: mem.memory_gb }); autoNext(1); }} title={mem.memory_gb >= 1024 ? "1 TB" : `${mem.memory_gb} GB`} />
                 ))}
               </div>
             )}
@@ -143,7 +162,7 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
             {step === 2 && (
               <div className="mt-6 flex flex-col gap-2.5">
                 {EXTERNAL_OPTIONS.map((o) => (
-                  <RadioCard key={o.value} selected={d.external === o.value} onClick={() => set({ external: o.value })} title={o.label} hint={o.hint} />
+                  <RadioCard key={o.value} selected={d.external === o.value} onClick={() => { set({ external: o.value }); autoNext(2); }} title={o.label} hint={o.hint} />
                 ))}
               </div>
             )}
@@ -154,7 +173,7 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
                 <p className="mb-4 rounded-xl bg-surface px-4 py-3 text-[13px] text-ink-muted">📍 Узнать можно в «Настройки → Аккумулятор → Состояние аккумулятора»</p>
                 <div className="flex flex-col gap-2.5">
                   {BATTERY_OPTIONS.map((o) => (
-                    <RadioCard key={o.value} selected={d.battery === o.value} onClick={() => set({ battery: o.value })} title={o.label} hint={o.hint} />
+                    <RadioCard key={o.value} selected={d.battery === o.value} onClick={() => { set({ battery: o.value }); autoNext(3); }} title={o.label} hint={o.hint} />
                   ))}
                 </div>
               </div>
@@ -163,16 +182,10 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
             {/* Шаг 5 — поломки */}
             {step === 4 && (
               <div className="mt-6 flex flex-col gap-2.5">
-                <RadioCard selected={d.hasBreakage === false} onClick={() => set({ hasBreakage: false })} title="Всё работает исправно" />
+                <RadioCard selected={d.hasBreakage === false} onClick={() => { set({ hasBreakage: false }); autoNext(4); }} title="Всё работает исправно" />
                 <RadioCard selected={d.hasBreakage === true} onClick={() => set({ hasBreakage: true })} title="Есть поломки" hint="Камера, экран, кнопки, динамики и т.п." />
                 {d.hasBreakage === true && (
-                  <textarea
-                    value={d.breakageDescription} maxLength={300}
-                    onChange={(e) => set({ breakageDescription: e.target.value })}
-                    placeholder="Опишите, что именно не работает"
-                    className="mt-1 w-full rounded-xl bg-surface px-4 py-3 text-[15px] text-ink outline-none focus:bg-white focus:ring-2 focus:ring-ink/15"
-                    rows={3}
-                  />
+                  <textarea value={d.breakageDescription} maxLength={300} onChange={(e) => set({ breakageDescription: e.target.value })} placeholder="Опишите, что именно не работает" className="mt-1 w-full rounded-xl bg-surface px-4 py-3 text-[15px] text-ink outline-none focus:bg-white focus:ring-2 focus:ring-ink/15" rows={3} />
                 )}
                 <p className="text-[12px] text-ink-subtle">При серьёзных поломках цена может быть ниже, точная сумма — при осмотре.</p>
               </div>
@@ -183,8 +196,8 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
               <div className="mt-6">
                 <p className="mb-4 rounded-xl bg-surface px-4 py-3 text-[13px] text-ink-muted">📍 Перед сдачей нужно выйти из Apple ID: «Настройки → ваше имя → Выйти»</p>
                 <div className="flex flex-col gap-2.5">
-                  <RadioCard selected={d.icloud === "unlinked"} onClick={() => set({ icloud: "unlinked" })} title="Apple ID отвязан" />
-                  <RadioCard selected={d.icloud === "linked"} onClick={() => set({ icloud: "linked" })} title="Apple ID привязан" hint="Такие устройства мы не принимаем" />
+                  <RadioCard selected={d.icloud === "unlinked"} onClick={() => { set({ icloud: "unlinked" }); autoNext(5); }} title="Apple ID отвязан" />
+                  <RadioCard selected={d.icloud === "linked"} onClick={() => { set({ icloud: "linked" }); window.setTimeout(() => setRejected(true), 260); }} title="Apple ID привязан" hint="Такие устройства мы не принимаем" />
                 </div>
               </div>
             )}
@@ -193,7 +206,7 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
             {step === 6 && (
               <div className="mt-6 flex flex-col gap-2.5">
                 {KIT_OPTIONS.map((o) => (
-                  <RadioCard key={o.value} selected={d.kit === o.value} onClick={() => set({ kit: o.value })} title={o.label} hint={o.hint} />
+                  <RadioCard key={o.value} selected={d.kit === o.value} onClick={() => { set({ kit: o.value }); autoNext(6); }} title={o.label} hint={o.hint} />
                 ))}
               </div>
             )}
@@ -231,14 +244,14 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
             <ArrowLeft className="size-4" /> Назад
           </button>
         ) : <span />}
-        <button
-          onClick={next}
-          disabled={!canProceed || pending}
-          className="inline-flex h-12 items-center gap-2 rounded-full bg-ink px-7 text-sm font-medium text-white transition-colors hover:bg-ink/85 disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {pending ? "Считаем…" : step === TOTAL - 1 ? "Узнать цену" : "Далее"}
-          {!pending && step < TOTAL - 1 && <ArrowRight className="size-4" />}
-        </button>
+        {(step === 4 || step === 7) ? (
+          <button onClick={next} disabled={!canProceed || pending} className="inline-flex h-12 items-center gap-2 rounded-full bg-ink px-7 text-sm font-medium text-white transition-colors hover:bg-ink/85 disabled:opacity-40 disabled:cursor-not-allowed">
+            {pending ? "Считаем…" : step === TOTAL - 1 ? "Узнать цену" : "Далее"}
+            {!pending && step < TOTAL - 1 && <ArrowRight className="size-4" />}
+          </button>
+        ) : (
+          <span className="text-[13px] text-ink-subtle">Выберите вариант, чтобы продолжить</span>
+        )}
       </div>
     </div>
   );
@@ -246,13 +259,7 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
 
 function Tile({ selected, onClick, title }: { selected: boolean; onClick: () => void; title: string }) {
   return (
-    <button
-      type="button" onClick={onClick}
-      className={cn(
-        "flex min-h-[64px] items-center justify-center rounded-2xl border px-3 py-3 text-center text-[14px] font-medium transition-all",
-        selected ? "border-ink bg-surface text-ink ring-1 ring-ink" : "border-border/70 bg-white text-ink hover:-translate-y-0.5 hover:border-ink/40"
-      )}
-    >
+    <button type="button" onClick={onClick} className={cn("flex min-h-[60px] items-center justify-center rounded-2xl border px-3 py-3 text-center text-[15px] font-medium transition-all", selected ? "border-ink bg-surface text-ink ring-1 ring-ink" : "border-border/70 bg-white text-ink hover:-translate-y-0.5 hover:border-ink/40")}>
       {title}
     </button>
   );
@@ -260,13 +267,7 @@ function Tile({ selected, onClick, title }: { selected: boolean; onClick: () => 
 
 function RadioCard({ selected, onClick, title, hint }: { selected: boolean; onClick: () => void; title: string; hint?: string }) {
   return (
-    <button
-      type="button" onClick={onClick}
-      className={cn(
-        "flex items-center gap-3 rounded-2xl border px-4 py-4 text-left transition-all",
-        selected ? "border-ink bg-surface ring-1 ring-ink" : "border-border/70 bg-white hover:border-ink/40"
-      )}
-    >
+    <button type="button" onClick={onClick} className={cn("flex items-center gap-3 rounded-2xl border px-4 py-4 text-left transition-all", selected ? "border-ink bg-surface ring-1 ring-ink" : "border-border/70 bg-white hover:border-ink/40")}>
       <span className={cn("inline-flex size-5 shrink-0 items-center justify-center rounded-full border", selected ? "border-ink bg-ink text-white" : "border-border")}>
         {selected && <Check className="size-3" strokeWidth={3} />}
       </span>

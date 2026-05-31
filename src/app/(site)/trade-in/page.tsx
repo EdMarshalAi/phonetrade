@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { HelpCircle, MapPin, Wallet } from "lucide-react";
 import { getActiveTradeInModels } from "@/lib/trade-in/trade-in-actions";
+import { getTradeInSteps } from "@/lib/content";
 import { TradeInQuiz } from "@/components/trade-in/TradeInQuiz";
+import { TradeInSteps } from "@/components/home/TradeInSteps";
 
 export const dynamic = "force-dynamic";
 
@@ -11,12 +12,6 @@ export const metadata: Metadata = {
     "Сдайте старый iPhone и получите деньги или скидку на новый. Оценка онлайн за 2 минуты, выкуп в Белгороде с гарантией. Принимаем iPhone от 8 до 16 Pro Max.",
   alternates: { canonical: "/trade-in" },
 };
-
-const STEPS = [
-  { icon: HelpCircle, title: "Узнайте цену", text: "Пройдите оценку за 2 минуты онлайн — без визита в магазин." },
-  { icon: MapPin, title: "Принесите в магазин", text: "Покажите устройство менеджеру для осмотра — ул. Попова, 36." },
-  { icon: Wallet, title: "Получите деньги", text: "Наличными, на карту по СБП или скидкой на новый iPhone." },
-];
 
 const FAQ = [
   { q: "Можно ли сдать iPhone с разбитым экраном?", a: "Да, мы принимаем устройства с различными повреждениями. Цена будет ниже, но предложение мы всё равно сделаем." },
@@ -28,7 +23,8 @@ const FAQ = [
 ];
 
 export default async function TradeInPage() {
-  const models = await getActiveTradeInModels();
+  const [models, stepRows] = await Promise.all([getActiveTradeInModels(), getTradeInSteps()]);
+  const steps = stepRows.map((s) => ({ n: s.step_number, title: s.title, description: s.description ?? "" }));
 
   const faqLd = {
     "@context": "https://schema.org",
@@ -63,24 +59,8 @@ export default async function TradeInPage() {
         </div>
       </section>
 
-      {/* Как это работает */}
-      <section className="bg-surface">
-        <div className="container-page py-16 md:py-24">
-          <h2 className="text-center text-3xl font-semibold tracking-[-0.02em] text-ink md:text-4xl">Как это работает</h2>
-          <div className="mx-auto mt-12 grid max-w-4xl gap-6 sm:grid-cols-3">
-            {STEPS.map((s, i) => (
-              <div key={s.title} className="rounded-3xl border border-border/60 bg-white p-7 text-center">
-                <span aria-hidden className="inline-flex size-12 items-center justify-center rounded-2xl bg-surface text-ink">
-                  <s.icon className="size-6" />
-                </span>
-                <p className="mt-4 text-[13px] font-semibold uppercase tracking-wider text-ink-subtle">Шаг {i + 1}</p>
-                <h3 className="mt-1 text-lg font-semibold text-ink">{s.title}</h3>
-                <p className="mt-2 text-[14px] leading-relaxed text-ink-muted">{s.text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Как это работает — контент с главной */}
+      <TradeInSteps steps={steps} />
 
       {/* FAQ */}
       <section className="bg-white">

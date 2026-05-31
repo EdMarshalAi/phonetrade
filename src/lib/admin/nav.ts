@@ -59,6 +59,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { label: "Заказы", href: "/admin/orders", icon: ShoppingCart, roles: STAFF },
       { label: "Заявки", href: "/admin/leads", icon: Inbox, roles: STAFF },
+      { label: "Заявки Trade-in", href: "/admin/leads/trade-in", icon: Repeat, roles: STAFF },
       { label: "Клиенты", href: "/admin/customers", icon: Users, roles: STAFF },
       { label: "Обращения по данным", href: "/admin/customers/data-requests", icon: ShieldCheck, roles: STAFF },
     ],

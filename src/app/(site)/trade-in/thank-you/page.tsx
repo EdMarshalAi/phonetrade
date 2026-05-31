@@ -61,19 +61,21 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
                     <div className="relative mx-auto aspect-square w-full max-w-[180px]">
                       {p.image ? <Image src={p.image} alt={p.title} fill className="object-contain" sizes="180px" unoptimized /> : null}
                     </div>
-                    <h3 className="mt-4 text-[15px] font-semibold text-ink">{p.title}</h3>
-                    <div className="mt-3 space-y-0.5 text-[13px]">
-                      <div className="flex justify-between text-ink-muted"><span>Цена</span><span className="tabular-nums">{fmt(p.priceCash)}</span></div>
-                      <div className="flex justify-between text-ink-muted"><span>Зачёт trade-in</span><span className="tabular-nums text-sale">− {fmt(price)}</span></div>
+                    <h3 className="mt-4 min-h-[44px] text-[15px] font-semibold leading-snug text-ink">{p.title}</h3>
+                    <div className="mt-auto">
+                      <div className="mt-3 space-y-0.5 text-[13px]">
+                        <div className="flex justify-between text-ink-muted"><span>Цена</span><span className="tabular-nums">{fmt(p.priceCash)}</span></div>
+                        <div className="flex justify-between text-ink-muted"><span>Зачёт trade-in</span><span className="tabular-nums text-sale">− {fmt(price)}</span></div>
+                      </div>
+                      <div className="mt-3 border-t border-border/60 pt-3">
+                        <p className="text-[12px] text-ink-subtle">Доплата</p>
+                        <p className="text-xl font-bold tabular-nums text-ink">{fmt(surcharge)}</p>
+                        {p.monthly > 0 && <p className="text-[12px] text-ink-subtle">≈ {fmt(p.monthly)}/мес в рассрочку</p>}
+                      </div>
+                      <Link href={`/product/${p.id}`} className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-full bg-ink text-sm font-medium text-white transition-colors hover:bg-ink/85">
+                        Выбрать
+                      </Link>
                     </div>
-                    <div className="mt-3 border-t border-border/60 pt-3">
-                      <p className="text-[12px] text-ink-subtle">Доплата</p>
-                      <p className="text-xl font-bold tabular-nums text-ink">{fmt(surcharge)}</p>
-                      {p.monthly > 0 && <p className="text-[12px] text-ink-subtle">≈ {fmt(p.monthly)}/мес в рассрочку</p>}
-                    </div>
-                    <Link href={`/product/${p.id}`} className="mt-5 inline-flex h-11 items-center justify-center rounded-full bg-ink text-sm font-medium text-white transition-colors hover:bg-ink/85">
-                      Выбрать
-                    </Link>
                   </div>
                 );
               })}
