@@ -36,7 +36,7 @@ export default async function StaticPage({
         <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-4xl">{page.title}</h1>
         {page.content ? (
           <div
-            className="prose prose-neutral mt-8 w-full max-w-none prose-headings:tracking-tight prose-img:rounded-2xl prose-img:max-w-3xl prose-table:w-full"
+            className="prose prose-neutral mt-8 w-full max-w-none prose-headings:tracking-tight prose-img:rounded-2xl prose-img:max-w-3xl prose-table:w-full [&_details]:my-3 [&_details]:rounded-2xl [&_details]:border [&_details]:border-border/60 [&_details]:bg-white [&_details]:px-5 [&_summary]:flex [&_summary]:cursor-pointer [&_summary]:list-none [&_summary]:items-center [&_summary]:gap-3 [&_summary]:py-4 [&_summary]:font-semibold [&_summary]:text-ink [&_summary::-webkit-details-marker]:hidden [&_summary]:after:ml-auto [&_summary]:after:text-2xl [&_summary]:after:font-normal [&_summary]:after:leading-none [&_summary]:after:text-ink-muted [&_summary]:after:content-['+'] [&_details[open]_summary]:after:content-['−'] [&_details>*:last-child]:pb-5"
             dangerouslySetInnerHTML={{ __html: page.content }}
           />
         ) : null}
