@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rangeFor } from "@/lib/admin/mutations";
 import { PageHeader, StatusBadge } from "@/components/admin/ui";
-import { Table, THead, TH, TBody, TR, TD, EmptyState } from "@/components/admin/table";
-import { AdminButton } from "@/components/admin/form";
+import { EmptyState } from "@/components/admin/table";
+import { ListCard, LinkRow } from "@/components/admin/ListRow";
 import { SearchBox, FilterSelect, Pagination } from "@/components/admin/ListControls";
 import { DeleteButton } from "@/components/admin/DeleteButton";
 import { LEAD_TYPE, LEAD_STATUS, leadStatusTone } from "./labels";
-import { PhoneCell } from "./PhoneCell";
 import { deleteLead } from "./actions";
+
+const money = (n: number) => new Intl.NumberFormat("ru-RU").format(n) + " ₽";
 
 export const metadata: Metadata = { title: "Заявки" };
 
@@ -73,54 +73,38 @@ export default async function LeadsPage({
         <EmptyState title="Заявок пока нет" hint="Заявки приходят с форм сайта (trade-in, обратный звонок)." />
       ) : (
         <>
-          <Table>
-            <THead>
-              <TH className="w-36">Дата</TH>
-              <TH className="w-40">Тип</TH>
-              <TH>Контакт</TH>
-              <TH className="w-36">Статус</TH>
-              <TH className="w-px text-right">Действия</TH>
-            </THead>
-            <TBody>
-              {rows.map((r) => (
-                <TR key={r.id}>
-                  <TD className="whitespace-nowrap text-ink-muted">{fmtDate(r.created_at)}</TD>
-                  <TD>
-                    {LEAD_TYPE[r.type] ?? r.type}
-                    {r.type === "trade_in" && r.payload?.model ? (
-                      <span className="mt-0.5 block text-[11px] text-ink-subtle">{r.payload.model}{r.payload.estimated_price_rub ? ` · ~${new Intl.NumberFormat("ru-RU").format(r.payload.estimated_price_rub)} ₽` : ""}</span>
-                    ) : null}
-                  </TD>
-                  <TD>
-                    <div className="font-medium">{r.contact_name || "—"}</div>
-                    <PhoneCell phone={r.contact_phone} />
-                    <div className="mt-1">
-                      {r.customer_id ? (
-                        <Link href={`/admin/customers/${r.customer_id}`} className="inline-flex items-center gap-1 text-[11px] hover:underline">
-                          <StatusBadge tone={custMap[r.customer_id]?.user_id ? "strong" : "neutral"}>
-                            {custMap[r.customer_id]?.user_id ? "Зарегистрирован" : "По номеру"}
-                          </StatusBadge>
-                        </Link>
-                      ) : (
-                        <span className="text-[11px] text-ink-subtle">Без авторизации</span>
-                      )}
+          <ListCard>
+            {rows.map((r) => {
+              const reg = r.customer_id ? (custMap[r.customer_id]?.user_id ? "registered" : "by_phone") : "anon";
+              const detail = r.type === "trade_in" && r.payload?.model
+                ? `${r.payload.model}${r.payload.estimated_price_rub ? ` · ~${money(r.payload.estimated_price_rub)}` : ""}`
+                : LEAD_TYPE[r.type] ?? r.type;
+              return (
+                <LinkRow
+                  key={r.id}
+                  href={`/admin/leads/${r.id}`}
+                  actions={<DeleteButton action={deleteLead.bind(null, r.id)} itemName={`заявку ${r.contact_name || r.contact_phone || ""}`} iconOnly />}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-medium text-ink">{r.contact_name || "Без имени"}</span>
+                      <span className="shrink-0 rounded-full bg-ink/5 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-muted">{LEAD_TYPE[r.type] ?? r.type}</span>
+                      {reg === "registered" ? (
+                        <span className="shrink-0 rounded-full bg-ink/5 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-muted">рег.</span>
+                      ) : reg === "anon" ? (
+                        <span className="shrink-0 rounded-full bg-surface px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-subtle">аноним</span>
+                      ) : null}
                     </div>
-                  </TD>
-                  <TD>
-                    <StatusBadge tone={leadStatusTone(r.status)}>{LEAD_STATUS[r.status] ?? r.status}</StatusBadge>
-                  </TD>
-                  <TD className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Link href={`/admin/leads/${r.id}`}>
-                        <AdminButton variant="outline" size="sm">Открыть</AdminButton>
-                      </Link>
-                      <DeleteButton action={deleteLead.bind(null, r.id)} itemName={`заявку ${r.contact_name || r.contact_phone || ""}`} iconOnly />
+                    <div className="truncate text-[12.5px] text-ink-muted">
+                      {r.contact_phone || "—"}{detail ? ` · ${detail}` : ""}
                     </div>
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+                  </div>
+                  <div className="hidden shrink-0 whitespace-nowrap text-right text-[12px] text-ink-subtle md:block">{fmtDate(r.created_at)}</div>
+                  <StatusBadge tone={leadStatusTone(r.status)}>{LEAD_STATUS[r.status] ?? r.status}</StatusBadge>
+                </LinkRow>
+              );
+            })}
+          </ListCard>
           <Pagination page={page} pages={pages} />
         </>
       )}

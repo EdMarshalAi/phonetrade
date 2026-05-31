@@ -4,7 +4,8 @@ import { Plus, Settings2 } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rangeFor } from "@/lib/admin/mutations";
 import { PageHeader, StatusBadge } from "@/components/admin/ui";
-import { Table, THead, TH, TBody, TR, TD, EmptyState } from "@/components/admin/table";
+import { EmptyState } from "@/components/admin/table";
+import { ListCard, LinkRow } from "@/components/admin/ListRow";
 import { AdminButton } from "@/components/admin/form";
 import { SearchBox, FilterSelect, Pagination } from "@/components/admin/ListControls";
 import { ORDER_STATUS, orderStatusTone, PAYMENT_LABEL, DELIVERY_LABEL } from "./labels";
@@ -96,41 +97,25 @@ export default async function OrdersPage({
         />
       ) : (
         <>
-          <Table>
-            <THead>
-              <TH className="w-28">№</TH>
-              <TH className="w-32">Дата</TH>
-              <TH>Клиент</TH>
-              <TH className="w-28">Сумма</TH>
-              <TH className="w-28">Оплата</TH>
-              <TH className="w-28">Получение</TH>
-              <TH className="w-36">Статус</TH>
-              <TH className="w-px text-right" />
-            </THead>
-            <TBody>
-              {rows.map((o) => (
-                <TR key={o.id}>
-                  <TD className="font-medium">
-                    <Link href={`/admin/orders/${o.id}`} className="hover:underline">{o.order_number ?? o.id.slice(0, 8)}</Link>
-                  </TD>
-                  <TD className="whitespace-nowrap text-ink-muted">{fmtDate(o.created_at)}</TD>
-                  <TD>
-                    <div>{o.customer_name || "—"}</div>
-                    <div className="text-[12px] text-ink-subtle">{o.phone || ""}</div>
-                  </TD>
-                  <TD className="font-medium">{money(o.total)}</TD>
-                  <TD className="text-ink-muted">{o.payment_method ? PAYMENT_LABEL[o.payment_method] ?? o.payment_method : "—"}</TD>
-                  <TD className="text-ink-muted">{o.delivery_method ? DELIVERY_LABEL[o.delivery_method] ?? o.delivery_method : "—"}</TD>
-                  <TD><StatusBadge tone={toneOf(o.status)}>{labelOf(o.status)}</StatusBadge></TD>
-                  <TD className="text-right">
-                    <Link href={`/admin/orders/${o.id}`}>
-                      <AdminButton variant="outline" size="sm">Открыть</AdminButton>
-                    </Link>
-                  </TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
+          <ListCard>
+            {rows.map((o) => (
+              <LinkRow key={o.id} href={`/admin/orders/${o.id}`}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-ink">{o.order_number ?? o.id.slice(0, 8)}</span>
+                    <span className="shrink-0 text-[12px] text-ink-subtle">{fmtDate(o.created_at)}</span>
+                  </div>
+                  <div className="truncate text-[12.5px] text-ink-muted">
+                    {o.customer_name || "—"}{o.phone ? ` · ${o.phone}` : ""}
+                    {o.payment_method ? ` · ${PAYMENT_LABEL[o.payment_method] ?? o.payment_method}` : ""}
+                    {o.delivery_method ? ` · ${DELIVERY_LABEL[o.delivery_method] ?? o.delivery_method}` : ""}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right text-[15px] font-semibold tabular-nums text-ink">{money(o.total)}</div>
+                <StatusBadge tone={toneOf(o.status)}>{labelOf(o.status)}</StatusBadge>
+              </LinkRow>
+            ))}
+          </ListCard>
           <Pagination page={page} pages={pages} />
         </>
       )}
