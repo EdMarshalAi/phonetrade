@@ -1,0 +1,47 @@
+name: uptime
+
+# Мониторинг доступности сайта: пинг каждые ~10 минут, при падении — алёрт в Telegram.
+# Токен и чат берём из таблицы integrations через Supabase REST (service role) —
+# отдельные секреты не нужны (используются уже имеющиеся NEXT_PUBLIC_SUPABASE_URL и
+# SUPABASE_SERVICE_ROLE_KEY).
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping site health
+        id: ping
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 25 https://phonetrade31.ru/api/health || echo 000)
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "HTTP $code"
+
+      - name: Alert to Telegram if down
+        if: steps.ping.outputs.code != '200'
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CODE: ${{ steps.ping.outputs.code }}
+        run: |
+          cfg=$(curl -s "$SUPABASE_URL/rest/v1/integrations?key=eq.telegram&select=config" \
+            -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY")
+          token=$(printf '%s' "$cfg" | python3 -c "import sys,json
+try:
+  d=json.load(sys.stdin); print(d[0]['config'].get('bot_token','') if d else '')
+except Exception: print('')")
+          chat=$(printf '%s' "$cfg" | python3 -c "import sys,json
+try:
+  d=json.load(sys.stdin); ids=(d[0]['config'].get('chat_ids') or ['']) if d else ['']; print(ids[0])
+except Exception: print('')")
+          if [ -n "$token" ] && [ -n "$chat" ]; then
+            curl -s -X POST "https://api.telegram.org/bot$token/sendMessage" \
+              -d chat_id="$chat" \
+              --data-urlencode text="🔴 Сайт phonetrade31.ru недоступен (HTTP $CODE). Проверьте сервер/PM2/nginx." >/dev/null
+            echo "Alert sent."
+          else
+            echo "No telegram config — skip alert."
+          fi
