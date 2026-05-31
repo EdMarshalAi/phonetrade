@@ -83,7 +83,6 @@ export function BentoCategories({ categories, tiles }: Props) {
                         fill
                         sizes="(min-width: 1024px) 50vw, 90vw"
                         className="object-contain object-bottom-right drop-shadow-[0_18px_30px_rgba(0,0,0,0.18)]"
-                        unoptimized
                       />
                     ) : undefined
                   }
@@ -121,7 +120,6 @@ export function BentoCategories({ categories, tiles }: Props) {
                     fill
                     sizes="(min-width: 1024px) 50vw, 90vw"
                     className="object-contain object-bottom-right drop-shadow-[0_18px_30px_rgba(0,0,0,0.18)]"
-                    unoptimized
                   />
                 }
               />

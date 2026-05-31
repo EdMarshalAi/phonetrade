@@ -106,7 +106,6 @@ export function OrdersSection() {
                       fill
                       sizes="56px"
                       className="object-contain p-1.5"
-                      unoptimized
                     />
                   </Link>
                   <div className="min-w-0">
