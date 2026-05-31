@@ -8,6 +8,26 @@ import { phoneToEmail } from "@/lib/auth/phone-email";
 const CONSENT_VERSION = "2026-01-15-v1";
 
 /**
+ * Телефон → email аккаунта для входа. Большинство покупателей входят по
+ * синтетическому email ({digits}@phonetrade.local), но у единого аккаунта
+ * (владелец, он же админ) реальный email (owner@phonetrade.ru). Функция
+ * resolve_login_email ищет аккаунт по последним 10 цифрам телефона (8/+7/без
+ * кода — без разницы). Фолбэк — синтетический email.
+ */
+export async function resolveLoginEmail(phone: string): Promise<string> {
+  const fallback = phoneToEmail(phone);
+  if (phone.replace(/\D/g, "").length < 10) return fallback;
+  try {
+    const db = createSupabaseAdminClient();
+    const { data, error } = await db.rpc("resolve_login_email", { p: phone });
+    if (error) return fallback;
+    return typeof data === "string" && data ? data : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Обновление профиля текущего покупателя. Пользователь определяется по
  * cookie-сессии (server), запись — через service-role клиент (надёжно, без
  * зависимости от RLS на анонимном клиенте). Возвращает ошибку, если не сохранилось.

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Session } from "@supabase/supabase-js";
-import { registerStorefront, updateStorefrontProfile } from "@/lib/auth/auth-actions";
+import { registerStorefront, updateStorefrontProfile, resolveLoginEmail } from "@/lib/auth/auth-actions";
 import { phoneToEmail } from "@/lib/auth/phone-email";
 
 export type AuthUser = {
@@ -100,10 +100,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = React.useCallback(
     async (phone: string, password: string) => {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: phoneToEmail(phone),
-        password,
-      });
+      // Телефон → реальный email аккаунта (единый владелец входит по тому же
+      // номеру, что и админ). Фолбэк внутри — синтетический email.
+      const email = await resolveLoginEmail(phone);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw new Error("Неверный телефон или пароль");
     },
     [supabase]
