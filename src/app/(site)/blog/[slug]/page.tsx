@@ -34,7 +34,7 @@ export default async function BlogPostPage({
   const post = await getBlogPost(slug);
   if (!post) notFound();
 
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://31.129.97.8";
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru";
   const articleLd = {
     "@context": "https://schema.org",
     "@type": "Article",

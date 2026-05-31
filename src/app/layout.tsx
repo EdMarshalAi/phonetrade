@@ -8,7 +8,7 @@ const inter = Inter({
   display: "swap",
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://31.129.97.8";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

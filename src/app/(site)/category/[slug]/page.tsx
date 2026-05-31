@@ -85,7 +85,7 @@ export default async function CategoryPage({ params }: { params: Promise<RoutePa
   const facetOptions = extractFacetOptions(products, config.facets);
 
   // BreadcrumbList для сниппета
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://31.129.97.8";
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru";
   const crumbs = [
     { name: "Главная", url: `${base}/` },
     ...(breadcrumbParent ? [{ name: breadcrumbParent.title, url: `${base}${breadcrumbParent.href}` }] : []),

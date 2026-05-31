@@ -4,7 +4,7 @@ import { getPublishedPageSlugs, getBlogPosts } from "@/lib/content";
 
 export const revalidate = 3600;
 
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "http://31.129.97.8").replace(/\/$/, "");
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");
 
 function abs(path: string): string {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
