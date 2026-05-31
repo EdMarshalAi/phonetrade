@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Hero, type HeroSlide } from "@/components/home/Hero";
 import { BentoCategories } from "@/components/home/BentoCategories";
 import { ProductRail } from "@/components/home/ProductRail";
@@ -6,6 +7,11 @@ import { TradeInSteps } from "@/components/home/TradeInSteps";
 import { BrandMarquee } from "@/components/home/BrandMarquee";
 import { BlogTeaser } from "@/components/home/BlogTeaser";
 import { WhyAndFaq } from "@/components/home/WhyAndFaq";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  openGraph: { url: "/" },
+};
 import {
   getCategories,
   getFeaturedCatalog,

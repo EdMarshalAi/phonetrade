@@ -52,9 +52,12 @@ export default async function ProductPage({
   ]);
 
   // Schema.org Product (JSON-LD) — расширенные сниппеты в поиске.
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru";
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");
   const inStock = product.stock == null || product.stock > 0;
   const brandName = /samsung/i.test(product.title) ? "Samsung" : /яндекс|station|станц/i.test(product.title) ? "Яндекс" : /sony|playstation|dualsense/i.test(product.title) ? "Sony" : "Apple";
+  const price = product.priceCash;
+  // priceValidUntil — конец след. года (рекомендация Google для Offer).
+  const priceValidUntil = `${new Date().getFullYear() + 1}-12-31`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -63,15 +66,21 @@ export default async function ProductPage({
     description: `${product.title} — купить в Белгороде в PhoneTrade: гарантия, доставка и самовывоз.`,
     sku: product.sku || product.id,
     brand: { "@type": "Brand", name: product.brand && product.brand !== "Other" ? product.brand : brandName },
-    offers: {
-      "@type": "Offer",
-      url: `${base}/product/${product.id}`,
-      priceCurrency: "RUB",
-      price: product.priceCash ?? undefined,
-      availability: inStock ? "https://schema.org/InStock" : "https://schema.org/PreOrder",
-      itemCondition: product.isUsed ? "https://schema.org/UsedCondition" : "https://schema.org/NewCondition",
-      seller: { "@type": "Organization", name: "PhoneTrade" },
-    },
+    // Offer рендерим только при наличии цены (Offer без price/priceSpecification невалиден).
+    ...(price && price > 0
+      ? {
+          offers: {
+            "@type": "Offer",
+            url: `${base}/product/${product.id}`,
+            priceCurrency: "RUB",
+            price,
+            priceValidUntil,
+            availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+            itemCondition: product.isUsed ? "https://schema.org/UsedCondition" : "https://schema.org/NewCondition",
+            seller: { "@id": `${base}/#organization` },
+          },
+        }
+      : {}),
   };
 
   // Хлебные крошки для сниппета: Главная > Каталог > [родитель] > Категория > Товар

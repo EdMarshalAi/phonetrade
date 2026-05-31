@@ -11,7 +11,9 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Каталог Apple — все категории",
   description:
-    "iPhone, iPad, Mac, Apple Watch, AirPods и аксессуары с гарантией PhoneTrade в Белгороде.",
+    "Весь ассортимент Apple в Белгороде: iPhone, iPad, Mac, Apple Watch, AirPods и аксессуары. Гарантия, доставка и самовывоз — PhoneTrade.",
+  alternates: { canonical: "/catalog" },
+  openGraph: { url: "/catalog" },
 };
 
 function formatCount(n: number): string {

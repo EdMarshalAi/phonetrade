@@ -7,8 +7,20 @@ import { plural } from "@/lib/utils/plural";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Новинки Apple",
-  description: "Свежие поступления техники Apple с гарантией PhoneTrade в Белгороде.",
+  title: "Новинки Apple в Белгороде",
+  description: "Новинки и свежие поступления техники Apple в Белгороде: iPhone, Mac, iPad, Watch, AirPods. Гарантия, доставка и самовывоз — PhoneTrade, ул. Попова, 36.",
+  alternates: { canonical: "/new" },
+  openGraph: { url: "/new", title: "Новинки Apple в Белгороде · PhoneTrade" },
+};
+
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");
+const breadcrumbLd = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Главная", item: `${SITE_URL}/` },
+    { "@type": "ListItem", position: 2, name: "Новинки", item: `${SITE_URL}/new` },
+  ],
 };
 
 export default async function NewArrivalsPage() {
@@ -16,6 +28,7 @@ export default async function NewArrivalsPage() {
 
   return (
     <section className="bg-bg">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <div className="container-page pt-10 md:pt-14 pb-20 md:pb-28">
         <nav aria-label="Хлебные крошки" className="mb-4 flex items-center gap-1.5 text-xs text-ink-subtle">
           <Link href="/" className="transition-colors hover:text-ink">Главная</Link>

@@ -4,8 +4,10 @@ import Image from "next/image";
 import { getBlogPosts } from "@/lib/content";
 
 export const metadata: Metadata = {
-  title: "Блог",
-  description: "Статьи о технике Apple, новинках и советах от PhoneTrade.",
+  title: "Блог о технике Apple",
+  description: "Статьи о технике Apple, новинках, обзоры и советы по выбору — от магазина PhoneTrade в Белгороде.",
+  alternates: { canonical: "/blog" },
+  openGraph: { url: "/blog" },
 };
 
 // ISR: новые статьи появляются без редеплоя.

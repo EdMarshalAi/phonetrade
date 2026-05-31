@@ -31,6 +31,14 @@ export const metadata: Metadata = {
       "Оригинальная техника Apple с гарантией, Trade-in и сервисом. Белгород, ул. Попова, 36.",
     type: "website",
     locale: "ru_RU",
+    siteName: "PhoneTrade",
+    images: [{ url: "/brand/logo-mark-black.png", width: 1200, height: 630, alt: "PhoneTrade — техника Apple в Белгороде" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PhoneTrade — Магазин техники Apple в Белгороде",
+    description: "Оригинальная техника Apple с гарантией, Trade-in и сервисом. Белгород, ул. Попова, 36.",
+    images: ["/brand/logo-mark-black.png"],
   },
 };
 
@@ -50,23 +58,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Организация (LocalBusiness) рендерится в (site)/layout из shop_settings с @id.
+  // В корне — только WebSite+SearchAction (нужен на всех публичных страницах).
   const ld = [
-    {
-      "@context": "https://schema.org",
-      "@type": "Store",
-      name: "PhoneTrade",
-      description: "Магазин техники Apple в Белгороде: iPhone, iPad, Mac, Apple Watch, AirPods. Trade-in, Б/У, гарантия и сервис.",
-      url: SITE_URL,
-      image: `${SITE_URL}/brand/logo-mark-white.png`,
-      priceRange: "₽₽",
-      address: {
-        "@type": "PostalAddress",
-        addressLocality: "Белгород",
-        streetAddress: "ул. Попова, 36",
-        addressCountry: "RU",
-      },
-      areaServed: "Белгород",
-    },
     {
       "@context": "https://schema.org",
       "@type": "WebSite",

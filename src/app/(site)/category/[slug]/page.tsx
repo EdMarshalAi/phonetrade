@@ -18,14 +18,21 @@ export async function generateMetadata({ params }: { params: Promise<RouteParams
   const { slug } = await params;
   const meta = await getCategoryMeta(slug);
   if (!meta) return {};
-  const title = meta.title;
-  const description = meta.description ?? undefined;
   const canonical = `/category/${slug}`;
+  // meta_title (если задан в админке) — абсолютный, чтобы не было двойного бренда;
+  // иначе коммерческий фолбэк с городом + шаблонный «· PhoneTrade».
+  const fallbackTitle = `${meta.title} в Белгороде — купить с гарантией`;
+  const title: Metadata["title"] = meta.meta_title?.trim() ? { absolute: meta.meta_title.trim() } : fallbackTitle;
+  const description =
+    meta.meta_description?.trim() ||
+    meta.description?.trim() ||
+    `${meta.title} в Белгороде: купить с гарантией, доставка по городу и самовывоз, Trade-in и рассрочка. PhoneTrade — ул. Попова, 36.`;
+  const ogTitle = meta.meta_title?.trim() || `${fallbackTitle} · PhoneTrade`;
   return {
     title,
     description,
     alternates: { canonical },
-    openGraph: { title, description, url: canonical, type: "website" },
+    openGraph: { title: ogTitle, description, url: canonical, type: "website" },
   };
 }
 

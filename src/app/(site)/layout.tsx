@@ -42,6 +42,52 @@ export default async function SiteLayout({
   // Режим технических работ: посетители видят заглушку, а вошедший администратор —
   // обычный сайт с красной плашкой сверху (чтобы проверять витрину во время работ).
   const isAdmin = maintenance.on ? !!(await getAdminUser()) : false;
+
+  // LocalBusiness (Organization) JSON-LD из реальных настроек магазина. @id =
+  // …/#organization (на него ссылается publisher в схеме блога).
+  const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");
+  const c = (contacts ?? {}) as Record<string, unknown>;
+  const phoneDigits = typeof c.phone === "string" ? `+${(c.phone as string).replace(/\D/g, "")}` : undefined;
+  const lat = Number(c.lat) || 50.595414;
+  const lng = Number(c.lng) || 36.594843;
+  const sameAs = Array.isArray(c.contacts)
+    ? (c.contacts as { href?: string }[])
+        .map((x) => x.href || "")
+        .filter((h) => /vk\.com|t\.me|telegram|wa\.me|whatsapp|ok\.ru|instagram|youtube|dzen|yandex\.ru\/maps/i.test(h))
+    : ["https://vk.com/phonetradebel", "https://t.me/phonetradebel", "https://wa.me/79040988877"];
+  const orgLd = {
+    "@context": "https://schema.org",
+    "@type": ["Store", "ElectronicsStore"],
+    "@id": `${SITE_URL}/#organization`,
+    name: (c.name as string) || "PhoneTrade",
+    legalName: (c.legal_entity as string) || undefined,
+    description: "Магазин техники Apple в Белгороде: iPhone, iPad, Mac, Apple Watch, AirPods. Trade-in, Б/У, гарантия и сервис.",
+    url: SITE_URL,
+    image: `${SITE_URL}/brand/logo-mark-black.png`,
+    logo: `${SITE_URL}/brand/logo-mark-black.png`,
+    telephone: phoneDigits,
+    email: (c.email as string) || undefined,
+    priceRange: "₽₽",
+    currenciesAccepted: "RUB",
+    paymentAccepted: "Наличные, Карта, СБП, Рассрочка, Кредит",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "ул. Попова, 36",
+      addressLocality: "Белгород",
+      addressRegion: "Белгородская область",
+      postalCode: "308000",
+      addressCountry: "RU",
+    },
+    geo: { "@type": "GeoCoordinates", latitude: lat, longitude: lng },
+    areaServed: { "@type": "City", name: "Белгород" },
+    openingHoursSpecification: [{
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+      opens: "10:00",
+      closes: "20:00",
+    }],
+    sameAs: sameAs.length ? [...new Set(sameAs)] : undefined,
+  };
   if (maintenance.on && !isAdmin) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center bg-surface px-6 text-center">
@@ -65,6 +111,7 @@ export default async function SiteLayout({
             <BadgeRegistryProvider badges={badges}>
             <CardSettingsProvider display={cardDisplay} options={cardOptions}>
               <CookieConsentProvider metrikaId={metrikaId} codeSnippets={codeSnippets}>
+                <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgLd) }} />
                 <div className="flex min-h-dvh flex-col">
                   {maintenance.on && isAdmin ? (
                     <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 bg-sale px-4 py-2 text-center text-[13px] font-medium text-white">

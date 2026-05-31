@@ -15,9 +15,12 @@ export async function generateMetadata({
   const { slug } = await params;
   const page = await getStaticPage(slug);
   if (!page) return {};
+  // meta_title часто уже содержит бренд → absolute, чтобы не было «… | PhoneTrade · PhoneTrade».
   return {
-    title: page.meta_title || page.title,
+    title: page.meta_title?.trim() ? { absolute: page.meta_title.trim() } : page.title,
     description: page.meta_description || undefined,
+    alternates: { canonical: `/${slug}` },
+    openGraph: { url: `/${slug}`, title: page.meta_title?.trim() || page.title },
   };
 }
 

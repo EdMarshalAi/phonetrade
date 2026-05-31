@@ -17,8 +17,13 @@ const KNOWN_FACETS = new Set<string>(ALL_FACETS);
 export async function generateMetadata(): Promise<Metadata> {
   const meta = await getCategoryMeta("used");
   return {
-    title: meta?.title || "Б/У техника",
-    description: meta?.description ?? undefined,
+    title: meta?.meta_title?.trim() ? { absolute: meta.meta_title.trim() } : (meta?.title || "Б/У iPhone в Белгороде — с гарантией"),
+    description:
+      meta?.meta_description?.trim() ||
+      meta?.description?.trim() ||
+      "Б/У iPhone и техника Apple в Белгороде: проверенные устройства с гарантией, Trade-in и рассрочка. PhoneTrade — ул. Попова, 36.",
+    alternates: { canonical: "/used" },
+    openGraph: { url: "/used" },
   };
 }
 
@@ -56,13 +61,26 @@ export default async function UsedPage() {
 
   const facetOptions = extractFacetOptions(products, config.facets);
 
+  const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: `${SITE_URL}/` },
+      { "@type": "ListItem", position: 2, name: "Б/У техника", item: `${SITE_URL}/used` },
+    ],
+  };
+
   return (
-    <CatalogShell
-      config={config}
-      products={products}
-      facetOptions={facetOptions}
-      seoHtml={meta?.seo_text ?? null}
-      tabs={tabs}
-    />
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <CatalogShell
+        config={config}
+        products={products}
+        facetOptions={facetOptions}
+        seoHtml={meta?.seo_text ?? null}
+        tabs={tabs}
+      />
+    </>
   );
 }
