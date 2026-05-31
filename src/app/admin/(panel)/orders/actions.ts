@@ -15,7 +15,7 @@ export async function setOrderStatus(
   comment?: string
 ): Promise<{ error?: string }> {
   const db = createSupabaseAdminClient();
-  const { data: order } = await db.from("orders").select("status,order_number").eq("id", id).maybeSingle();
+  const { data: order } = await db.from("orders").select("status,order_number,customer_name,phone,total").eq("id", id).maybeSingle();
   if (!order) return { error: "Заказ не найден" };
 
   // Менеджер может выставить ЛЮБОЙ статус из настроенного списка (без жёсткой
@@ -56,7 +56,15 @@ export async function setOrderStatus(
 
   // Уведомление в Telegram при отмене (best-effort).
   if (toStatus === "cancelled") {
-    await notifyTelegram("order_cancelled", `❌ Заказ <b>${order.order_number ?? id}</b> отменён.`);
+    const adminBase = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");
+    await notifyTelegram(
+      "order_cancelled",
+      `❌ <b>Заказ ${order.order_number ?? id} отменён</b>\n\n` +
+        `👤 ${order.customer_name ?? "—"}\n` +
+        `📞 ${order.phone ?? "—"}\n` +
+        `💰 ${(order.total ?? 0).toLocaleString("ru-RU")} ₽\n` +
+        `\n🔗 ${adminBase}/admin/orders/${id}`
+    );
   }
   return {};
 }

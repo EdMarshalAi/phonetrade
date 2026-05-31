@@ -4,8 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Send, Mail, Loader2, Check, AlertTriangle, ChevronDown, ExternalLink } from "lucide-react";
-import { Field, TextInput, Textarea, Switch, AdminButton } from "@/components/admin/form";
+import { Send, Mail, Loader2, Check, AlertTriangle, ExternalLink } from "lucide-react";
+import { Switch, AdminButton } from "@/components/admin/form";
 import { cn } from "@/lib/utils/cn";
 import { saveNotification, sendTestTelegram, type NotificationTrigger, type NotificationConfig } from "./actions";
 
@@ -28,9 +28,6 @@ const GROUPS: { title: string; items: { key: NotificationTrigger; label: string;
     { key: "cbr_rate_fetch_failed", label: "Сбой получения курса", desc: "Не удалось получить курс ЦБ" },
   ] },
 ];
-
-const csvToArr = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
-const arrToCsv = (a: string[]) => a.join(", ");
 
 export function NotificationsForm({ rows, channels }: { rows: Array<{ trigger: string } & NotificationConfig>; channels: Channels }) {
   const map = Object.fromEntries(rows.map((r) => [r.trigger, r]));
@@ -112,63 +109,32 @@ function ChannelsPanel({ channels }: { channels: Channels }) {
 
 function TriggerRow({ trigger, label, desc, initial }: { trigger: NotificationTrigger; label: string; desc: string; initial?: NotificationConfig }) {
   const router = useRouter();
-  // Нет строки в БД = по умолчанию включено (срабатывает в дефолтные чаты).
+  // Нет строки в БД = по умолчанию включено (срабатывает в чаты из Интеграций).
   const [enabled, setEnabled] = React.useState(initial ? initial.is_enabled : true);
-  const [open, setOpen] = React.useState(false);
-  const [chatIds, setChatIds] = React.useState(arrToCsv(initial?.telegram_chat_ids ?? []));
-  const [emails, setEmails] = React.useState(arrToCsv(initial?.email_recipients ?? []));
-  const [template, setTemplate] = React.useState(initial?.template ?? "");
   const [busy, setBusy] = React.useState(false);
-
-  const persist = async (next: { enabled?: boolean } = {}) => {
-    const en = next.enabled ?? enabled;
-    setBusy(true);
-    const res = await saveNotification(trigger, {
-      telegram_chat_ids: csvToArr(chatIds),
-      email_recipients: csvToArr(emails),
-      template,
-      is_enabled: en,
-    });
-    setBusy(false);
-    if (res.error) { toast.error(res.error); return false; }
-    router.refresh();
-    return true;
-  };
 
   const onToggle = async (v: boolean) => {
     setEnabled(v);
-    const ok = await persist({ enabled: v });
-    if (ok) toast.success(v ? "Включено" : "Выключено");
-    else setEnabled(!v);
+    setBusy(true);
+    const res = await saveNotification(trigger, {
+      telegram_chat_ids: initial?.telegram_chat_ids ?? [],
+      email_recipients: initial?.email_recipients ?? [],
+      template: initial?.template ?? "",
+      is_enabled: v,
+    });
+    setBusy(false);
+    if (res.error) { toast.error(res.error); setEnabled(!v); return; }
+    toast.success(v ? "Включено" : "Выключено");
+    router.refresh();
   };
 
   return (
-    <div className="px-5 py-3.5">
-      <div className="flex items-center gap-4">
-        <button type="button" onClick={() => setOpen((o) => !o)} className="min-w-0 flex-1 text-left">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-ink">{label}</span>
-            <ChevronDown className={cn("size-4 text-ink-subtle transition-transform", open && "rotate-180")} />
-          </div>
-          <p className="truncate text-[12.5px] text-ink-muted">{desc}</p>
-        </button>
-        {busy ? <Loader2 className="size-4 shrink-0 animate-spin text-ink-subtle" /> : <Switch checked={enabled} onChange={onToggle} />}
+    <div className="flex items-center gap-4 px-5 py-3.5">
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-ink">{label}</p>
+        <p className="text-[12.5px] text-ink-muted">{desc}</p>
       </div>
-
-      {open ? (
-        <div className="mt-3 space-y-3 rounded-xl bg-surface/40 p-4">
-          <Field label="Telegram Chat IDs (необязательно)" hint="Через запятую. Пусто = чаты по умолчанию из Интеграций.">
-            <TextInput placeholder="-1001234567890" value={chatIds} onChange={(e) => setChatIds(e.target.value)} />
-          </Field>
-          <Field label="Email-получатели (необязательно)" hint="Через запятую.">
-            <TextInput placeholder="manager@phonetrade.ru" value={emails} onChange={(e) => setEmails(e.target.value)} />
-          </Field>
-          <Field label="Шаблон сообщения (необязательно)">
-            <Textarea rows={3} value={template} onChange={(e) => setTemplate(e.target.value)} />
-          </Field>
-          <AdminButton type="button" size="sm" loading={busy} onClick={async () => { if (await persist()) toast.success("Сохранено"); }}>Сохранить</AdminButton>
-        </div>
-      ) : null}
+      {busy ? <Loader2 className="size-4 shrink-0 animate-spin text-ink-subtle" /> : <Switch checked={enabled} onChange={onToggle} />}
     </div>
   );
 }

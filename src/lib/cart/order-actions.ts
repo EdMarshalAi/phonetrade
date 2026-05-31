@@ -224,13 +224,23 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
 
     // Уведомление в Telegram (best-effort, не блокирует ответ).
     try {
-      const deliveryLabel = input.deliveryMethod === "courier" ? "Курьер" : "Самовывоз";
+      const PAY: Record<string, string> = { sbp: "СБП", card: "Карта", on_delivery: "При получении", cash: "Наличные", installment: "Рассрочка", credit: "Кредит" };
+      const deliveryLabel = input.deliveryMethod === "courier" ? "Курьер по Белгороду" : "Самовывоз (ул. Попова, 36)";
+      const adminBase = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");
+      const lines = input.items.map((i) => `• ${i.title} ×${i.qty} — ${(i.priceCash * i.qty).toLocaleString("ru-RU")} ₽`).join("\n");
       await notifyTelegram(
         "new_order",
-        `🛒 Новый заказ <b>${orderNumber}</b>\n` +
-          `Клиент: ${input.name}, ${input.phone}\n` +
-          `Сумма: ${input.total.toLocaleString("ru-RU")} ₽\n` +
-          `Оплата: ${input.paymentMethod}, ${deliveryLabel}`
+        `🛒 <b>Новый заказ ${orderNumber}</b>\n\n` +
+          `👤 ${input.name}${input.customerType === "legal" ? " (юр. лицо)" : ""}\n` +
+          `📞 ${input.phone}\n` +
+          (input.email ? `✉️ ${input.email}\n` : "") +
+          `\n🛍 Состав:\n${lines}\n\n` +
+          (input.discountCash ? `Скидка за наличные: −${input.discountCash.toLocaleString("ru-RU")} ₽\n` : "") +
+          (input.promoDiscount ? `Промокод ${input.promoCode ?? ""}: −${input.promoDiscount.toLocaleString("ru-RU")} ₽\n` : "") +
+          `💰 <b>Итого: ${input.total.toLocaleString("ru-RU")} ₽</b>\n` +
+          `💳 ${PAY[input.paymentMethod] ?? input.paymentMethod} · ${deliveryLabel}\n` +
+          (input.deliveryAddress ? `📍 ${input.deliveryAddress}\n` : "") +
+          `\n🔗 ${adminBase}/admin/orders/${orderId}`
       );
     } catch {
       // Не критично

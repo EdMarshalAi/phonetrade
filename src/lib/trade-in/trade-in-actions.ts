@@ -140,8 +140,9 @@ export async function submitTradeInQuiz(input: QuizInput): Promise<QuizResult> {
   }
 
   // Дублируем в общий инбокс /admin/leads (тип «Trade-in»).
+  let leadId: string | null = null;
   try {
-    await db.from("leads").insert({
+    const { data: leadRow } = await db.from("leads").insert({
       type: "trade_in",
       contact_name: input.name.trim(),
       contact_phone: phone,
@@ -155,7 +156,8 @@ export async function submitTradeInQuiz(input: QuizInput): Promise<QuizResult> {
         estimated_price_rub: lead.estimated_price_rub,
         breakage: input.hasBreakage ? input.breakageDescription?.trim() || "есть" : null,
       },
-    });
+    }).select("id").single();
+    leadId = (leadRow?.id as string) ?? null;
   } catch (e) { console.error("[submitTradeInQuiz] lead insert:", e); }
 
   // 152-ФЗ: согласия.
@@ -175,13 +177,20 @@ export async function submitTradeInQuiz(input: QuizInput): Promise<QuizResult> {
 
   // Уведомление (best-effort).
   try {
+    const adminBase = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");
+    const link = leadId ? `${adminBase}/admin/leads/${leadId}` : `${adminBase}/admin/leads`;
     await notifyTelegram(
       "new_lead_trade_in",
-      `🔄 Новая заявка trade-in <b>${lead.lead_number}</b>\n` +
-        `Клиент: ${input.name.trim()} ${phone}\n` +
-        `Модель: ${input.modelTitle} ${input.memoryGb}GB\n` +
-        `Предв. цена: ${new Intl.NumberFormat("ru-RU").format(lead.estimated_price_rub)} ₽` +
-        (input.hasBreakage ? `\nПоломка: ${input.breakageDescription?.trim()}` : "")
+      `🔄 <b>Заявка Trade-in ${lead.lead_number}</b>\n\n` +
+        `👤 ${input.name.trim()}\n` +
+        `📞 ${phone}\n` +
+        (email ? `✉️ ${email}\n` : "") +
+        `\n📱 ${input.modelTitle} ${input.memoryGb}GB\n` +
+        `Состояние: ${input.external}, аккумулятор ${input.battery}\n` +
+        `iCloud: ${input.icloud === "unlinked" ? "отвязан" : input.icloud}, комплект: ${input.kit}\n` +
+        (input.hasBreakage ? `⚠️ Поломки: ${input.breakageDescription?.trim() || "есть"}\n` : "") +
+        `\n💰 <b>Предв. оценка: ${new Intl.NumberFormat("ru-RU").format(lead.estimated_price_rub)} ₽</b>\n` +
+        `\n🔗 ${link}`
     );
   } catch { /* ignore */ }
 

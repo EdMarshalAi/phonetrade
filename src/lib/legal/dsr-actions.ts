@@ -75,6 +75,7 @@ export async function submitDataRequest(
   }
 
   const db = createSupabaseAdminClient();
+  let leadId: string | null = null;
   try {
     // Единый реестр «Клиенты»: создаём по телефону, если ещё нет.
     let customerId: string | null = null;
@@ -119,7 +120,7 @@ export async function submitDataRequest(
 
     // Дублируем как заявку в общий инбокс /admin/leads (тип «Запрос по данным»).
     try {
-      await db.from("leads").insert({
+      const { data: leadRow } = await db.from("leads").insert({
         type: "data_request",
         contact_name: input.name?.trim() || null,
         contact_phone: phone,
@@ -132,7 +133,8 @@ export async function submitDataRequest(
           request_label: DSR_TYPES[input.requestType],
           details: input.details?.trim() || null,
         },
-      });
+      }).select("id").single();
+      leadId = (leadRow?.id as string) ?? null;
     } catch (e) {
       console.error("[submitDataRequest] lead insert:", e);
     }
@@ -143,12 +145,18 @@ export async function submitDataRequest(
 
   // Уведомление в Telegram (best-effort).
   try {
+    const adminBase = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");
+    const link = leadId ? `${adminBase}/admin/leads/${leadId}` : `${adminBase}/admin/leads`;
     await notifyTelegram(
       "data_request_new",
-      `🔐 Новое обращение по персональным данным\n` +
-        `Тип: <b>${DSR_TYPES[input.requestType]}</b>\n` +
-        `Контакт: ${email || phone || "—"}\n` +
-        `Срок ответа: 30 дней (152-ФЗ).`
+      `🔐 <b>Обращение по персональным данным</b>\n\n` +
+        `Тип: ${DSR_TYPES[input.requestType]}\n` +
+        (input.name?.trim() ? `👤 ${input.name.trim()}\n` : "") +
+        `📞 ${phone || "—"}\n` +
+        `✉️ ${email || "—"}\n` +
+        (input.details?.trim() ? `\nКомментарий: ${input.details.trim()}\n` : "") +
+        `\n⏱ Срок ответа: 30 дней (152-ФЗ)\n` +
+        `\n🔗 ${link}`
     );
   } catch {
     /* ignore */
