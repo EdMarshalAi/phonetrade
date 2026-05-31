@@ -200,6 +200,7 @@ export function Hero({ slides, autoplayMs = AUTOPLAY_DEFAULT }: Props) {
                     fill
                     sizes="(min-width: 1024px) 50vw, 42vw"
                     priority
+                    unoptimized
                     className="object-contain object-right drop-shadow-[0_18px_30px_rgba(0,0,0,0.25)]"
                   />
                 )}

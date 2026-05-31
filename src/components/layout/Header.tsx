@@ -551,7 +551,7 @@ export function Header({
                   >
                     <span aria-hidden className="inline-flex size-10 items-center justify-center rounded-xl bg-white/10 text-white">
                       {c.iconUrl ? (
-                        <Image src={c.iconUrl} alt="" width={18} height={18} className="size-[18px] object-contain" />
+                        <Image src={c.iconUrl} alt="" width={18} height={18} unoptimized className="size-[18px] object-contain" />
                       ) : Icon ? (
                         <Icon className="size-[18px]" />
                       ) : null}

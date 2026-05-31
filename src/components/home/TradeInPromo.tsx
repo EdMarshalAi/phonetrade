@@ -56,6 +56,7 @@ export function TradeInPromo({ block }: { block?: TradeInPromoBlock | null }) {
                       src={b.imageUrl}
                       alt={b.title}
                       fill
+                      unoptimized
                       sizes="(max-width:768px) 100vw, 50vw"
                       className="object-contain object-bottom-right drop-shadow-[0_18px_30px_rgba(0,0,0,0.18)] transition-transform duration-500 ease-[var(--ease-apple)] group-hover:scale-[1.04]"
                     />
