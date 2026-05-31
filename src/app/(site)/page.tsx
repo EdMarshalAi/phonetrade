@@ -135,7 +135,7 @@ export default async function HomePage() {
     heroRows.length > 0
       ? heroRows.map((r) => ({
           id: r.id,
-          background: r.theme === "light" ? "white" : "ink",
+          background: r.bg_color || (r.theme === "light" ? "white" : "ink"),
           textTone: r.theme === "light" ? "dark" : "light",
           eyebrow: r.overline ?? undefined,
           title: r.title,

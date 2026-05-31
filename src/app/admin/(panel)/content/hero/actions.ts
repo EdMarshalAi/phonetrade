@@ -14,6 +14,7 @@ function normalize(input: HeroInput) {
     button_text: input.button_text || null,
     button_link: input.button_link || null,
     image_url: input.image_url || null,
+    bg_color: input.bg_color || null,
     theme: input.theme,
     sort_order: input.sort_order ?? 0,
     is_published: input.is_published ?? true,

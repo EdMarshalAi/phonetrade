@@ -337,6 +337,7 @@ export interface HeroSlideRow {
   button_text: string | null;
   button_link: string | null;
   image_url: string | null;
+  bg_color: string | null;
   theme: "dark" | "light";
 }
 
@@ -344,7 +345,7 @@ export async function getHeroSlides(): Promise<HeroSlideRow[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("hero_slides")
-    .select("id,overline,title,description,button_text,button_link,image_url,theme")
+    .select("id,overline,title,description,button_text,button_link,image_url,bg_color,theme")
     .eq("is_published", true)
     .order("sort_order", { ascending: true });
   if (error || !data) return [];

@@ -9,6 +9,8 @@ import { Field, TextInput, Textarea, Select, Switch, FormError, AdminButton } fr
 import { ImageField } from "@/components/admin/ImageField";
 import { Panel } from "@/components/admin/ui";
 import { createHeroSlide, updateHeroSlide } from "./actions";
+import { HeroLinkPicker, type PickerCategory, type PickerProduct } from "./HeroLinkPicker";
+import { cn } from "@/lib/utils/cn";
 
 export interface HeroValue {
   id: string;
@@ -18,12 +20,23 @@ export interface HeroValue {
   button_text: string | null;
   button_link: string | null;
   image_url: string | null;
+  bg_color: string | null;
   theme: "dark" | "light";
   sort_order: number;
   is_published: boolean;
 }
 
-export function HeroForm({ slide }: { slide?: HeroValue }) {
+const BG_PRESETS = ["#1d1d1f", "#000000", "#f5f5f7", "#ffffff", "#0b3d2e", "#13315c", "#5b2333", "#3a3a3c"];
+
+export function HeroForm({
+  slide,
+  categories = [],
+  products = [],
+}: {
+  slide?: HeroValue;
+  categories?: PickerCategory[];
+  products?: PickerProduct[];
+}) {
   const isEdit = !!slide;
   const [formError, setFormError] = React.useState<string | null>(null);
   const {
@@ -40,6 +53,7 @@ export function HeroForm({ slide }: { slide?: HeroValue }) {
       button_text: slide?.button_text ?? "",
       button_link: slide?.button_link ?? "",
       image_url: slide?.image_url ?? "",
+      bg_color: slide?.bg_color ?? "",
       theme: slide?.theme ?? "dark",
       sort_order: slide?.sort_order ?? 0,
       is_published: slide?.is_published ?? true,
@@ -65,14 +79,23 @@ export function HeroForm({ slide }: { slide?: HeroValue }) {
         <Field label="Описание">
           <Textarea placeholder="Титановый корпус, чип A19 Pro…" {...register("description")} />
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Текст кнопки">
-            <TextInput placeholder="Узнать подробнее" {...register("button_text")} />
-          </Field>
-          <Field label="Ссылка кнопки" hint="URL, /product/… или /category/…">
-            <TextInput placeholder="/product/iphone-17-pro" {...register("button_link")} />
-          </Field>
-        </div>
+        <Field label="Текст кнопки">
+          <TextInput placeholder="Узнать подробнее" {...register("button_text")} />
+        </Field>
+        <Field label="Ссылка кнопки" hint="Выберите категорию, подкатегорию, товар или укажите свою ссылку">
+          <Controller
+            control={control}
+            name="button_link"
+            render={({ field }) => (
+              <HeroLinkPicker
+                value={field.value || ""}
+                onChange={(v) => field.onChange(v)}
+                categories={categories}
+                products={products}
+              />
+            )}
+          />
+        </Field>
       </Panel>
 
       <Panel className="p-5">
@@ -87,13 +110,67 @@ export function HeroForm({ slide }: { slide?: HeroValue }) {
         </Field>
       </Panel>
 
-      <Panel className="p-5">
+      <Panel className="space-y-4 p-5">
+        <Field label="Фон слайда" hint="Выберите любой цвет или оставьте по теме">
+          <Controller
+            control={control}
+            name="bg_color"
+            render={({ field }) => {
+              const val = field.value || "";
+              return (
+                <div className="space-y-2.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="color"
+                      aria-label="Палитра цветов"
+                      value={val || "#1d1d1f"}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      className="h-10 w-12 cursor-pointer rounded-md border border-border bg-white p-1"
+                    />
+                    <TextInput
+                      placeholder="#1d1d1f"
+                      value={val}
+                      onChange={(e) => field.onChange(e.target.value)}
+                      className="w-32 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => field.onChange("")}
+                      className={cn(
+                        "h-9 rounded-md border px-3 text-[13px] font-medium transition-colors",
+                        val ? "border-border text-ink-muted hover:text-ink" : "border-ink bg-ink text-white"
+                      )}
+                    >
+                      По теме
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {BG_PRESETS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        aria-label={c}
+                        title={c}
+                        onClick={() => field.onChange(c)}
+                        className={cn(
+                          "size-7 rounded-md border transition-transform hover:scale-110",
+                          val.toLowerCase() === c ? "border-ink ring-2 ring-ink/30" : "border-border"
+                        )}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            }}
+          />
+        </Field>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Тема">
+          <Field label="Цвет текста" hint="Поверх фона">
             <Controller control={control} name="theme" render={({ field }) => (
               <Select value={field.value} onChange={field.onChange}>
-                <option value="dark">Тёмная</option>
-                <option value="light">Светлая</option>
+                <option value="dark">Светлый текст</option>
+                <option value="light">Тёмный текст</option>
               </Select>
             )} />
           </Field>

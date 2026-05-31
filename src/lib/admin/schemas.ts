@@ -111,6 +111,7 @@ export const heroSchema = z.object({
   button_text: z.string().trim().nullable().optional(),
   button_link: z.string().trim().nullable().optional(),
   image_url: z.string().trim().nullable().optional(),
+  bg_color: z.string().trim().nullable().optional(),
   theme: z.enum(["dark", "light"]).default("dark"),
   sort_order: z.coerce.number().int().min(0).default(0),
   is_published: z.boolean().default(true),
