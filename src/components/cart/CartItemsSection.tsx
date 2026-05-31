@@ -45,17 +45,17 @@ export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash
         const priceLabel = base === "card" ? "Картой" : "Наличные";
         const isFavorite = favHas(product.id);
         return (
-          <li key={product.id} className="flex gap-4 sm:gap-5 p-4 sm:p-5 md:p-6">
+          <li key={product.id} className="flex gap-4 sm:gap-5 p-5 sm:p-6">
             <a
               href={`/product/${product.id}`}
-              className="relative shrink-0 size-[88px] sm:size-28 self-start overflow-hidden rounded-2xl bg-surface ring-1 ring-border/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+              className="relative shrink-0 size-24 sm:size-32 self-start overflow-hidden rounded-2xl bg-white ring-1 ring-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
             >
               <Image
                 src={product.image}
                 alt={product.title}
                 fill
-                sizes="112px"
-                className="object-contain p-2.5"
+                sizes="128px"
+                className="object-contain p-3"
                 unoptimized
               />
             </a>
@@ -100,17 +100,17 @@ export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash
                 </div>
               </div>
 
-              {/* Контролы: счётчик слева, избранное/удалить справа */}
-              <div className="mt-4 flex items-center justify-between gap-3 pt-1">
-                <div className="inline-flex items-center rounded-full border border-border/60 bg-white">
+              {/* Контролы: минималистичный счётчик слева, избранное/удалить справа */}
+              <div className="mt-auto flex items-center justify-between gap-3 pt-4">
+                <div className="inline-flex items-center gap-1">
                   <button
                     type="button"
                     aria-label="Уменьшить количество"
                     onClick={() => onQty(product.id, qty - 1)}
                     disabled={qty <= 1}
-                    className="inline-flex size-9 items-center justify-center rounded-full text-ink-muted transition-colors hover:text-ink disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                    className="inline-flex size-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface hover:text-ink disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
                   >
-                    <Minus className="size-3.5" />
+                    <Minus className="size-4" />
                   </button>
                   <input
                     type="text"
@@ -121,16 +121,16 @@ export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash
                       const next = parseInt(e.target.value.replace(/\D/g, ""), 10);
                       if (!Number.isNaN(next)) onQty(product.id, next);
                     }}
-                    className="w-8 rounded bg-transparent text-center text-sm font-medium tabular-nums text-ink outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                    className="w-7 bg-transparent text-center text-[15px] font-semibold tabular-nums text-ink outline-none"
                   />
                   <button
                     type="button"
                     aria-label="Увеличить количество"
                     onClick={() => onQty(product.id, qty + 1)}
                     disabled={qty >= MAX_QTY}
-                    className="inline-flex size-9 items-center justify-center rounded-full text-ink-muted transition-colors hover:text-ink disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                    className="inline-flex size-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface hover:text-ink disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
                   >
-                    <Plus className="size-3.5" />
+                    <Plus className="size-4" />
                   </button>
                 </div>
 
