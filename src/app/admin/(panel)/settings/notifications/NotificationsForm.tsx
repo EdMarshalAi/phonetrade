@@ -18,6 +18,7 @@ const TRIGGER_LABELS: Record<NotificationTrigger, string> = {
   order_paid: "Заказ оплачен",
   order_cancelled: "Отмена заказа",
   data_request_new: "Обращение по персональным данным",
+  new_lead_trade_in: "Новая заявка Trade-in",
 };
 
 const TRIGGERS: NotificationTrigger[] = [
@@ -27,6 +28,7 @@ const TRIGGERS: NotificationTrigger[] = [
   "order_paid",
   "order_cancelled",
   "data_request_new",
+  "new_lead_trade_in",
 ];
 
 function csvToArray(csv: string): string[] {
