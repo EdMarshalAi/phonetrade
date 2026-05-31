@@ -387,7 +387,12 @@ export function PricingShell({
                   <th className="w-28 text-right">Карта</th>
                   <th className="w-28 text-right">Кредит 24м</th>
                   <th className="w-20 text-right">Наценка</th>
-                  <th className="w-24 text-right">Маржа ₽</th>
+                  <th className="w-24 text-right">
+                    <span className="inline-flex items-center justify-end gap-1">
+                      Маржа ₽
+                      <InfoTip text="Маржа = цена нал − закупка ₽. Наценка считается от закупки по РАБОЧЕМУ курсу, а не по курсу закупа. Если рабочий курс ниже курса закупа — часть наценки уходит на курсовую разницу, и маржа меньше, чем % наценки." />
+                    </span>
+                  </th>
                   <th className="w-24">Статус</th>
                   <th className="w-20"></th>
                 </tr>
