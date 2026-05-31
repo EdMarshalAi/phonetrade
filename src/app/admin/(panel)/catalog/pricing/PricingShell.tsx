@@ -703,14 +703,14 @@ function FormulaModal({ open, onClose, initial, course, affected, categories, on
 
 /** Таблица наценок и мин.маржи по категориям внутри модалки «Формула». */
 function CategoryMarkupTable({ categories, onSaved }: { categories: PricingCategory[]; onSaved: () => void }) {
-  // только листовые категории товаров (не родители-разделы)
-  const leafs = categories.filter((c) => !categories.some((x) => x.parent_slug === c.slug));
-  if (leafs.length === 0) return null;
+  // только общие (родительские) категории; наценка каскадом применяется к подкатегориям
+  const parents = categories.filter((c) => !c.parent_slug);
+  if (parents.length === 0) return null;
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">Наценки по категориям</p>
-        <InfoTip text="Наценка на закупочную цену (не на курс). Чем выше — тем больше маржа, но дороже для клиента. Телефоны 8–12%, часы/планшеты ~20%, колонки 30–50%. После сохранения пересчитываются только товары этой категории." />
+        <InfoTip text="Наценка на закупочную цену (не на курс). Задаётся на общей категории и автоматически применяется ко всем её подкатегориям. Телефоны 8–12%, часы/планшеты ~20%, колонки 30–50%. После сохранения пересчитываются товары категории и всех подкатегорий." />
       </div>
       <div className="overflow-hidden rounded-lg border border-border/60">
         <table className="w-full text-[13px]">
@@ -723,7 +723,7 @@ function CategoryMarkupTable({ categories, onSaved }: { categories: PricingCateg
             </tr>
           </thead>
           <tbody>
-            {leafs.map((c) => (
+            {parents.map((c) => (
               <CategoryMarkupRow key={c.slug} cat={c} onSaved={onSaved} />
             ))}
           </tbody>

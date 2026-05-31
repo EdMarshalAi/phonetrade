@@ -209,10 +209,14 @@ export async function updateCategoryPricing(
       changes: { markup_percent, min_margin_rub },
       revalidate: ["/", "/catalog", `/category/${slug}`, "/admin/catalog/pricing"],
       run: async (db) => {
-        const { error } = await db.from("categories").update({ markup_percent, min_margin_rub, updated_at: new Date().toISOString() }).eq("slug", slug);
+        // Наценка задаётся на общей категории и каскадом применяется к её
+        // подкатегориям (единый источник — родитель).
+        const { data: kids } = await db.from("categories").select("slug").eq("parent_slug", slug);
+        const slugs = [slug, ...(kids ?? []).map((k) => k.slug as string)];
+        const { error } = await db.from("categories").update({ markup_percent, min_margin_rub, updated_at: new Date().toISOString() }).in("slug", slugs);
         if (error) throw error;
-        // id-шники товаров категории → точечный пересчёт
-        const { data: prods } = await db.from("products").select("id").eq("category_slug", slug).is("deleted_at", null).neq("type", "used");
+        // товары категории и всех подкатегорий → точечный пересчёт
+        const { data: prods } = await db.from("products").select("id").in("category_slug", slugs).is("deleted_at", null).neq("type", "used");
         const ids = (prods ?? []).map((p) => p.id as string);
         if (ids.length) {
           const { data, error: e2 } = await db.rpc("recalculate_all_prices", { p_reason: "category_markup_edit", p_user_id: admin.id, p_ids: ids });
