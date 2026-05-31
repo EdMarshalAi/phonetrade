@@ -80,7 +80,7 @@ export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash
             {base === "cash" && product.priceCard > product.priceCash ? (
               <div className="mt-1 text-[12px] leading-none text-ink-subtle line-through tabular-nums">{formatPrice(product.priceCard * qty)}</div>
             ) : null}
-            <div className="mt-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-subtle">{priceLabel}</div>
+            <div className="mt-1.5 hidden text-[10px] uppercase tracking-[0.1em] text-ink-subtle sm:block">{priceLabel}</div>
           </>
         );
 
