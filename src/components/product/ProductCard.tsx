@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Heart, Check } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ProductBadges } from "@/components/product/ProductBadges";
@@ -167,7 +168,9 @@ export function ProductCard({ product, className }: Props) {
       </div>
 
       <h3 className="text-[15px] font-semibold leading-snug tracking-tight text-ink line-clamp-2 min-h-[44px]">
-        {product.title}
+        <Link href={`/product/${product.id}`} data-stop-card className="outline-none focus-visible:underline">
+          {product.title}
+        </Link>
       </h3>
       {/* Цвет — как подпись, но только если опция «Цвет» включена в настройках карточки */}
       {colorOpt ? <p className="mt-1 text-xs text-ink-subtle capitalize">{colorOpt.value}</p> : null}

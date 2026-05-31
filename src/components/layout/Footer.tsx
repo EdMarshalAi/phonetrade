@@ -30,6 +30,12 @@ export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | nul
   const phone2Shown = !!phone2 && contacts?.phone2_enabled !== false;
   const email = contacts?.email?.trim();
   const emailShown = !!email && contacts?.email_enabled !== false;
+  // Реквизиты (юр. лицо / ИНН / ОГРН) — trust-сигнал для РФ-торговли.
+  const cx = (contacts ?? {}) as Record<string, unknown>;
+  const legalEntity = (cx.legal_entity as string | undefined)?.trim();
+  const inn = (cx.inn as string | undefined)?.trim();
+  const ogrn = (cx.ogrn as string | undefined)?.trim();
+  const requisites = [legalEntity, inn ? `ИНН ${inn}` : "", ogrn ? `ОГРН ${ogrn}` : ""].filter(Boolean).join(" · ");
   // Юр. ссылки из меню админки (footer) с фолбэком на встроенные.
   const legal = legalLinks && legalLinks.length > 0 ? legalLinks.map((l) => ({ href: l.href, label: l.title })) : LEGAL;
   return (
@@ -164,8 +170,9 @@ export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | nul
       </div>
 
       <div className="border-t border-white/5">
-        <div className="container-page py-5 text-xs text-onDark-muted">
-          © PhoneTrade, 2025 г. Все права защищены.
+        <div className="container-page space-y-1 py-5 text-xs text-onDark-muted">
+          {requisites ? <p>{requisites}</p> : null}
+          <p>© PhoneTrade, 2025 г. Все права защищены.</p>
         </div>
       </div>
     </footer>
