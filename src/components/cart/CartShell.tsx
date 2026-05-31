@@ -13,6 +13,7 @@ import { MAX_QTY } from "@/lib/cart/constants";
 import { pluralizeItems } from "@/lib/utils/plural";
 import type { CartItem, CheckoutState } from "@/lib/cart/types";
 import { placeOrder } from "@/lib/cart/order-actions";
+import { ymReachGoal, ymPurchase } from "@/lib/analytics/metrika";
 import { validatePromoCode } from "@/lib/cart/promo-actions";
 import { computePromoDiscount, type ValidatedPromo } from "@/lib/cart/promo";
 import { trackFunnel } from "@/lib/analytics/track";
@@ -112,6 +113,7 @@ export function CartShell({
   // Воронка: пользователь зашёл в оформление.
   React.useEffect(() => {
     trackFunnel("begin_checkout", { items_count: items.length });
+    ymReachGoal("checkout_start");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -189,6 +191,13 @@ export function CartShell({
       const displayId = result.orderNumber ?? `PT-${Date.now().toString().slice(-6)}`;
 
       trackFunnel("pay_order", { order: displayId, total });
+      // Я.Метрика: цель «заказ» + e-commerce выручка.
+      ymReachGoal("order", { order_price: total, currency: "RUB" });
+      ymPurchase({
+        id: displayId,
+        total,
+        items: items.map((i) => ({ id: i.productId, name: i.product.title, price: i.product.priceCash, quantity: i.qty })),
+      });
       // Сохраняем данные покупателя в профиль (если вошёл).
       if (user) {
         updateProfile({

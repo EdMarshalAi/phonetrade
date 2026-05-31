@@ -4,6 +4,8 @@ import * as React from "react";
 import Script from "next/script";
 import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
+import { CustomCodeInjector } from "@/components/integrations/CustomCodeInjector";
+import type { CodeSnippet } from "@/lib/integrations/snippets";
 
 /**
  * Cookie-согласие (152-ФЗ / 38-ФЗ). Тонкая полоска внизу + drawer настроек.
@@ -29,7 +31,7 @@ type Ctx = { openSettings: () => void };
 const CookieCtx = React.createContext<Ctx>({ openSettings: () => {} });
 export const useCookieConsent = () => React.useContext(CookieCtx);
 
-export function CookieConsentProvider({ children, metrikaId }: { children: React.ReactNode; metrikaId?: string | null }) {
+export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }: { children: React.ReactNode; metrikaId?: string | null; codeSnippets?: CodeSnippet[] }) {
   const [mounted, setMounted] = React.useState(false);
   const [consent, setConsent] = React.useState<Consent | null>(null);
   const [decided, setDecided] = React.useState(true); // до маунта не показываем (без гидрейшн-скачка)
@@ -68,8 +70,15 @@ export function CookieConsentProvider({ children, metrikaId }: { children: React
           for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
           k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
           (window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
-          ym(${Number(metrikaId)},"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true});
+          window.__ymId=${Number(metrikaId)};window.dataLayer=window.dataLayer||[];
+          ym(${Number(metrikaId)},"init",{webvisor:true,clickmap:true,trackLinks:true,accurateTrackBounce:true,ecommerce:"dataLayer"});
         ` }} />
+      ) : null}
+      {/* Кастомные код-сниппеты из админки (счётчики/пиксели/виджеты) — при согласии на аналитику */}
+      <CustomCodeInjector snippets={codeSnippets} allowed={!!consent?.analytics} />
+
+      {metrikaId && consent?.analytics ? (
+        <noscript><div><img src={`https://mc.yandex.ru/watch/${Number(metrikaId)}`} style={{ position: "absolute", left: "-9999px" }} alt="" /></div></noscript>
       ) : null}
 
       {showBanner ? (

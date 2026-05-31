@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Check, ChevronDown, RotateCcw } from "lucide-rea
 import { submitTradeInQuiz } from "@/lib/trade-in/trade-in-actions";
 import { EXTERNAL_OPTIONS, BATTERY_OPTIONS, KIT_OPTIONS, type TradeInModel } from "@/lib/trade-in/options";
 import { useAuth, type AuthUser } from "@/components/providers/AuthProvider";
+import { ymReachGoal } from "@/lib/analytics/metrika";
 import { cn } from "@/lib/utils/cn";
 
 const STEP_TITLES = [
@@ -107,6 +108,8 @@ export function TradeInQuiz({ models, initialUser = null }: { models: TradeInMod
       name: d.name, phone: d.phone, email: d.email || undefined, consentMarketing: consent.marketing,
     });
     if (res.error) { setPending(false); setError(res.error); return; }
+    // Я.Метрика: цель «заявка trade-in».
+    ymReachGoal("trade_in");
     // Авторизованный ввёл недостающие контакты — сохраним в профиль (без блокировки перехода).
     if (user) {
       const patch: { name?: string; phone?: string } = {};

@@ -11,6 +11,8 @@ import { CardSettingsProvider } from "@/components/product/CardSettings";
 import { CookieConsentProvider } from "@/components/legal/CookieConsent";
 import { getShopContacts, getNavCategoryTree, getMenu, getProductBadges, getCardDisplay, getProductOptions, getMetrikaId, getSiteMaintenance } from "@/lib/content";
 import { getAdminUser } from "@/lib/admin/auth";
+import { getCodeSnippets } from "@/lib/integrations/snippets";
+import { ConversionClicks } from "@/components/analytics/ConversionClicks";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -24,7 +26,7 @@ export default async function SiteLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [contacts, navTree, topMenu, footerMenu, badges, cardDisplay, cardOptions, metrikaId, maintenance] = await Promise.all([
+  const [contacts, navTree, topMenu, footerMenu, badges, cardDisplay, cardOptions, metrikaId, maintenance, codeSnippets] = await Promise.all([
     getShopContacts(),
     getNavCategoryTree(),
     getMenu("top"),
@@ -34,6 +36,7 @@ export default async function SiteLayout({
     getProductOptions(),
     getMetrikaId(),
     getSiteMaintenance(),
+    getCodeSnippets(),
   ]);
 
   // Режим технических работ: посетители видят заглушку, а вошедший администратор —
@@ -61,7 +64,7 @@ export default async function SiteLayout({
           <FavoritesProvider>
             <BadgeRegistryProvider badges={badges}>
             <CardSettingsProvider display={cardDisplay} options={cardOptions}>
-              <CookieConsentProvider metrikaId={metrikaId}>
+              <CookieConsentProvider metrikaId={metrikaId} codeSnippets={codeSnippets}>
                 <div className="flex min-h-dvh flex-col">
                   {maintenance.on && isAdmin ? (
                     <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 bg-sale px-4 py-2 text-center text-[13px] font-medium text-white">
@@ -75,6 +78,7 @@ export default async function SiteLayout({
                   <Footer contacts={contacts} legalLinks={footerMenu} />
                 </div>
                 <PageViewTracker />
+                <ConversionClicks />
                 <BackToTop />
               </CookieConsentProvider>
             </CardSettingsProvider>

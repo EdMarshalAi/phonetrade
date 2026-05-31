@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { ymReachGoal } from "@/lib/analytics/metrika";
 
 const QUERIES = [
   "iPhone 17 Pro 256GB Sage",
@@ -39,6 +40,7 @@ export function SearchInput({ tone = "dark" }: { tone?: "dark" | "light" }) {
       return;
     }
     inputRef.current?.blur();
+    ymReachGoal("search", { search_query: q });
     router.push(`/search?q=${encodeURIComponent(q)}`);
   };
 

@@ -3,204 +3,265 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Field, TextInput, Switch, FormError, AdminButton } from "@/components/admin/form";
-import { Panel, PanelTitle } from "@/components/admin/ui";
-import { saveIntegration, type IntegrationKey, type IntegrationRow } from "./actions";
+import { BarChart3, Send, MapPin, Mail, Code2, Plus, Loader2, Trash2, X } from "lucide-react";
+import { Field, TextInput, Textarea, Switch, Select, AdminButton } from "@/components/admin/form";
+import { cn } from "@/lib/utils/cn";
+import { saveIntegration, createCustomIntegration, deleteIntegration, type IntegrationRow } from "./actions";
 
-/* ── Хелпер: одна секция интеграции ──────────────────────────────────── */
-function IntegrationPanel({
-  title,
-  integrationKey,
-  initial,
-  children,
-}: {
-  title: string;
-  integrationKey: IntegrationKey;
-  initial: IntegrationRow | undefined;
-  children: (
-    cfg: Record<string, unknown>,
-    setCfg: React.Dispatch<React.SetStateAction<Record<string, unknown>>>
-  ) => React.ReactNode;
-}) {
+type FieldDef = { name: string; label: string; type?: string; placeholder?: string; hint?: string };
+type Builtin = { key: string; title: string; desc: string; icon: typeof BarChart3; fields: FieldDef[] };
+
+const BUILTIN: Builtin[] = [
+  { key: "metrika", title: "Яндекс.Метрика", desc: "Веб-аналитика, вебвизор, цели и e-commerce", icon: BarChart3,
+    fields: [{ name: "counter_id", label: "Номер счётчика", placeholder: "91129028", hint: "Грузится при согласии на cookie-аналитику" }] },
+  { key: "telegram", title: "Telegram-бот", desc: "Уведомления о заказах и заявках", icon: Send,
+    fields: [
+      { name: "bot_token", label: "Bot Token", type: "password", placeholder: "1234567890:AA…", hint: "Получите у @BotFather" },
+      { name: "chat_ids", label: "Chat IDs", placeholder: "-1001234567890, -1009876543210", hint: "Через запятую" },
+    ] },
+  { key: "yandex_maps", title: "Яндекс.Карты", desc: "Карта на странице контактов", icon: MapPin,
+    fields: [{ name: "api_key", label: "API-ключ", placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" }] },
+  { key: "smtp", title: "SMTP (почта)", desc: "Отправка писем покупателям", icon: Mail,
+    fields: [
+      { name: "host", label: "Хост", placeholder: "smtp.yandex.ru" },
+      { name: "port", label: "Порт", placeholder: "465" },
+      { name: "user", label: "Пользователь", placeholder: "noreply@phonetrade.ru" },
+      { name: "pass", label: "Пароль", type: "password" },
+      { name: "from", label: "Адрес отправителя (From)", placeholder: "PhoneTrade <noreply@phonetrade.ru>" },
+    ] },
+];
+
+type Entry = { config: Record<string, unknown>; is_enabled: boolean };
+
+export function IntegrationsForm({ rows }: { rows: IntegrationRow[] }) {
   const router = useRouter();
-  const [enabled, setEnabled] = React.useState(initial?.is_enabled ?? false);
-  const [cfg, setCfg] = React.useState<Record<string, unknown>>(initial?.config ?? {});
-  const [error, setError] = React.useState<string | null>(null);
-  const [saving, setSaving] = React.useState(false);
+  const [data, setData] = React.useState<Record<string, Entry>>(() => {
+    const map: Record<string, Entry> = {};
+    for (const b of BUILTIN) map[b.key] = { config: {}, is_enabled: false };
+    for (const r of rows) map[r.key] = { config: r.config ?? {}, is_enabled: r.is_enabled };
+    return map;
+  });
+  const [open, setOpen] = React.useState<string | null>(null);
+  const [addOpen, setAddOpen] = React.useState(false);
+  const [busy, setBusy] = React.useState<string | null>(null);
 
-  const save = async () => {
-    setSaving(true);
-    setError(null);
-    const res = await saveIntegration(integrationKey, cfg, enabled);
-    setSaving(false);
-    if (res?.error) { setError(res.error); return; }
-    toast.success(`${title}: настройки сохранены`);
+  const customKeys = Object.keys(data).filter((k) => k.startsWith("custom_") && data[k].config?.type === "code");
+  const allKeys = [...BUILTIN.map((b) => b.key), ...customKeys];
+
+  const toggle = async (key: string, next: boolean) => {
+    setData((d) => ({ ...d, [key]: { ...d[key], is_enabled: next } }));
+    setBusy(key);
+    const res = await saveIntegration(key, data[key]?.config ?? {}, next);
+    setBusy(null);
+    if (res.error) { toast.error(res.error); setData((d) => ({ ...d, [key]: { ...d[key], is_enabled: !next } })); return; }
+    toast.success(next ? "Включено" : "Выключено");
     router.refresh();
   };
 
+  const removeCustom = async (key: string) => {
+    if (!window.confirm("Удалить интеграцию?")) return;
+    const res = await deleteIntegration(key);
+    if (res.error) { toast.error(res.error); return; }
+    setData((d) => { const c = { ...d }; delete c[key]; return c; });
+    toast.success("Удалено");
+    router.refresh();
+  };
+
+  const meta = (key: string) => {
+    const b = BUILTIN.find((x) => x.key === key);
+    if (b) return { title: b.title, desc: b.desc, icon: b.icon };
+    return { title: String(data[key]?.config?.title || "Код-интеграция"), desc: "Произвольный код (счётчик/пиксель/виджет)", icon: Code2 };
+  };
+
   return (
-    <Panel className="space-y-4 p-5">
-      <div className="flex items-center justify-between gap-4">
-        <PanelTitle>{title}</PanelTitle>
-        <Switch checked={enabled} onChange={setEnabled} label="Включено" />
+    <>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {allKeys.map((key) => {
+          const m = meta(key);
+          const e = data[key];
+          const Icon = m.icon;
+          const on = !!e?.is_enabled;
+          return (
+            <div key={key} className="rounded-2xl border border-border/60 bg-white p-5 shadow-[0_1px_3px_rgba(29,29,31,0.04)] transition-colors hover:border-ink/20">
+              <div className="flex items-start gap-3">
+                <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", on ? "bg-ink text-white" : "bg-surface text-ink-muted")}>
+                  <Icon className="size-5" strokeWidth={1.75} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="truncate text-[15px] font-semibold text-ink">{m.title}</h3>
+                    <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide", on ? "bg-emerald-50 text-emerald-700" : "bg-surface text-ink-subtle")}>
+                      {on ? "Подключено" : "Выключено"}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[12.5px] leading-snug text-ink-muted">{m.desc}</p>
+                </div>
+                {busy === key ? <Loader2 className="size-4 shrink-0 animate-spin text-ink-subtle" /> : <Switch checked={on} onChange={(v) => toggle(key, v)} />}
+              </div>
+              <div className="mt-4 flex items-center gap-2">
+                <AdminButton type="button" variant="outline" size="sm" onClick={() => setOpen(key)}>Настроить</AdminButton>
+                {key.startsWith("custom_") ? (
+                  <button type="button" onClick={() => removeCustom(key)} className="ml-auto inline-flex size-8 items-center justify-center rounded-md text-ink-subtle/60 transition-colors hover:bg-sale/5 hover:text-sale" aria-label="Удалить">
+                    <Trash2 className="size-4" />
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          className="flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-surface/30 p-5 text-ink-muted transition-colors hover:border-ink/30 hover:bg-surface/60 hover:text-ink"
+        >
+          <Plus className="size-6" />
+          <span className="text-[14px] font-medium">Добавить интеграцию</span>
+          <span className="text-[12px] text-ink-subtle">Вставить код счётчика / пикселя / виджета</span>
+        </button>
       </div>
-      <FormError message={error} />
-      {children(cfg, setCfg)}
-      <AdminButton type="button" loading={saving} onClick={save}>Сохранить</AdminButton>
-    </Panel>
+
+      {open ? (
+        <SettingsModal
+          intKey={open}
+          builtin={BUILTIN.find((b) => b.key === open)}
+          entry={data[open]}
+          onClose={() => setOpen(null)}
+          onSaved={(cfg, en) => { setData((d) => ({ ...d, [open]: { config: cfg, is_enabled: en } })); setOpen(null); router.refresh(); }}
+          onDeleted={() => { setData((d) => { const c = { ...d }; delete c[open]; return c; }); setOpen(null); router.refresh(); }}
+        />
+      ) : null}
+
+      {addOpen ? (
+        <AddModal
+          onClose={() => setAddOpen(false)}
+          onCreated={(key, cfg) => { setData((d) => ({ ...d, [key]: { config: cfg, is_enabled: true } })); setAddOpen(false); router.refresh(); }}
+        />
+      ) : null}
+    </>
   );
 }
 
-/* ── Главный компонент ────────────────────────────────────────────────── */
-export function IntegrationsForm({ rows }: { rows: IntegrationRow[] }) {
-  const map = Object.fromEntries(rows.map((r) => [r.key, r]));
+function SettingsModal({ intKey, builtin, entry, onClose, onSaved, onDeleted }: {
+  intKey: string;
+  builtin?: Builtin;
+  entry: Entry;
+  onClose: () => void;
+  onSaved: (cfg: Record<string, unknown>, enabled: boolean) => void;
+  onDeleted: () => void;
+}) {
+  const isCustom = intKey.startsWith("custom_");
+  const [cfg, setCfg] = React.useState<Record<string, unknown>>(entry?.config ?? {});
+  const [enabled, setEnabled] = React.useState(!!entry?.is_enabled);
+  const [saving, setSaving] = React.useState(false);
+  const title = builtin?.title ?? String(cfg.title || "Код-интеграция");
+
+  const save = async () => {
+    setSaving(true);
+    const res = await saveIntegration(intKey, cfg, enabled);
+    setSaving(false);
+    if (res.error) { toast.error(res.error); return; }
+    toast.success("Сохранено");
+    onSaved(cfg, enabled);
+  };
+  const remove = async () => {
+    if (!window.confirm("Удалить интеграцию?")) return;
+    const res = await deleteIntegration(intKey);
+    if (res.error) { toast.error(res.error); return; }
+    toast.success("Удалено");
+    onDeleted();
+  };
 
   return (
-    <div className="space-y-5">
-      {/* Telegram */}
-      <IntegrationPanel title="Telegram-бот" integrationKey="telegram" initial={map["telegram"]}>
-        {(cfg, setCfg) => (
-          <div className="space-y-4">
-            <Field label="Bot Token" hint="Получите у @BotFather">
+    <Modal title={title} onClose={onClose}>
+      <div className="space-y-4">
+        <Switch checked={enabled} onChange={setEnabled} label="Включено" />
+        {builtin ? (
+          builtin.fields.map((f) => (
+            <Field key={f.name} label={f.label} hint={f.hint}>
               <TextInput
-                type="password"
-                placeholder="1234567890:AAFabcdef…"
-                value={String(cfg.bot_token ?? "")}
-                onChange={(e) => setCfg((p) => ({ ...p, bot_token: e.target.value }))}
+                type={f.type ?? "text"}
+                placeholder={f.placeholder}
+                value={String(cfg[f.name] ?? "")}
+                onChange={(e) => setCfg((p) => ({ ...p, [f.name]: e.target.value }))}
               />
             </Field>
-            <Field label="Chat IDs" hint="Через запятую: ID чатов/каналов для уведомлений">
-              <TextInput
-                placeholder="-1001234567890, -1009876543210"
-                value={String(cfg.chat_ids ?? "")}
-                onChange={(e) => setCfg((p) => ({ ...p, chat_ids: e.target.value }))}
-              />
+          ))
+        ) : (
+          <>
+            <Field label="Название">
+              <TextInput value={String(cfg.title ?? "")} onChange={(e) => setCfg((p) => ({ ...p, title: e.target.value }))} />
             </Field>
-          </div>
-        )}
-      </IntegrationPanel>
-
-      {/* Яндекс.Метрика */}
-      <IntegrationPanel title="Яндекс.Метрика" integrationKey="metrika" initial={map["metrika"]}>
-        {(cfg, setCfg) => (
-          <Field label="Номер счётчика">
-            <TextInput
-              placeholder="12345678"
-              value={String(cfg.counter_id ?? "")}
-              onChange={(e) => setCfg((p) => ({ ...p, counter_id: e.target.value }))}
-            />
-          </Field>
-        )}
-      </IntegrationPanel>
-
-      {/* Google Analytics 4 */}
-      <IntegrationPanel title="Google Analytics 4" integrationKey="ga4" initial={map["ga4"]}>
-        {(cfg, setCfg) => (
-          <Field label="Measurement ID" hint="Формат: G-XXXXXXXXXX">
-            <TextInput
-              placeholder="G-XXXXXXXXXX"
-              value={String(cfg.measurement_id ?? "")}
-              onChange={(e) => setCfg((p) => ({ ...p, measurement_id: e.target.value }))}
-            />
-          </Field>
-        )}
-      </IntegrationPanel>
-
-      {/* Яндекс.Карты */}
-      <IntegrationPanel title="Яндекс.Карты" integrationKey="yandex_maps" initial={map["yandex_maps"]}>
-        {(cfg, setCfg) => (
-          <Field label="API-ключ">
-            <TextInput
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              value={String(cfg.api_key ?? "")}
-              onChange={(e) => setCfg((p) => ({ ...p, api_key: e.target.value }))}
-            />
-          </Field>
-        )}
-      </IntegrationPanel>
-
-      {/* ЮKassa */}
-      <IntegrationPanel title="ЮKassa" integrationKey="yookassa" initial={map["yookassa"]}>
-        {(cfg, setCfg) => (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="shopId">
-              <TextInput
-                placeholder="123456"
-                value={String(cfg.shop_id ?? "")}
-                onChange={(e) => setCfg((p) => ({ ...p, shop_id: e.target.value }))}
-              />
+            <Field label="Код" hint="HTML/JS — счётчик, пиксель или виджет">
+              <Textarea rows={8} className="font-mono text-[12px]" value={String(cfg.code ?? "")} onChange={(e) => setCfg((p) => ({ ...p, code: e.target.value }))} />
             </Field>
-            <Field label="Секретный ключ">
-              <TextInput
-                type="password"
-                placeholder="live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                value={String(cfg.secret_key ?? "")}
-                onChange={(e) => setCfg((p) => ({ ...p, secret_key: e.target.value }))}
-              />
+            <Field label="Куда вставлять">
+              <Select value={String(cfg.placement ?? "body_end")} onChange={(e) => setCfg((p) => ({ ...p, placement: e.target.value }))}>
+                <option value="head">В &lt;head&gt;</option>
+                <option value="body_end">Перед &lt;/body&gt;</option>
+              </Select>
             </Field>
-          </div>
+          </>
         )}
-      </IntegrationPanel>
+        <div className="flex items-center gap-2 pt-1">
+          <AdminButton type="button" onClick={save} loading={saving}>Сохранить</AdminButton>
+          {isCustom ? <AdminButton type="button" variant="ghost" onClick={remove}><Trash2 className="size-4" /> Удалить</AdminButton> : null}
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
-      {/* Т-Банк */}
-      <IntegrationPanel title="Т-Банк (эквайринг)" integrationKey="tbank" initial={map["tbank"]}>
-        {(cfg, setCfg) => (
-          <Field label="Merchant ID">
-            <TextInput
-              placeholder="TinkoffBankTest"
-              value={String(cfg.merchant_id ?? "")}
-              onChange={(e) => setCfg((p) => ({ ...p, merchant_id: e.target.value }))}
-            />
-          </Field>
-        )}
-      </IntegrationPanel>
+function AddModal({ onClose, onCreated }: { onClose: () => void; onCreated: (key: string, cfg: Record<string, unknown>) => void }) {
+  const [title, setTitle] = React.useState("");
+  const [code, setCode] = React.useState("");
+  const [placement, setPlacement] = React.useState<"head" | "body_end">("body_end");
+  const [saving, setSaving] = React.useState(false);
 
-      {/* SMTP */}
-      <IntegrationPanel title="SMTP (почта)" integrationKey="smtp" initial={map["smtp"]}>
-        {(cfg, setCfg) => (
-          <div className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Хост">
-                <TextInput
-                  placeholder="smtp.yandex.ru"
-                  value={String(cfg.host ?? "")}
-                  onChange={(e) => setCfg((p) => ({ ...p, host: e.target.value }))}
-                />
-              </Field>
-              <Field label="Порт">
-                <TextInput
-                  placeholder="465"
-                  value={String(cfg.port ?? "")}
-                  onChange={(e) => setCfg((p) => ({ ...p, port: e.target.value }))}
-                />
-              </Field>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Пользователь">
-                <TextInput
-                  placeholder="noreply@phonetrade.ru"
-                  value={String(cfg.user ?? "")}
-                  onChange={(e) => setCfg((p) => ({ ...p, user: e.target.value }))}
-                />
-              </Field>
-              <Field label="Пароль">
-                <TextInput
-                  type="password"
-                  value={String(cfg.pass ?? "")}
-                  onChange={(e) => setCfg((p) => ({ ...p, pass: e.target.value }))}
-                />
-              </Field>
-            </div>
-            <Field label="Адрес отправителя (From)">
-              <TextInput
-                placeholder="PhoneTrade <noreply@phonetrade.ru>"
-                value={String(cfg.from ?? "")}
-                onChange={(e) => setCfg((p) => ({ ...p, from: e.target.value }))}
-              />
-            </Field>
-          </div>
-        )}
-      </IntegrationPanel>
+  const create = async () => {
+    setSaving(true);
+    const res = await createCustomIntegration({ title, code, placement });
+    setSaving(false);
+    if (res.error || !res.key) { toast.error(res.error ?? "Ошибка"); return; }
+    toast.success("Интеграция добавлена");
+    onCreated(res.key, { type: "code", title, code, placement });
+  };
+
+  return (
+    <Modal title="Новая интеграция (код)" onClose={onClose}>
+      <div className="space-y-4">
+        <Field label="Название" hint="Напр. «Пиксель VK» или «Чат Jivo»">
+          <TextInput value={title} placeholder="Пиксель VK" onChange={(e) => setTitle(e.target.value)} />
+        </Field>
+        <Field label="Код" hint="Вставьте код счётчика / пикселя / виджета (HTML+JS)">
+          <Textarea rows={9} className="font-mono text-[12px]" placeholder="<script> … </script>" value={code} onChange={(e) => setCode(e.target.value)} />
+        </Field>
+        <Field label="Куда вставлять">
+          <Select value={placement} onChange={(e) => setPlacement(e.target.value as "head" | "body_end")}>
+            <option value="head">В &lt;head&gt;</option>
+            <option value="body_end">Перед &lt;/body&gt;</option>
+          </Select>
+        </Field>
+        <div className="pt-1">
+          <AdminButton type="button" onClick={create} loading={saving}><Plus className="size-4" /> Добавить</AdminButton>
+        </div>
+        <p className="text-[12px] text-ink-subtle">Код выполняется на витрине при согласии посетителя на cookie-аналитику.</p>
+      </div>
+    </Modal>
+  );
+}
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-border/70 bg-white shadow-lg">
+        <div className="flex items-center justify-between border-b border-border/60 px-5 py-3">
+          <h3 className="text-[15px] font-semibold text-ink">{title}</h3>
+          <button type="button" onClick={onClose} className="rounded-md p-1 text-ink-subtle hover:bg-surface hover:text-ink" aria-label="Закрыть"><X className="size-4" /></button>
+        </div>
+        <div className="max-h-[70vh] overflow-y-auto p-5">{children}</div>
+      </div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
   removeFromCart,
   clearCart,
 } from "@/lib/cart/cart-actions";
+import { ymReachGoal } from "@/lib/analytics/metrika";
 
 type CartContextValue = {
   items: CartItem[];
@@ -38,6 +39,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const add = React.useCallback(async (product: Product, qty = 1) => {
     setItems(await addToCart(product.id, qty));
+    ymReachGoal("add_to_cart", { order_price: product.priceCash, currency: "RUB" });
   }, []);
   const setQty = React.useCallback(async (productId: string, qty: number) => {
     setItems(await setCartQty(productId, qty));
