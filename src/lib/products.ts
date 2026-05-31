@@ -172,32 +172,17 @@ export async function getRelatedProducts(
 ): Promise<Product[]> {
   if (!supabase) return mockRelated(product, limit);
 
-  // 1) Явно выбранные в админке сопутствующие товары (сохраняем порядок выбора).
+  // Только явно выбранные в админке сопутствующие товары (без авто-подбора).
   const ids = product.relatedProductIds ?? [];
-  if (ids.length > 0) {
-    const { data } = await supabase
-      .from("products")
-      .select("*")
-      .in("id", ids)
-      .eq("status", "published")
-      .is("deleted_at", null);
-    const byId = new Map((data as ProductRow[] | null ?? []).map((r) => [r.id, rowToProduct(r)]));
-    const ordered = ids.map((id) => byId.get(id)).filter((p): p is Product => !!p);
-    if (ordered.length > 0) return ordered.slice(0, limit);
-  }
-
-  // 2) Фолбэк — товары той же категории.
-  const { data, error } = await supabase
+  if (ids.length === 0) return [];
+  const { data } = await supabase
     .from("products")
     .select("*")
-    .eq("category_slug", product.categorySlug)
-    .neq("id", product.id)
+    .in("id", ids)
     .eq("status", "published")
-    .is("deleted_at", null)
-    .order("sort", { ascending: true })
-    .limit(limit);
-  if (error || !data) return mockRelated(product, limit);
-  return (data as ProductRow[]).map(rowToProduct);
+    .is("deleted_at", null);
+  const byId = new Map((data as ProductRow[] | null ?? []).map((r) => [r.id, rowToProduct(r)]));
+  return ids.map((id) => byId.get(id)).filter((p): p is Product => !!p).slice(0, limit);
 }
 
 export async function getNewProducts(): Promise<Product[]> {

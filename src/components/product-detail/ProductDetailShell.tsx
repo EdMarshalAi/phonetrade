@@ -52,15 +52,16 @@ export function ProductDetailShell({ product, related, variants, productBlocks }
       {product.descriptionHtml && product.descriptionHtml.trim().length > 0 ? (
         <section className="bg-bg border-t border-border/60">
           <div className="container-page py-14 md:py-20">
-            <div className="mx-auto max-w-3xl">
-              <h2 className="mb-6 text-2xl md:text-3xl font-semibold tracking-[-0.02em] text-ink">
-                Подробное описание
-              </h2>
-              <div
-                className="prose prose-neutral max-w-none prose-headings:font-semibold prose-headings:tracking-tight prose-a:text-ink prose-img:rounded-2xl"
+            {/* Полное описание — тот же стиль, что SEO-блок категории: на всю ширину, в рамке */}
+            <section
+              aria-label="Описание товара"
+              className="rounded-3xl bg-white border border-border/60 p-7 md:p-12"
+            >
+              <article
+                className="prose prose-neutral max-w-none prose-headings:text-ink prose-headings:font-semibold prose-headings:tracking-[-0.01em] prose-h2:text-xl md:prose-h2:text-2xl prose-h2:mt-0 prose-h2:mb-4 prose-h3:text-lg md:prose-h3:text-xl prose-p:text-[15px] prose-p:leading-relaxed prose-p:text-ink-muted prose-li:text-[15px] prose-li:leading-relaxed prose-li:text-ink-muted prose-a:text-ink prose-a:underline-offset-4 hover:prose-a:opacity-70 prose-strong:text-ink prose-strong:font-semibold prose-table:text-sm prose-th:text-ink prose-td:text-ink-muted prose-hr:border-border/60"
                 dangerouslySetInnerHTML={{ __html: product.descriptionHtml }}
               />
-            </div>
+            </section>
           </div>
         </section>
       ) : product.description && product.description.length > 0 ? (
