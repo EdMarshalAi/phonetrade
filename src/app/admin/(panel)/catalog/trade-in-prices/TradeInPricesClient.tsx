@@ -221,37 +221,63 @@ function FormulaModal({ initial, sampleBase, onClose, onDone }: { initial: Trade
 
   return (
     <Modal open onClose={onClose} title="Формула расчёта trade-in" footer={<AdminButton loading={busy} onClick={save}>Сохранить</AdminButton>}>
-      <div className="space-y-5">
+      <div className="space-y-6">
+        <p className="rounded-lg bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-ink-muted">
+          Коэффициент — множитель к базовой цене. <b className="text-ink">1.0</b> — без скидки, меньше — цена ниже,
+          больше — выше (напр. комплект 1.05 = +5%).
+        </p>
+
         {COEF_GROUPS.map((g) => (
           <div key={g.title}>
-            <p className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-ink-muted">{g.title}</p>
-            <div className="grid grid-cols-2 gap-2">
+            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-subtle">{g.title}</p>
+            <div className="grid gap-2 sm:grid-cols-2">
               {g.fields.map((fl) => (
-                <label key={fl.key} className="flex items-center justify-between gap-2 text-[13px] text-ink">
-                  <span>{fl.label}</span>
-                  <input type="number" step="0.001" min="0" value={String(f[fl.key])} onChange={(e) => set(fl.key, e.target.value)} className="h-8 w-20 rounded-sm border border-border px-2 text-right tabular-nums outline-none focus:ring-2 focus:ring-ink/15" />
-                </label>
+                <div key={fl.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-white px-3.5 py-2.5">
+                  <span className="text-[13.5px] text-ink">{fl.label}</span>
+                  <span className="flex shrink-0 items-center gap-1.5 text-ink-subtle">
+                    <span className="text-[13px]">×</span>
+                    <input type="number" step="0.01" min="0" value={String(f[fl.key])} onChange={(e) => set(fl.key, e.target.value)} className="h-9 w-[68px] rounded-lg border border-border bg-white px-2 text-right text-[14px] font-medium tabular-nums text-ink outline-none focus:border-ink/40 focus:ring-2 focus:ring-ink/15" />
+                  </span>
+                </div>
               ))}
             </div>
           </div>
         ))}
-        <div>
-          <p className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-ink-muted">iCloud</p>
-          <p className="text-[13px] text-ink-muted">Привязан → не принимаем (фикс. ×0.000)</p>
+
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-surface/40 px-3.5 py-2.5">
+          <div>
+            <p className="text-[13.5px] font-medium text-ink">iCloud привязан</p>
+            <p className="text-[12px] text-ink-muted">Не принимаем — цена ×0</p>
+          </div>
+          <span className="text-[13px] font-medium tabular-nums text-ink-subtle">× 0.000</span>
         </div>
+
         <div>
-          <p className="mb-2 text-[12px] font-semibold uppercase tracking-wider text-ink-muted">Округление</p>
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-[13px]">Шаг, ₽
-              <input type="number" value={String(f.price_rounding)} onChange={(e) => set("price_rounding", e.target.value)} className="h-8 w-20 rounded-sm border border-border px-2 text-right tabular-nums outline-none focus:ring-2 focus:ring-ink/15" />
-            </label>
-            <Select value={f.rounding_direction} onChange={(e) => set("rounding_direction", e.target.value)}><option value="floor">Вниз</option><option value="round">К ближайшему</option></Select>
+          <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-subtle">Округление цены</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-white px-3.5 py-2.5">
+              <span className="text-[13.5px] text-ink">Шаг, ₽</span>
+              <input type="number" value={String(f.price_rounding)} onChange={(e) => set("price_rounding", e.target.value)} className="h-9 w-[68px] rounded-lg border border-border bg-white px-2 text-right text-[14px] font-medium tabular-nums text-ink outline-none focus:border-ink/40 focus:ring-2 focus:ring-ink/15" />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-white px-3.5 py-1.5">
+              <span className="text-[13.5px] text-ink">Направление</span>
+              <Select value={f.rounding_direction} onChange={(e) => set("rounding_direction", e.target.value)} className="w-36"><option value="floor">Вниз</option><option value="round">К ближайшему</option></Select>
+            </div>
           </div>
         </div>
-        <div className="rounded-md border border-border bg-surface/50 p-3 text-[13px]">
-          <p className="font-semibold text-ink">Превью на базе {fmt(sampleBase)}</p>
-          <p className="mt-1.5 text-ink-muted">Идеал + 100% + полный комплект → <span className="font-semibold text-ink">{fmt(ideal)}</span></p>
-          <p className="mt-1 text-ink-muted">Царапины + 85–89% + без комплекта → <span className="font-semibold text-ink">{fmt(mid)}</span></p>
+
+        <div className="rounded-2xl border border-ink/15 bg-ink/[0.03] p-4">
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-ink-subtle">Превью · база {fmt(sampleBase)}</p>
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center justify-between gap-3 text-[13px]">
+              <span className="text-ink-muted">Идеал · 100% · полный комплект</span>
+              <span className="text-[15px] font-bold tabular-nums text-ink">{fmt(ideal)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3 border-t border-ink/10 pt-2 text-[13px]">
+              <span className="text-ink-muted">Царапины · 85–89% · без комплекта</span>
+              <span className="text-[15px] font-bold tabular-nums text-ink">{fmt(mid)}</span>
+            </div>
+          </div>
         </div>
       </div>
     </Modal>

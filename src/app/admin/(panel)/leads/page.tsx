@@ -6,8 +6,10 @@ import { PageHeader, StatusBadge } from "@/components/admin/ui";
 import { Table, THead, TH, TBody, TR, TD, EmptyState } from "@/components/admin/table";
 import { AdminButton } from "@/components/admin/form";
 import { SearchBox, FilterSelect, Pagination } from "@/components/admin/ListControls";
+import { DeleteButton } from "@/components/admin/DeleteButton";
 import { LEAD_TYPE, LEAD_STATUS, leadStatusTone } from "./labels";
 import { PhoneCell } from "./PhoneCell";
+import { deleteLead } from "./actions";
 
 export const metadata: Metadata = { title: "Заявки" };
 
@@ -88,9 +90,12 @@ export default async function LeadsPage({
                     <StatusBadge tone={leadStatusTone(r.status)}>{LEAD_STATUS[r.status] ?? r.status}</StatusBadge>
                   </TD>
                   <TD className="text-right">
-                    <Link href={`/admin/leads/${r.id}`}>
-                      <AdminButton variant="outline" size="sm">Открыть</AdminButton>
-                    </Link>
+                    <div className="flex items-center justify-end gap-2">
+                      <Link href={`/admin/leads/${r.id}`}>
+                        <AdminButton variant="outline" size="sm">Открыть</AdminButton>
+                      </Link>
+                      <DeleteButton action={deleteLead.bind(null, r.id)} itemName={`заявку ${r.contact_name || r.contact_phone || ""}`} iconOnly />
+                    </div>
                   </TD>
                 </TR>
               ))}

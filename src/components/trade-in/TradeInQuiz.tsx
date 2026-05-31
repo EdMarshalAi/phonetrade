@@ -136,25 +136,14 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
           <motion.div key={step} {...slide}>
             <h2 className="text-2xl font-semibold tracking-[-0.02em] text-ink md:text-3xl">{STEP_TITLES[step]}</h2>
 
-            {/* Шаг 1 — модель (выпадающий список) */}
+            {/* Шаг 1 — модель (кастомный выпадающий список) */}
             {step === 0 && (
               <div className="mt-6">
-                <div className="relative">
-                  <select
-                    aria-label="Модель iPhone"
-                    value={d.modelKey}
-                    onChange={(e) => {
-                      const m = models.find((x) => x.model_key === e.target.value);
-                      if (m) { set({ modelKey: m.model_key, modelTitle: m.model_title, memoryGb: 0 }); autoNext(0); }
-                    }}
-                    className="h-14 w-full appearance-none rounded-2xl border border-border bg-white px-4 pr-11 text-[16px] font-medium text-ink outline-none focus:border-ink/40 focus:ring-2 focus:ring-ink/15"
-                  >
-                    <option value="" disabled>Выберите модель iPhone…</option>
-                    {models.map((m) => <option key={m.model_key} value={m.model_key}>{m.model_title}</option>)}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 size-5 -translate-y-1/2 text-ink-muted" aria-hidden />
-                </div>
-                {d.modelTitle && <p className="mt-3 text-[13px] text-ink-muted">Выбрано: <span className="font-medium text-ink">{d.modelTitle}</span></p>}
+                <ModelDropdown
+                  models={models}
+                  value={d.modelKey}
+                  onSelect={(m) => { set({ modelKey: m.model_key, modelTitle: m.model_title, memoryGb: 0 }); autoNext(0); }}
+                />
                 {models.length === 0 && <p className="mt-3 text-ink-muted">Список моделей пуст — позвоните нам: +7 (904) 098-88-77</p>}
               </div>
             )}
@@ -274,6 +263,42 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
           <span className="text-[13px] text-ink-subtle">Выберите вариант, чтобы продолжить</span>
         )}
       </div>
+    </div>
+  );
+}
+
+function ModelDropdown({ models, value, onSelect }: { models: TradeInModel[]; value: string; onSelect: (m: TradeInModel) => void }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+  const selected = models.find((m) => m.model_key === value);
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
+        className={cn("flex h-14 w-full items-center justify-between gap-3 rounded-2xl border bg-white px-4 text-left text-[16px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ink/15", open ? "border-ink/40" : "border-border hover:border-ink/30")}
+      >
+        <span className={selected ? "text-ink" : "text-ink-subtle"}>{selected ? selected.model_title : "Выберите модель iPhone…"}</span>
+        <ChevronDown className={cn("size-5 shrink-0 text-ink-muted transition-transform", open && "rotate-180")} aria-hidden />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 z-20 mt-2 max-h-72 overflow-y-auto rounded-2xl border border-border bg-white p-1.5 shadow-[0_24px_60px_-12px_rgba(0,0,0,0.25)]">
+          {models.map((m) => (
+            <button
+              key={m.model_key} type="button" onClick={() => { onSelect(m); setOpen(false); }}
+              className={cn("flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] transition-colors hover:bg-surface", value === m.model_key ? "bg-surface font-semibold text-ink" : "text-ink")}
+            >
+              {m.model_title}
+              {value === m.model_key && <Check className="size-4 text-ink" />}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

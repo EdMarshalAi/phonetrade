@@ -20,7 +20,6 @@ import {
   Bell,
   Plug,
   UserCog,
-  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import type { AdminRole } from "@/lib/admin/auth";
@@ -60,7 +59,6 @@ export const ADMIN_NAV: NavGroup[] = [
       { label: "Заказы", href: "/admin/orders", icon: ShoppingCart, roles: STAFF },
       { label: "Заявки", href: "/admin/leads", icon: Inbox, roles: STAFF },
       { label: "Клиенты", href: "/admin/customers", icon: Users, roles: STAFF },
-      { label: "Обращения по данным", href: "/admin/customers/data-requests", icon: ShieldCheck, roles: STAFF },
     ],
   },
   {
