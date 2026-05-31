@@ -50,3 +50,9 @@ next-env.d.ts
 # Playwright/admin verification screenshots
 .playwright-mcp/
 /*.png
+
+# Local screenshot artifacts
+*-new.jpeg
+*-mid.jpeg
+*-fullwidth.jpeg
+.playwright-mcp/
