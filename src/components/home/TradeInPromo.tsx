@@ -54,7 +54,7 @@ export function TradeInPromo({ block }: { block?: TradeInPromoBlock | null }) {
                   <div className="relative aspect-[4/3] md:aspect-[16/10]">
                     <Image
                       src={b.imageUrl}
-                      alt={b.title}
+                      alt={`${b.title} — Trade-in в Белгороде, PhoneTrade`}
                       fill
                       sizes="(max-width:768px) 100vw, 50vw"
                       className="object-contain object-bottom-right drop-shadow-[0_18px_30px_rgba(0,0,0,0.18)] transition-transform duration-500 ease-[var(--ease-apple)] group-hover:scale-[1.04]"

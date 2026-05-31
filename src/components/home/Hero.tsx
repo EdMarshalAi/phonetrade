@@ -196,7 +196,7 @@ export function Hero({ slides, autoplayMs = AUTOPLAY_DEFAULT }: Props) {
                 {slide.image && (
                   <Image
                     src={slide.image}
-                    alt={slide.title}
+                    alt={`${slide.title} — Apple в Белгороде, PhoneTrade`}
                     fill
                     sizes="(min-width: 1024px) 50vw, 42vw"
                     priority

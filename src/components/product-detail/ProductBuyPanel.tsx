@@ -14,24 +14,37 @@ type Props = {
   variants: { colors: Product[]; memories: Product[]; sims: Product[] };
 };
 
+// Подбор цвета-плашки по названию (RU/EN). Порядок важен: специфичные токены
+// раньше общих, цвет-в-титане определяется по ведущему слову до «титан».
 function colorSwatchClass(colorName: string): string {
   const k = colorName.toLowerCase();
-  if (k.includes("чёрн") || k.includes("black") || k.includes("midnight"))
-    return "bg-[#1a1a1d]";
-  if (k.includes("бел") || k.includes("white"))
-    return "bg-white border border-border";
+  if (k.includes("сияющ") || k.includes("звезд") || k.includes("starlight")) return "bg-[#f3ead7]";
+  if (k.includes("ноч") || k.includes("midnight")) return "bg-[#2a2f3a]";
+  if (k.includes("натуральн") || k.includes("natural")) return "bg-[#b9b2a6]";
+  if (k.includes("угольно")) return "bg-[#26262a]";
+  if (k.includes("чёрн") || k.includes("черн") || k.includes("black")) return "bg-[#1a1a1d]";
+  if (k.includes("бел") || k.includes("white")) return "bg-white border border-border";
   if (k.includes("серебр") || k.includes("silver")) return "bg-[#e3e4e6]";
-  if (k.includes("сер") || k.includes("space")) return "bg-[#5b5e62]";
   if (k.includes("золот") || k.includes("gold")) return "bg-[#d6c4a4]";
   if (k.includes("оранж") || k.includes("orange")) return "bg-[#dd5b2a]";
-  if (k.includes("красн") || k.includes("red")) return "bg-[#c41d3d]";
-  if (k.includes("син") || k.includes("blue")) return "bg-[#3a5b78]";
-  if (k.includes("зелён") || k.includes("sage") || k.includes("green"))
-    return "bg-[#7f8d75]";
+  if (k.includes("чили") || k.includes("малин") || k.includes("красн") || k.includes("red")) return "bg-[#c41d3d]";
+  if (k.includes("фламинго")) return "bg-[#e8a0a8]";
   if (k.includes("розов") || k.includes("pink")) return "bg-[#d8a8b4]";
+  if (k.includes("фиолет") || k.includes("violet") || k.includes("purple") || k.includes("пурпур")) return "bg-[#7a5ea8]";
+  if (k.includes("ультрамарин")) return "bg-[#2f4bd6]";
+  if (k.includes("индиго") || k.includes("indigo")) return "bg-[#3b4a8c]";
+  if (k.includes("голуб")) return "bg-[#6aa9e0]";
+  if (k.includes("бирюз") || k.includes("teal")) return "bg-[#4bbfb0]";
+  if (k.includes("син") || k.includes("blue")) return "bg-[#3a5b78]";
+  if (k.includes("мятн") || k.includes("mint")) return "bg-[#a9d8c2]";
+  if (k.includes("олив")) return "bg-[#7d7f4e]";
+  if (k.includes("зелён") || k.includes("зелен") || k.includes("sage") || k.includes("green")) return "bg-[#7f8d75]";
   if (k.includes("лаванд") || k.includes("сирен")) return "bg-[#b6aed8]";
-  if (k.includes("жёлт") || k.includes("yellow")) return "bg-[#f0d36a]";
+  if (k.includes("лимон") || k.includes("жёлт") || k.includes("желт") || k.includes("yellow")) return "bg-[#f0d36a]";
+  if (k.includes("беж") || k.includes("песоч") || k.includes("капучино") || k.includes("beige")) return "bg-[#d8cbb4]";
+  if (k.includes("косм") || k.includes("space")) return "bg-[#5b5e62]";
   if (k.includes("титан") || k.includes("titanium")) return "bg-[#867e74]";
+  if (k.includes("сер") || k.includes("gray") || k.includes("grey")) return "bg-[#5b5e62]";
   return "bg-surface border border-border";
 }
 

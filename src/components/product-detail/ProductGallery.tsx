@@ -39,7 +39,7 @@ export function ProductGallery({ product }: Props) {
               >
                 <Image
                   src={src}
-                  alt={`${product.title} — фото ${i + 1}`}
+                  alt={`${product.title} — фото ${i + 1}, купить в Белгороде`}
                   fill
                   sizes="80px"
                   className="object-contain p-1.5"
@@ -64,7 +64,7 @@ export function ProductGallery({ product }: Props) {
           >
             <Image
               src={images[index]}
-              alt={product.title}
+              alt={`${product.title} — купить в Белгороде, PhoneTrade`}
               fill
               sizes="(min-width: 1024px) 55vw, 90vw"
               className="object-contain p-8 md:p-12"

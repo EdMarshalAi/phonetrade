@@ -114,7 +114,7 @@ export function ProductCard({ product, className }: Props) {
           >
             <Image
               src={src}
-              alt={`${product.title} — фото ${i + 1}`}
+              alt={`${product.title} — купить в Белгороде, фото ${i + 1}`}
               fill
               sizes="(min-width: 1024px) 25vw, 50vw"
               className="object-contain p-4 sm:p-6 transition-transform duration-500 ease-[var(--ease-apple)] group-hover:scale-[1.04]"

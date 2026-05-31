@@ -32,13 +32,12 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ru_RU",
     siteName: "PhoneTrade",
-    images: [{ url: "/brand/logo-mark-black.png", width: 1200, height: 630, alt: "PhoneTrade — техника Apple в Белгороде" }],
+    // og:image — из файловой конвенции src/app/opengraph-image.tsx (баннер 1200×630).
   },
   twitter: {
     card: "summary_large_image",
     title: "PhoneTrade — Магазин техники Apple в Белгороде",
     description: "Оригинальная техника Apple с гарантией, Trade-in и сервисом. Белгород, ул. Попова, 36.",
-    images: ["/brand/logo-mark-black.png"],
   },
 };
 

@@ -41,6 +41,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: p.updatedAt ? new Date(p.updatedAt) : now,
     changeFrequency: "weekly",
     priority: 0.7,
+    // Google Image: главное фото товара (Storage-URL уже абсолютный).
+    ...(p.image ? { images: [p.image] } : {}),
   }));
 
   const pageRoutes: MetadataRoute.Sitemap = pages.map((p) => ({
