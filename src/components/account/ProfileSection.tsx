@@ -51,7 +51,9 @@ export function ProfileSection() {
     (email || "") !== (user.email ?? "") ||
     (address || "") !== (user.address ?? "");
 
-  const submit = (e: React.FormEvent) => {
+  const [saving, setSaving] = React.useState(false);
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (!name.trim()) {
@@ -66,10 +68,17 @@ export function ProfileSection() {
       setError("Проверьте формат e-mail");
       return;
     }
-    updateProfile({ name, phone, email, address });
-    setSaved(true);
-    if (savedTimer.current) window.clearTimeout(savedTimer.current);
-    savedTimer.current = window.setTimeout(() => setSaved(false), 2500);
+    setSaving(true);
+    try {
+      await updateProfile({ name, phone, email, address });
+      setSaved(true);
+      if (savedTimer.current) window.clearTimeout(savedTimer.current);
+      savedTimer.current = window.setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось сохранить");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -130,10 +139,10 @@ export function ProfileSection() {
         <div className="flex items-center gap-3 mt-2">
           <button
             type="submit"
-            disabled={!dirty}
+            disabled={!dirty || saving}
             className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-ink text-white text-sm font-medium hover:bg-ink/85 disabled:opacity-40 disabled:pointer-events-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 focus-visible:ring-offset-2"
           >
-            Сохранить
+            {saving ? "Сохраняем…" : "Сохранить"}
           </button>
           {saved && (
             <span className="inline-flex items-center gap-1.5 text-[13px] text-emerald-700 font-medium">

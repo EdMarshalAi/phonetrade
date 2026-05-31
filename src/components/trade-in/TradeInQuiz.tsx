@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, ChevronDown, RotateCcw } from "lucide-react";
 import { submitTradeInQuiz } from "@/lib/trade-in/trade-in-actions";
 import { EXTERNAL_OPTIONS, BATTERY_OPTIONS, KIT_OPTIONS, type TradeInModel } from "@/lib/trade-in/options";
+import { useAuth } from "@/components/providers/AuthProvider";
 import { cn } from "@/lib/utils/cn";
 
 const STEP_TITLES = [
@@ -34,6 +35,7 @@ const EMPTY: Data = {
 export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
   const router = useRouter();
   const reduce = useReducedMotion();
+  const { user } = useAuth();
   const [step, setStep] = React.useState(0);
   const [dir, setDir] = React.useState(1);
   const [d, setD] = React.useState<Data>(EMPTY);
@@ -43,6 +45,14 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
   const [rejected, setRejected] = React.useState(false);
 
   const set = (patch: Partial<Data>) => setD((s) => ({ ...s, ...patch }));
+
+  // Авторизованный пользователь — подставляем контакты из профиля (один раз).
+  const prefilled = React.useRef(false);
+  React.useEffect(() => {
+    if (!user || prefilled.current) return;
+    prefilled.current = true;
+    setD((s) => ({ ...s, name: s.name || user.name || "", phone: !s.phone || s.phone.trim() === "+7" ? user.phone || s.phone : s.phone, email: s.email || user.email || "" }));
+  }, [user]);
   const selectedModel = models.find((m) => m.model_key === d.modelKey);
 
   // Автопереход на следующий шаг после выбора (если остались на этом же шаге).
@@ -63,7 +73,7 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
       case 4: return d.hasBreakage === false || (d.hasBreakage === true && d.breakageDescription.trim().length > 0);
       case 5: return !!d.icloud;
       case 6: return !!d.kit;
-      case 7: return d.name.trim().length > 0 && d.phone.replace(/\D/g, "").length >= 11 && consent.oferta && consent.pd;
+      case 7: return d.name.trim().length > 0 && d.phone.replace(/\D/g, "").length >= 11 && (!!user || (consent.oferta && consent.pd));
       default: return false;
     }
   })();
@@ -213,23 +223,34 @@ export function TradeInQuiz({ models }: { models: TradeInModel[] }) {
 
             {/* Шаг 8 — контакты */}
             {step === 7 && (
-              <div className="mt-6 space-y-3">
-                <p className="text-[15px] text-ink-muted">Оставьте контакты — покажем предварительную цену и менеджер свяжется для оценки.</p>
-                <input value={d.name} onChange={(e) => set({ name: e.target.value })} placeholder="Имя" className="h-12 w-full rounded-xl bg-surface px-4 text-[15px] text-ink outline-none focus:bg-white focus:ring-2 focus:ring-ink/15" />
-                <input value={d.phone} onChange={(e) => set({ phone: e.target.value })} type="tel" inputMode="tel" placeholder="+7 ___ ___-__-__" className="h-12 w-full rounded-xl bg-surface px-4 text-[15px] text-ink outline-none focus:bg-white focus:ring-2 focus:ring-ink/15" />
-                <input value={d.email} onChange={(e) => set({ email: e.target.value })} type="email" inputMode="email" placeholder="E-mail (необязательно)" className="h-12 w-full rounded-xl bg-surface px-4 text-[15px] text-ink outline-none focus:bg-white focus:ring-2 focus:ring-ink/15" />
-                <div className="space-y-2 pt-1">
-                  <Consent checked={consent.oferta} onChange={(v) => setConsent((c) => ({ ...c, oferta: v }))}>
-                    Принимаю <a href="/offer" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">оферту</a> и <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">политику конфиденциальности</a>
-                  </Consent>
-                  <Consent checked={consent.pd} onChange={(v) => setConsent((c) => ({ ...c, pd: v }))}>
-                    Даю <a href="/consent" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">согласие на обработку персональных данных</a>
-                  </Consent>
-                  <Consent checked={consent.marketing} onChange={(v) => setConsent((c) => ({ ...c, marketing: v }))} subtle>
-                    Хочу получать акции и новинки (необязательно)
-                  </Consent>
+              user ? (
+                <div className="mt-6 space-y-4">
+                  <div className="rounded-2xl border border-border/60 bg-surface/60 p-4">
+                    <p className="text-[13px] text-ink-muted">Заявка будет оформлена на ваш аккаунт</p>
+                    <p className="mt-1 text-[15px] font-semibold text-ink">{d.name || user.name}</p>
+                    <p className="text-[14px] text-ink-muted">{d.phone || user.phone}</p>
+                  </div>
+                  <p className="text-[13px] text-ink-subtle">Нажмите «Узнать цену» — покажем предварительную стоимость и заявка появится в личном кабинете.</p>
                 </div>
-              </div>
+              ) : (
+                <div className="mt-6 space-y-3">
+                  <p className="text-[15px] text-ink-muted">Оставьте контакты — покажем предварительную цену и менеджер свяжется для оценки.</p>
+                  <input value={d.name} onChange={(e) => set({ name: e.target.value })} placeholder="Имя" className="h-12 w-full rounded-xl bg-surface px-4 text-[15px] text-ink outline-none focus:bg-white focus:ring-2 focus:ring-ink/15" />
+                  <input value={d.phone} onChange={(e) => set({ phone: e.target.value })} type="tel" inputMode="tel" placeholder="+7 ___ ___-__-__" className="h-12 w-full rounded-xl bg-surface px-4 text-[15px] text-ink outline-none focus:bg-white focus:ring-2 focus:ring-ink/15" />
+                  <input value={d.email} onChange={(e) => set({ email: e.target.value })} type="email" inputMode="email" placeholder="E-mail (необязательно)" className="h-12 w-full rounded-xl bg-surface px-4 text-[15px] text-ink outline-none focus:bg-white focus:ring-2 focus:ring-ink/15" />
+                  <div className="space-y-2 pt-1">
+                    <Consent checked={consent.oferta} onChange={(v) => setConsent((c) => ({ ...c, oferta: v }))}>
+                      Принимаю <a href="/offer" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">оферту</a> и <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">политику конфиденциальности</a>
+                    </Consent>
+                    <Consent checked={consent.pd} onChange={(v) => setConsent((c) => ({ ...c, pd: v }))}>
+                      Даю <a href="/consent" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">согласие на обработку персональных данных</a>
+                    </Consent>
+                    <Consent checked={consent.marketing} onChange={(v) => setConsent((c) => ({ ...c, marketing: v }))} subtle>
+                      Хочу получать акции и новинки (необязательно)
+                    </Consent>
+                  </div>
+                </div>
+              )
             )}
           </motion.div>
         </AnimatePresence>

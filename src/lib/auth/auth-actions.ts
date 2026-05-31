@@ -2,9 +2,45 @@
 
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { phoneToEmail } from "@/lib/auth/phone-email";
 
 const CONSENT_VERSION = "2026-01-15-v1";
+
+/**
+ * Обновление профиля текущего покупателя. Пользователь определяется по
+ * cookie-сессии (server), запись — через service-role клиент (надёжно, без
+ * зависимости от RLS на анонимном клиенте). Возвращает ошибку, если не сохранилось.
+ */
+export async function updateStorefrontProfile(patch: {
+  name?: string; phone?: string; email?: string; address?: string;
+}): Promise<{ error?: string }> {
+  let userId: string | null = null;
+  try {
+    const supa = await createSupabaseServerClient();
+    const { data } = await supa.auth.getUser();
+    userId = data.user?.id ?? null;
+  } catch {
+    return { error: "Сессия не найдена" };
+  }
+  if (!userId) return { error: "Войдите, чтобы сохранить профиль" };
+
+  const row: Record<string, string | null> = {};
+  if (patch.name !== undefined) row.name = patch.name.trim();
+  if (patch.phone !== undefined) row.phone = patch.phone.trim();
+  if (patch.email !== undefined) row.email = patch.email.trim() || null;
+  if (patch.address !== undefined) row.address = patch.address.trim() || null;
+  if (Object.keys(row).length === 0) return {};
+
+  try {
+    const db = createSupabaseAdminClient();
+    const { error } = await db.from("profiles").update(row).eq("id", userId);
+    if (error) return { error: "Не удалось сохранить профиль" };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Ошибка сохранения" };
+  }
+  return {};
+}
 
 /**
  * Регистрация покупателя: создаём пользователя в Supabase Auth (без подтверждения

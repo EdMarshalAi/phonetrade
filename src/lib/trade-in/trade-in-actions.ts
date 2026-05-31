@@ -136,6 +136,24 @@ export async function submitTradeInQuiz(input: QuizInput): Promise<QuizResult> {
     return { error: "Не удалось создать заявку. Попробуйте ещё раз." };
   }
 
+  // Дублируем в общий инбокс /admin/leads (тип «Trade-in»).
+  try {
+    await db.from("leads").insert({
+      type: "trade_in",
+      contact_name: input.name.trim(),
+      contact_phone: phone,
+      contact_email: email,
+      status: "new",
+      source_url: "/trade-in",
+      payload: {
+        lead_number: lead.lead_number,
+        model: `${input.modelTitle} ${input.memoryGb}GB`,
+        estimated_price_rub: lead.estimated_price_rub,
+        breakage: input.hasBreakage ? input.breakageDescription?.trim() || "есть" : null,
+      },
+    });
+  } catch (e) { console.error("[submitTradeInQuiz] lead insert:", e); }
+
   // 152-ФЗ: согласия.
   try {
     const base = {

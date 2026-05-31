@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import type { Session } from "@supabase/supabase-js";
-import { registerStorefront } from "@/lib/auth/auth-actions";
+import { registerStorefront, updateStorefrontProfile } from "@/lib/auth/auth-actions";
 import { phoneToEmail } from "@/lib/auth/phone-email";
 
 export type AuthUser = {
@@ -129,14 +129,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateProfile = React.useCallback(
     async (patch: Partial<Pick<AuthUser, "name" | "email" | "phone" | "address">>) => {
-      const { data: au } = await supabase.auth.getUser();
-      if (!au.user) return;
-      const row: Record<string, string | null> = {};
-      if (patch.name !== undefined) row.name = patch.name.trim();
-      if (patch.phone !== undefined) row.phone = patch.phone.trim();
-      if (patch.email !== undefined) row.email = patch.email.trim() || null;
-      if (patch.address !== undefined) row.address = patch.address.trim() || null;
-      await supabase.from("profiles").update(row).eq("id", au.user.id);
+      const res = await updateStorefrontProfile(patch);
+      if (res.error) throw new Error(res.error);
       setUser((prev) =>
         prev
           ? {
@@ -149,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           : prev
       );
     },
-    [supabase]
+    []
   );
 
   const value = React.useMemo<AuthContextValue>(
