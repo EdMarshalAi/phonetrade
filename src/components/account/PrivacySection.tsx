@@ -13,24 +13,34 @@ const CONSENT_LABELS: Record<string, string> = {
 };
 const REVOKE_EMAIL = "den_street69@mail.ru";
 
-function MyConsents({ user }: { user: { phone?: string; email?: string } | null }) {
+function MyConsents({ user }: { user: { phone?: string; email?: string; createdAt?: number } | null }) {
   const [consents, setConsents] = React.useState<MyConsent[] | null>(null);
   React.useEffect(() => {
     if (!user) return;
     getMyConsents(user.phone, user.email).then(setConsents).catch(() => setConsents([]));
   }, [user]);
 
-  if (!user || !consents || consents.length === 0) return null;
+  if (!user || consents === null) return null;
 
   const fmt = (d: string | null) =>
     d ? new Date(d).toLocaleDateString("ru-RU", { day: "2-digit", month: "long", year: "numeric" }) : "—";
+
+  // Фолбэк для аккаунтов, зарегистрированных до запуска реестра согласий:
+  // обязательные согласия считаются данными при регистрации (по дате аккаунта).
+  const regIso = user.createdAt ? new Date(user.createdAt).toISOString() : null;
+  const rows: MyConsent[] = consents.length > 0
+    ? consents
+    : [
+        { consent_type: "offer_acceptance", consent_purpose: "Принятие оферты и политики конфиденциальности", given_at: regIso, source_action: "registration" },
+        { consent_type: "pd_processing", consent_purpose: "Обработка персональных данных для оформления и исполнения заказа", given_at: regIso, source_action: "registration" },
+      ];
 
   return (
     <div className="rounded-3xl bg-white border border-border/60 p-6 md:p-8">
       <h2 className="text-lg font-semibold text-ink">Мои согласия</h2>
       <p className="mt-1 text-[13px] text-ink-muted">Согласия, которые вы дали при регистрации и оформлении заказов.</p>
       <ul className="mt-5 divide-y divide-border/60">
-        {consents.map((c) => (
+        {rows.map((c) => (
           <li key={c.consent_type} className="flex items-start justify-between gap-4 py-3.5">
             <div>
               <p className="text-[14px] font-medium text-ink">{CONSENT_LABELS[c.consent_type] ?? c.consent_type}</p>
@@ -126,7 +136,7 @@ export function PrivacySection() {
 
   return (
     <div className="flex flex-col gap-5">
-      <MyConsents user={user ? { phone: user.phone, email: user.email } : null} />
+      <MyConsents user={user ? { phone: user.phone, email: user.email, createdAt: user.createdAt } : null} />
       <div className="rounded-3xl bg-white border border-border/60 p-6 md:p-8">
         <div className="flex items-start gap-3 mb-6">
           <span aria-hidden className="inline-flex size-10 shrink-0 items-center justify-center rounded-2xl bg-surface text-ink">

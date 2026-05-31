@@ -19,6 +19,7 @@ const TABS = [
   { key: "main", label: "Основные" },
   { key: "contacts", label: "Контакты и информация" },
   { key: "legal", label: "Юр. информация" },
+  { key: "site", label: "Работа сайта" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
@@ -193,7 +194,7 @@ export function ShopForm({ initial }: { initial: ShopGeneral }) {
             </Panel>
           </div>
         </div>
-      ) : (
+      ) : tab === "legal" ? (
         <Panel className="space-y-4 p-5">
           <PanelTitle>Юридическая информация</PanelTitle>
           <Field label="Юр. лицо (ООО «…» или ФИО для ИП)">
@@ -204,6 +205,34 @@ export function ShopForm({ initial }: { initial: ShopGeneral }) {
             <Field label="ОГРН / ОГРНИП"><TextInput value={v.ogrn ?? ""} onChange={(e) => set({ ogrn: e.target.value })} /></Field>
           </div>
           <Field label="Юридический адрес"><TextInput value={v.legal_address ?? ""} onChange={(e) => set({ legal_address: e.target.value })} /></Field>
+          <Field label="Банковские реквизиты" hint="Счёт, банк, БИК, кор. счёт">
+            <TextInput value={v.bank_details ?? ""} onChange={(e) => set({ bank_details: e.target.value })} placeholder="Р/с …, Банк …, БИК …" />
+          </Field>
+        </Panel>
+      ) : (
+        <Panel className="space-y-4 p-5">
+          <PanelTitle>Работа сайта</PanelTitle>
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-surface/40 p-4">
+            <div>
+              <p className="text-[14px] font-medium text-ink">Технические работы</p>
+              <p className="mt-0.5 text-[12.5px] text-ink-muted">
+                Когда включено — весь сайт закрыт для посетителей и показывает заглушку. Админка продолжает работать.
+              </p>
+            </div>
+            <Switch checked={!!v.maintenance} onChange={(on) => set({ maintenance: on })} />
+          </div>
+          <Field label="Текст заглушки" hint="Показывается посетителям во время технических работ">
+            <TextInput
+              value={v.maintenance_message ?? ""}
+              onChange={(e) => set({ maintenance_message: e.target.value })}
+              placeholder="Сайт временно на технических работах. Скоро вернёмся!"
+            />
+          </Field>
+          {v.maintenance ? (
+            <p className="rounded-lg border border-sale/25 bg-sale/5 px-3 py-2 text-[12.5px] text-sale">
+              Внимание: сейчас сайт закрыт для посетителей. Выключите режим, чтобы вернуть доступ.
+            </p>
+          ) : null}
         </Panel>
       )}
 

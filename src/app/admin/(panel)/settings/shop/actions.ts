@@ -22,6 +22,10 @@ export interface ShopGeneral {
   inn?: string;
   ogrn?: string;
   legal_address?: string;
+  bank_details?: string;
+  /** Режим технических работ — сайт закрыт для посетителей. */
+  maintenance?: boolean;
+  maintenance_message?: string;
   contacts?: ShopContactLink[];
 }
 

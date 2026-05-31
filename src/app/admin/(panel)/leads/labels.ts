@@ -3,6 +3,7 @@ export const LEAD_TYPE: Record<string, string> = {
   callback: "Обратный звонок",
   question: "Вопрос",
   repair: "Ремонт",
+  data_request: "Запрос по данным (152-ФЗ)",
 };
 
 export const LEAD_STATUS: Record<string, string> = {

@@ -560,6 +560,17 @@ export const DEFAULT_SHOP_CONTACTS: ShopContactLink[] = [
   { id: "vk", label: "ВКонтакте", value: "", href: "https://vk.com/phonetradebel", icon: "thumbs-up", iconUrl: null, enabled: true, location: "footer" },
 ];
 
+/** Режим технических работ (shop_settings key='general'). */
+export async function getSiteMaintenance(): Promise<{ on: boolean; message: string }> {
+  if (!supabase) return { on: false, message: "" };
+  const { data } = await supabase.from("shop_settings").select("value").eq("key", "general").maybeSingle();
+  const v = (data?.value ?? {}) as { maintenance?: boolean; maintenance_message?: string };
+  return {
+    on: v.maintenance === true,
+    message: v.maintenance_message?.trim() || "Сайт временно на технических работах. Скоро вернёмся!",
+  };
+}
+
 /** Контакты магазина из настроек (shop_settings key='general'). */
 export async function getShopContacts(): Promise<ShopContacts | null> {
   if (!supabase) return null;

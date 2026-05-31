@@ -112,6 +112,25 @@ export async function submitDataRequest(
       console.error("[submitDataRequest] insert error:", error);
       return { error: "Не удалось отправить обращение. Попробуйте ещё раз." };
     }
+
+    // Дублируем как заявку в общий инбокс /admin/leads (тип «Запрос по данным»).
+    try {
+      await db.from("leads").insert({
+        type: "data_request",
+        contact_name: input.name?.trim() || null,
+        contact_phone: phone,
+        contact_email: email,
+        status: "new",
+        source_url: "/account/privacy",
+        payload: {
+          request_type: input.requestType,
+          request_label: DSR_TYPES[input.requestType],
+          details: input.details?.trim() || null,
+        },
+      });
+    } catch (e) {
+      console.error("[submitDataRequest] lead insert:", e);
+    }
   } catch (e) {
     console.error("[submitDataRequest] error:", e);
     return { error: "Не удалось отправить обращение. Попробуйте ещё раз." };
