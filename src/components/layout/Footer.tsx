@@ -145,7 +145,7 @@ export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | nul
           на сайте не является публичной офертой (ст. 437 ГК РФ).
         </p>
 
-        <ul className="mt-8 flex flex-col md:flex-row md:flex-wrap items-start md:items-center justify-center gap-x-8 gap-y-3 text-sm">
+        <ul className="mt-8 flex w-full flex-col md:flex-row md:flex-wrap items-start md:items-center md:justify-between gap-x-8 gap-y-3 text-sm">
           {legal.map((item) => (
             <li key={item.href}>
               <a
