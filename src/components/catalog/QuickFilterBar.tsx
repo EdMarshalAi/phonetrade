@@ -5,6 +5,7 @@ import { Menu } from "@base-ui-components/react/menu";
 import {
   ArrowUpDown,
   ChevronDown,
+  ChevronRight,
   Check,
   SlidersHorizontal,
   X,
@@ -62,6 +63,46 @@ export function QuickFilterBar({
   onReset,
   onSetFilters,
 }: Props) {
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const [canScrollRight, setCanScrollRight] = React.useState(false);
+
+  const updateScrollState = React.useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    updateScrollState();
+    window.addEventListener("resize", updateScrollState);
+
+    // Подсказка-«толчок»: когда панель появляется в зоне видимости и есть что
+    // листать — слегка качаем вправо и обратно (один раз).
+    let nudged = false;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting && !nudged && el.scrollWidth > el.clientWidth + 8) {
+            nudged = true;
+            const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            if (!reduce) {
+              el.scrollTo({ left: 44, behavior: "smooth" });
+              window.setTimeout(() => el.scrollTo({ left: 0, behavior: "smooth" }), 550);
+            }
+          }
+        }
+      },
+      { threshold: 0.6 }
+    );
+    io.observe(el);
+    return () => {
+      window.removeEventListener("resize", updateScrollState);
+      io.disconnect();
+    };
+  }, [updateScrollState]);
+
   const renderQuickFacet = (facet: FilterFacet) => {
     if (facet === "battery") return null;
     const options = facetOptions[facet] ?? [];
@@ -84,11 +125,21 @@ export function QuickFilterBar({
   return (
     <div
       className={cn(
-        "sticky top-[57px] lg:top-[60px] z-40",
+        "sticky top-[57px] lg:top-[60px] z-40 relative",
         "bg-white border-b border-border shadow-[0_8px_20px_-16px_rgba(0,0,0,0.35)]"
       )}
     >
-      <div className="container-page flex items-center gap-2 h-14 overflow-x-auto scrollbar-hide [scroll-padding-left:1rem]">
+      {/* Подсказка прокрутки вправо (только мобильные) */}
+      {canScrollRight && (
+        <div className="pointer-events-none absolute right-0 top-0 bottom-px z-10 flex items-center gap-0 pl-8 pr-2 bg-gradient-to-l from-white via-white to-transparent lg:hidden">
+          <ChevronRight className="size-5 text-ink-muted motion-safe:animate-pulse" aria-hidden />
+        </div>
+      )}
+      <div
+        ref={scrollRef}
+        onScroll={updateScrollState}
+        className="container-page flex items-center gap-2 h-14 overflow-x-auto scrollbar-hide [scroll-padding-left:1rem]"
+      >
         {/* LEFT: Все фильтры + quick popovers */}
         <button
           type="button"

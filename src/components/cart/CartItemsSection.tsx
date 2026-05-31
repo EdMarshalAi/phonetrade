@@ -13,9 +13,11 @@ type Props = {
   items: CartItem[];
   onQty: (productId: string, qty: number) => void;
   onRemove: (productId: string) => void;
+  /** База цены выбранного способа оплаты — наличные/СБП или картой. */
+  base?: "cash" | "card";
 };
 
-export function CartItemsSection({ items, onQty, onRemove }: Props) {
+export function CartItemsSection({ items, onQty, onRemove, base = "cash" }: Props) {
   const { enabled: favEnabled, has: favHas, toggle: favToggle } = useFavorites();
   if (items.length === 0) {
     return (
@@ -37,16 +39,17 @@ export function CartItemsSection({ items, onQty, onRemove }: Props) {
   return (
     <ul className="-mx-5 md:-mx-7 -mb-5 md:-mb-7 divide-y divide-border/60">
       {items.map(({ product, qty }) => {
-        const lineCash = product.priceCash * qty;
+        const linePrice = (base === "card" ? product.priceCard : product.priceCash) * qty;
+        const priceLabel = base === "card" ? "Картой" : "Наличные";
         const isFavorite = favHas(product.id);
         return (
           <li
             key={product.id}
-            className="flex flex-col sm:flex-row gap-4 sm:gap-5 p-5 md:p-6"
+            className="flex flex-row gap-4 sm:gap-5 p-5 md:p-6"
           >
             <a
               href={`/product/${product.id}`}
-              className="relative shrink-0 size-24 sm:size-28 rounded-2xl bg-surface overflow-hidden self-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+              className="relative shrink-0 size-20 sm:size-28 rounded-2xl bg-surface overflow-hidden self-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
             >
               <Image
                 src={product.image}
@@ -95,14 +98,28 @@ export function CartItemsSection({ items, onQty, onRemove }: Props) {
                 </span>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+              {/* Цена — отдельной строкой (не «прыгает»), отражает выбранный способ оплаты */}
+              <div className="mt-3 flex items-baseline justify-between gap-3">
+                <span className="text-[11px] uppercase tracking-wider text-ink-subtle">{priceLabel}</span>
+                <span
+                  className={cn(
+                    "text-lg font-bold tracking-tight tabular-nums leading-none",
+                    base === "card" ? "text-ink" : "text-sale"
+                  )}
+                >
+                  {formatPrice(linePrice)}
+                </span>
+              </div>
+
+              {/* Контролы — стабильная строка: счётчик слева, действия справа */}
+              <div className="mt-3 flex items-center justify-between gap-3">
                 <div className="inline-flex items-center rounded-full border border-border/60 bg-white">
                   <button
                     type="button"
                     aria-label="Уменьшить количество"
                     onClick={() => onQty(product.id, qty - 1)}
                     disabled={qty <= 1}
-                    className="inline-flex size-11 items-center justify-center text-ink-muted hover:text-ink disabled:opacity-40 transition-colors rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                    className="inline-flex size-10 items-center justify-center text-ink-muted hover:text-ink disabled:opacity-40 transition-colors rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
                   >
                     <Minus className="size-3.5" />
                   </button>
@@ -115,28 +132,17 @@ export function CartItemsSection({ items, onQty, onRemove }: Props) {
                       const next = parseInt(e.target.value.replace(/\D/g, ""), 10);
                       if (!Number.isNaN(next)) onQty(product.id, next);
                     }}
-                    className="w-10 text-center text-sm font-medium text-ink tabular-nums bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-ink/40 rounded"
+                    className="w-9 text-center text-sm font-medium text-ink tabular-nums bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-ink/40 rounded"
                   />
                   <button
                     type="button"
                     aria-label="Увеличить количество"
                     onClick={() => onQty(product.id, qty + 1)}
                     disabled={qty >= MAX_QTY}
-                    className="inline-flex size-11 items-center justify-center text-ink-muted hover:text-ink disabled:opacity-40 transition-colors rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                    className="inline-flex size-10 items-center justify-center text-ink-muted hover:text-ink disabled:opacity-40 transition-colors rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
                   >
                     <Plus className="size-3.5" />
                   </button>
-                </div>
-
-                <div className="flex items-baseline gap-3">
-                  <div className="text-right">
-                    <div className="text-[11px] uppercase tracking-wider text-ink-subtle">
-                      Наличные
-                    </div>
-                    <div className="text-lg font-bold text-sale tracking-tight tabular-nums leading-none">
-                      {formatPrice(lineCash)}
-                    </div>
-                  </div>
                 </div>
 
                 <div className="flex items-center gap-1">
@@ -146,7 +152,7 @@ export function CartItemsSection({ items, onQty, onRemove }: Props) {
                       aria-label={isFavorite ? "Убрать из избранного" : "В избранное"}
                       aria-pressed={isFavorite}
                       onClick={() => void favToggle(product)}
-                      className="inline-flex size-11 items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                      className="inline-flex size-10 items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
                     >
                       <Heart
                         className={cn(
@@ -160,7 +166,7 @@ export function CartItemsSection({ items, onQty, onRemove }: Props) {
                     type="button"
                     aria-label="Удалить из корзины"
                     onClick={() => onRemove(product.id)}
-                    className="inline-flex size-11 items-center justify-center rounded-full text-ink-muted hover:text-sale hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                    className="inline-flex size-10 items-center justify-center rounded-full text-ink-muted hover:text-sale hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
                   >
                     <Trash2 className="size-4" />
                   </button>

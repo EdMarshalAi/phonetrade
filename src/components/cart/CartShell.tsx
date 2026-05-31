@@ -115,6 +115,12 @@ export function CartShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // База цены выбранного способа оплаты — отражается в строках корзины.
+  const itemBase: "cash" | "card" = React.useMemo(() => {
+    const pm = settings.payments.find((p) => p.key === state.payment);
+    return pm?.priceBase === "card" ? "card" : "cash";
+  }, [settings.payments, state.payment]);
+
   const requiresAddress = !!settings.delivery.find((d) => d.key === state.delivery)?.requiresAddress;
   const errors = React.useMemo(
     () => validateCheckout(state, items, requiresAddress),
@@ -277,7 +283,7 @@ export function CartShell({
                   : "Пока пусто"
               }
             >
-              <CartItemsSection items={items} onQty={setQty} onRemove={remove} />
+              <CartItemsSection items={items} onQty={setQty} onRemove={remove} base={itemBase} />
             </SectionStep>
 
             {items.length > 0 && (
