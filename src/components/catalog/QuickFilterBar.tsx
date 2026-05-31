@@ -125,7 +125,7 @@ export function QuickFilterBar({
   return (
     <div
       className={cn(
-        "sticky top-[57px] lg:top-[60px] z-40 relative",
+        "sticky top-[57px] lg:top-[60px] z-40 isolate",
         "bg-white border-b border-border shadow-[0_8px_20px_-16px_rgba(0,0,0,0.35)]"
       )}
     >

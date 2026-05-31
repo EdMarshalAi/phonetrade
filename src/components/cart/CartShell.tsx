@@ -283,7 +283,7 @@ export function CartShell({
                   : "Пока пусто"
               }
             >
-              <CartItemsSection items={items} onQty={setQty} onRemove={remove} base={itemBase} />
+              <CartItemsSection items={items} onQty={setQty} onRemove={remove} onClear={() => void ctxClear()} base={itemBase} />
             </SectionStep>
 
             {items.length > 0 && (
