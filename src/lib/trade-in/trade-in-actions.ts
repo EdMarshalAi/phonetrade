@@ -97,11 +97,14 @@ export async function submitTradeInQuiz(input: QuizInput): Promise<QuizResult> {
   const phone = digits(input.phone);
   const email = input.email?.trim() || null;
 
-  // Привязка к клиенту по телефону (если есть).
+  // Клиент в едином реестре: создаём по телефону, если ещё нет (любой, кто
+  // оставил номер, попадает в «Клиенты»). Заявка ниже привязывается к нему.
   let customerId: string | null = null;
   try {
-    const { data: c } = await db.from("customers").select("id").eq("phone", phone).maybeSingle();
-    customerId = c?.id ?? null;
+    const { data: cid } = await db.rpc("upsert_customer", {
+      p_phone: input.phone, p_name: input.name.trim(), p_email: email,
+    });
+    customerId = (typeof cid === "string" ? cid : null);
   } catch { /* ignore */ }
 
   const { data: lead, error } = await db
@@ -143,6 +146,7 @@ export async function submitTradeInQuiz(input: QuizInput): Promise<QuizResult> {
       contact_name: input.name.trim(),
       contact_phone: phone,
       contact_email: email,
+      customer_id: customerId,
       status: "new",
       source_url: "/trade-in",
       payload: {

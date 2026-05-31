@@ -76,11 +76,15 @@ export async function submitDataRequest(
 
   const db = createSupabaseAdminClient();
   try {
-    // Привязываем к клиенту по телефону (если есть в базе).
+    // Единый реестр «Клиенты»: создаём по телефону, если ещё нет.
     let customerId: string | null = null;
     if (phone) {
-      const { data: c } = await db.from("customers").select("id").eq("phone", phone).maybeSingle();
-      customerId = c?.id ?? null;
+      try {
+        const { data: cid } = await db.rpc("upsert_customer", {
+          p_phone: phone, p_name: input.name?.trim() || null, p_email: email || null,
+        });
+        customerId = (typeof cid === "string" ? cid : null);
+      } catch { /* ignore */ }
     }
 
     // Метаданные обращения добавляем в текст (для аудита).
@@ -120,6 +124,7 @@ export async function submitDataRequest(
         contact_name: input.name?.trim() || null,
         contact_phone: phone,
         contact_email: email,
+        customer_id: customerId,
         status: "new",
         source_url: "/account/privacy",
         payload: {

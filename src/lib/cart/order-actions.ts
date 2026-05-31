@@ -69,43 +69,18 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     }
     const orderNumber = `PT-${year}-${String(seq).padStart(4, "0")}`;
 
-    // Upsert клиента по нормализованному телефону.
+    // Единый реестр «Клиенты»: апсерт по телефону (последние 10 цифр) + сумма
+    // заказа в статистику. Та же функция, что у заявок/регистрации.
     const phoneDigits = normalizePhone(input.phone);
     let customerId: string | null = null;
     try {
-      const { data: existing } = await db
-        .from("customers")
-        .select("id, total_orders, total_spent")
-        .eq("phone", phoneDigits)
-        .maybeSingle();
-
-      if (existing) {
-        await db
-          .from("customers")
-          .update({
-            name: input.name,
-            email: input.email ?? null,
-            total_orders: (existing.total_orders ?? 0) + 1,
-            total_spent: (existing.total_spent ?? 0) + input.total,
-            last_order_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id);
-        customerId = existing.id;
-      } else {
-        const newCustomerId = crypto.randomUUID();
-        await db.from("customers").insert({
-          id: newCustomerId,
-          phone: phoneDigits,
-          name: input.name,
-          email: input.email ?? null,
-          total_orders: 1,
-          total_spent: input.total,
-          segment: "new",
-          first_order_at: new Date().toISOString(),
-          last_order_at: new Date().toISOString(),
-        });
-        customerId = newCustomerId;
-      }
+      const { data: cid } = await db.rpc("upsert_customer", {
+        p_phone: input.phone,
+        p_name: input.name,
+        p_email: input.email ?? null,
+        p_add_order_total: input.total,
+      });
+      customerId = typeof cid === "string" ? cid : null;
     } catch {
       // Не критично — продолжаем без customer_id
     }

@@ -56,6 +56,15 @@ export async function updateStorefrontProfile(patch: {
     const db = createSupabaseAdminClient();
     const { error } = await db.from("profiles").update(row).eq("id", userId);
     if (error) return { error: "Не удалось сохранить профиль" };
+    // Синхронизируем единый реестр «Клиенты» (по телефону, связь user_id).
+    try {
+      const { data: prof } = await db.from("profiles").select("name, phone, email").eq("id", userId).maybeSingle();
+      if (prof?.phone) {
+        await db.rpc("upsert_customer", { p_phone: prof.phone, p_name: prof.name || null, p_email: prof.email || null, p_user_id: userId });
+      }
+    } catch (e) {
+      console.error("[updateStorefrontProfile] upsert_customer:", e);
+    }
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка сохранения" };
   }
@@ -104,6 +113,18 @@ export async function registerStorefront(input: {
     if (error) {
       await db.auth.admin.deleteUser(created.data.user.id);
       return { error: "Не удалось сохранить профиль" };
+    }
+
+    // Единый реестр «Клиенты»: регистрация = клиент (связь по user_id).
+    try {
+      await db.rpc("upsert_customer", {
+        p_phone: input.phone,
+        p_name: input.name.trim(),
+        p_email: input.email?.trim() || null,
+        p_user_id: created.data.user.id,
+      });
+    } catch (e) {
+      console.error("[registerStorefront] upsert_customer:", e);
     }
 
     // 152-ФЗ: фиксируем согласия, данные при регистрации.
