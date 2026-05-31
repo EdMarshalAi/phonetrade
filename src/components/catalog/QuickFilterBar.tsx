@@ -84,11 +84,11 @@ export function QuickFilterBar({
   return (
     <div
       className={cn(
-        "sticky top-14 lg:top-[60px] z-40",
-        "bg-white/85 backdrop-blur-md border-y border-border/60"
+        "sticky top-[57px] lg:top-[60px] z-40",
+        "bg-white border-b border-border shadow-[0_8px_20px_-16px_rgba(0,0,0,0.35)]"
       )}
     >
-      <div className="container-page flex items-center gap-2 h-14 overflow-x-auto scrollbar-hide">
+      <div className="container-page flex items-center gap-2 h-14 overflow-x-auto scrollbar-hide [scroll-padding-left:1rem]">
         {/* LEFT: Все фильтры + quick popovers */}
         <button
           type="button"
