@@ -11,7 +11,7 @@ import type { Product } from "@/lib/data/products";
 
 type Props = {
   product: Product;
-  variants: { colors: Product[]; memories: Product[] };
+  variants: { colors: Product[]; memories: Product[]; sims: Product[] };
 };
 
 function colorSwatchClass(colorName: string): string {
@@ -64,6 +64,14 @@ export function ProductBuyPanel({ product, variants }: Props) {
         return order.indexOf(a.memory ?? "") - order.indexOf(b.memory ?? "");
       });
   }, [variants.memories]);
+
+  // SIM как третья ось (eSIM / eSIM + SIM …). Скрыт, если в группе один вариант.
+  const simOptions = React.useMemo(() => {
+    const seen = new Set<string>();
+    return variants.sims
+      .filter((v) => (v.sim && !seen.has(v.sim) ? (seen.add(v.sim), true) : false))
+      .sort((a, b) => (a.sim ?? "").localeCompare(b.sim ?? "", "ru"));
+  }, [variants.sims]);
 
   const limitedHighlights = (product.highlights ?? []).slice(0, 3);
 
@@ -165,6 +173,34 @@ export function ProductBuyPanel({ product, variants }: Props) {
                     )}
                   >
                     {v.memory}
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {simOptions.length > 1 && (
+        <div>
+          <span className="block text-xs uppercase tracking-[0.16em] text-ink-subtle mb-3">
+            SIM
+          </span>
+          <ul className="flex flex-wrap gap-2">
+            {simOptions.map((v) => {
+              const active = v.id === product.id;
+              return (
+                <li key={v.id}>
+                  <a
+                    href={`/product/${v.id}`}
+                    className={cn(
+                      "inline-flex items-center h-10 px-4 rounded-xl text-sm font-medium transition-colors border",
+                      active
+                        ? "bg-ink text-white border-ink"
+                        : "bg-white border-border text-ink hover:border-ink/30"
+                    )}
+                  >
+                    {v.sim}
                   </a>
                 </li>
               );

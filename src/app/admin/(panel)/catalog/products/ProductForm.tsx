@@ -509,6 +509,7 @@ export function ProductForm({
             productId={product!.id}
             currentGroupId={(product as ProductValue & { variant_group_id?: string | null }).variant_group_id ?? null}
             products={allProducts}
+            categories={categories}
           />
         </div>
       ) : null}

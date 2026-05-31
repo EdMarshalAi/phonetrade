@@ -270,20 +270,25 @@ export async function searchProducts(query: string): Promise<Product[]> {
 export async function getVariantsForProduct(product: Product): Promise<{
   colors: Product[];
   memories: Product[];
+  sims: Product[];
 }> {
   // Только явная группа «Связанные товары» (собирается вручную в админке).
   // Никакого авто-объединения по model — иначе товары без model слипаются.
-  if (!product.variantGroupId) return { colors: [], memories: [] };
+  if (!product.variantGroupId) return { colors: [], memories: [], sims: [] };
   if (!supabase) return mockVariants(product);
   const { data, error } = await supabase
     .from("products")
     .select("*")
     .eq("variant_group_id", product.variantGroupId);
-  if (error || !data || data.length === 0) return { colors: [], memories: [] };
+  if (error || !data || data.length === 0) return { colors: [], memories: [], sims: [] };
   const siblings = (data as ProductRow[]).map(rowToProduct);
+  // Оси выбора независимы: фиксируем две координаты, варьируем третью —
+  // переключение цвета сохраняет память и SIM и т.д. SIM-переключатель
+  // на витрине скрыт, если в группе один вариант SIM (старые модели/Б/У).
   return {
-    colors: siblings.filter((p) => p.memory === product.memory),
-    memories: siblings.filter((p) => p.color === product.color),
+    colors: siblings.filter((p) => p.memory === product.memory && p.sim === product.sim),
+    memories: siblings.filter((p) => p.color === product.color && p.sim === product.sim),
+    sims: siblings.filter((p) => p.color === product.color && p.memory === product.memory),
   };
 }
 
@@ -303,13 +308,17 @@ function mockRelated(product: Product, limit: number): Product[] {
 function mockVariants(product: Product): {
   colors: Product[];
   memories: Product[];
+  sims: Product[];
 } {
   return {
     colors: ALL_PRODUCTS.filter(
-      (p) => p.model === product.model && p.memory === product.memory
+      (p) => p.model === product.model && p.memory === product.memory && p.sim === product.sim
     ),
     memories: ALL_PRODUCTS.filter(
-      (p) => p.model === product.model && p.color === product.color
+      (p) => p.model === product.model && p.color === product.color && p.sim === product.sim
+    ),
+    sims: ALL_PRODUCTS.filter(
+      (p) => p.model === product.model && p.color === product.color && p.memory === product.memory
     ),
   };
 }

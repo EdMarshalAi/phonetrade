@@ -11,7 +11,7 @@ import { ProductDescription } from "@/components/product-detail/ProductDescripti
 type Props = {
   product: Product;
   related: Product[];
-  variants: { colors: Product[]; memories: Product[] };
+  variants: { colors: Product[]; memories: Product[]; sims: Product[] };
   productBlocks: InfoBlock[];
 };
 
