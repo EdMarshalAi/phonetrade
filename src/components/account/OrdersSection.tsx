@@ -6,11 +6,10 @@ import Link from "next/link";
 import { Package } from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { type Order } from "@/lib/account/orders";
-import { colorEntry } from "@/lib/orders/statuses";
+import { statusBadgeStyle } from "@/lib/orders/statuses";
 import { getOrdersByPhone } from "@/lib/account/orders-server";
 import { formatPrice } from "@/lib/utils/format-price";
 import { pluralizeItems } from "@/lib/utils/plural";
-import { cn } from "@/lib/utils/cn";
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -87,10 +86,8 @@ export function OrdersSection() {
                 </p>
               </div>
               <span
-                className={cn(
-                  "inline-flex items-center h-7 px-3 rounded-full text-[12px] font-medium",
-                  colorEntry(order.statusColor).badge
-                )}
+                className="inline-flex items-center h-7 px-3 rounded-full text-[12px] font-medium"
+                style={statusBadgeStyle(order.statusColor)}
               >
                 {order.statusLabel}
               </span>

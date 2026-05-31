@@ -10,8 +10,7 @@ import { AdminButton } from "@/components/admin/form";
 import { SearchBox, FilterSelect, Pagination } from "@/components/admin/ListControls";
 import { ORDER_STATUS, PAYMENT_LABEL, DELIVERY_LABEL } from "./labels";
 import { getOrderStatusConfig } from "@/lib/orders/status-config";
-import { colorEntry, ORDER_BADGE_BASE } from "@/lib/orders/statuses";
-import { cn } from "@/lib/utils/cn";
+import { statusBadgeStyle, ORDER_BADGE_BASE } from "@/lib/orders/statuses";
 
 export const metadata: Metadata = { title: "Заказы" };
 
@@ -114,7 +113,7 @@ export default async function OrdersPage({
                   </div>
                 </div>
                 <div className="shrink-0 text-right text-[15px] font-semibold tabular-nums text-ink">{money(o.total)}</div>
-                <span className={cn(ORDER_BADGE_BASE, colorEntry(colorOf(o.status)).badge)}>{labelOf(o.status)}</span>
+                <span className={ORDER_BADGE_BASE} style={statusBadgeStyle(colorOf(o.status))}>{labelOf(o.status)}</span>
               </LinkRow>
             ))}
           </ListCard>

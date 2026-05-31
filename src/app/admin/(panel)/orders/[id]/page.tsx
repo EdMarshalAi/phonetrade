@@ -11,8 +11,7 @@ import { OrderStatusControl, OrderNotes } from "../OrderControls";
 import { deleteOrder } from "../actions";
 import { ORDER_STATUS, PAYMENT_LABEL, DELIVERY_LABEL, PAYMENT_STATUS_LABEL } from "../labels";
 import { getOrderStatusConfig } from "@/lib/orders/status-config";
-import { colorEntry, ORDER_BADGE_BASE } from "@/lib/orders/statuses";
-import { cn } from "@/lib/utils/cn";
+import { statusBadgeStyle, ORDER_BADGE_BASE } from "@/lib/orders/statuses";
 
 export const metadata: Metadata = { title: "Заказ" };
 
@@ -59,7 +58,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           <Panel>
             <PanelHeader>
               <PanelTitle>Состав заказа</PanelTitle>
-              <span className={cn(ORDER_BADGE_BASE, colorEntry(colorOf(order.status)).badge)}>{labelOf(order.status)}</span>
+              <span className={ORDER_BADGE_BASE} style={statusBadgeStyle(colorOf(order.status))}>{labelOf(order.status)}</span>
             </PanelHeader>
             {orderItems.length === 0 ? (
               <div className="p-5 text-sm text-ink-muted">Позиции не записаны (заказ создан без детализации).</div>

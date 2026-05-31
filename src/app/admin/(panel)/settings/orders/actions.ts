@@ -1,7 +1,7 @@
 "use server";
 
 import { adminMutation } from "@/lib/admin/mutations";
-import { DEFAULT_ORDER_STATUSES, ORDER_COLOR_KEYS, type OrderStatusDef } from "@/lib/orders/statuses";
+import { DEFAULT_ORDER_STATUSES, normalizeHex, type OrderStatusDef } from "@/lib/orders/statuses";
 
 function slugify(raw: string, fallback: string): string {
   const s = raw
@@ -27,7 +27,7 @@ export async function saveOrderStatuses(items: OrderStatusDef[]): Promise<{ erro
       key,
       label,
       customerLabel: (it.customerLabel ?? "").trim() || label,
-      color: ORDER_COLOR_KEYS.includes(it.color) ? it.color : "slate",
+      color: normalizeHex(it.color),
     });
   }
   if (clean.length === 0) {

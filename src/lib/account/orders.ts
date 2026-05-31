@@ -14,7 +14,7 @@ export type Order = {
   statusKey: string;
   /** Название статуса для клиента (из настроек статусов заказа). */
   statusLabel: string;
-  /** Ключ цвета бейджа статуса (из палитры ORDER_STATUS_COLORS). */
+  /** HEX-цвет бейджа статуса. */
   statusColor: string;
   items: OrderItem[];
   total: number;
