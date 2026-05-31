@@ -48,7 +48,6 @@ export function CartShell({
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [consent, setConsent] = React.useState({ oferta: false, pd: false, marketing: false });
   // Авторизованный пользователь дал согласия при регистрации — в корзине их не спрашиваем.
-  const showConsent = !user;
   React.useEffect(() => {
     if (user) setConsent({ oferta: true, pd: true, marketing: false });
   }, [user]);
@@ -290,6 +289,8 @@ export function CartShell({
                   showErrors={attempted}
                   loggedIn={!!user}
                   userName={user?.name}
+                  consent={consent}
+                  onConsent={(patch) => setConsent((c) => ({ ...c, ...patch }))}
                 />
                 <DeliverySection
                   state={state}
@@ -313,9 +314,6 @@ export function CartShell({
               blocks={checkoutBlocks}
               delivery={settings.delivery}
               payments={settings.payments}
-              consent={consent}
-              onConsent={(patch) => setConsent((c) => ({ ...c, ...patch }))}
-              showConsent={showConsent}
               promo={promo}
               onApplyPromo={applyPromo}
               onClearPromo={clearPromo}

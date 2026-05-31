@@ -5,6 +5,7 @@ import { Zap, LogIn, CircleUserRound } from "lucide-react";
 import { SectionStep } from "@/components/cart/SectionStep";
 import type { CheckoutState } from "@/lib/cart/types";
 import type { CheckoutErrors } from "@/lib/cart/validate";
+import type { Consent } from "@/components/cart/OrderSummary";
 import { useAuth, normalizePhone } from "@/components/providers/AuthProvider";
 import { cn } from "@/lib/utils/cn";
 
@@ -15,9 +16,11 @@ type Props = {
   showErrors: boolean;
   loggedIn?: boolean;
   userName?: string;
+  consent: Consent;
+  onConsent: (patch: Partial<Consent>) => void;
 };
 
-export function CustomerSection({ state, onChange, errors, showErrors, loggedIn, userName }: Props) {
+export function CustomerSection({ state, onChange, errors, showErrors, loggedIn, userName, consent, onConsent }: Props) {
   const err = (field: keyof CheckoutErrors) => (showErrors ? errors[field] : undefined);
   const { login, register } = useAuth();
 
@@ -60,11 +63,24 @@ export function CustomerSection({ state, onChange, errors, showErrors, loggedIn,
             <textarea id="comment" rows={2} placeholder="Например: позвонить за час до доставки" value={state.comment ?? ""} onChange={(e) => onChange({ comment: e.target.value })} className="w-full px-4 py-3 rounded-xl bg-surface text-[15px] text-ink placeholder:text-ink-subtle outline-none focus:bg-white focus:ring-2 focus:ring-ink/15 transition-colors resize-y" />
           </label>
 
-          <p className="mt-4 text-[12px] text-ink-subtle leading-relaxed">
-            Нажимая «Подтвердить заказ», вы соглашаетесь с{" "}
-            <a href="/offer" className="text-ink underline-offset-4 hover:underline">публичной офертой</a> и{" "}
-            <a href="/privacy" className="text-ink underline-offset-4 hover:underline">политикой обработки данных</a>.
-          </p>
+          {!loggedIn && (
+            <div className="mt-5 space-y-2.5">
+              <ConsentRow checked={consent.oferta} onChange={(v) => onConsent({ oferta: v })}>
+                Принимаю <a href="/offer" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">условия оферты</a> и <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">политику конфиденциальности</a>
+              </ConsentRow>
+              <ConsentRow checked={consent.pd} onChange={(v) => onConsent({ pd: v })}>
+                Даю <a href="/consent" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">согласие на обработку персональных данных</a> для оформления и исполнения заказа
+              </ConsentRow>
+              <ConsentRow checked={consent.marketing} onChange={(v) => onConsent({ marketing: v })} subtle>
+                Хочу получать акции и новинки (необязательно)
+              </ConsentRow>
+              {showErrors && (!consent.oferta || !consent.pd) && (
+                <p className="text-[12px] text-sale" role="alert">
+                  Необходимо принять оферту и согласие на обработку персональных данных
+                </p>
+              )}
+            </div>
+          )}
         </>
       )}
     </SectionStep>

@@ -10,7 +10,6 @@ import { ImageField } from "@/components/admin/ImageField";
 import { Panel } from "@/components/admin/ui";
 import { createHeroSlide, updateHeroSlide } from "./actions";
 import { HeroLinkPicker, type PickerCategory, type PickerProduct } from "./HeroLinkPicker";
-import { cn } from "@/lib/utils/cn";
 
 export interface HeroValue {
   id: string;
@@ -25,8 +24,6 @@ export interface HeroValue {
   sort_order: number;
   is_published: boolean;
 }
-
-const BG_PRESETS = ["#1d1d1f", "#000000", "#f5f5f7", "#ffffff", "#0b3d2e", "#13315c", "#5b2333", "#3a3a3c"];
 
 export function HeroForm({
   slide,
@@ -69,20 +66,26 @@ export function HeroForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
       <FormError message={formError} />
+
+      {/* Контент — короткие поля в два столбика */}
       <Panel className="space-y-4 p-5">
-        <Field label="Надзаголовок" hint="Напр. «Новинка осени»">
-          <TextInput {...register("overline")} />
-        </Field>
-        <Field label="Заголовок" required error={errors.title?.message}>
-          <TextInput placeholder="iPhone 17 Pro" hasError={!!errors.title} {...register("title")} />
-        </Field>
-        <Field label="Описание">
-          <Textarea placeholder="Титановый корпус, чип A19 Pro…" {...register("description")} />
-        </Field>
-        <Field label="Текст кнопки">
-          <TextInput placeholder="Узнать подробнее" {...register("button_text")} />
-        </Field>
-        <Field label="Ссылка кнопки" hint="Выберите категорию, подкатегорию, товар или укажите свою ссылку">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Надзаголовок" hint="Напр. «Новинка осени»">
+            <TextInput {...register("overline")} />
+          </Field>
+          <Field label="Заголовок" required error={errors.title?.message}>
+            <TextInput placeholder="iPhone 17 Pro" hasError={!!errors.title} {...register("title")} />
+          </Field>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Описание">
+            <Textarea rows={2} placeholder="Титановый корпус, чип A19 Pro…" {...register("description")} />
+          </Field>
+          <Field label="Текст кнопки">
+            <TextInput placeholder="Узнать подробнее" {...register("button_text")} />
+          </Field>
+        </div>
+        <Field label="Ссылка кнопки" hint="Категория, подкатегория, товар или своя ссылка">
           <Controller
             control={control}
             name="button_link"
@@ -98,86 +101,58 @@ export function HeroForm({
         </Field>
       </Panel>
 
+      {/* Оформление — изображение и фон одним рядом по блокам */}
       <Panel className="p-5">
-        <Field label="Изображение (справа на слайде)">
-          <Controller
-            control={control}
-            name="image_url"
-            render={({ field }) => (
-              <ImageField value={field.value || null} onChange={(u) => field.onChange(u ?? "")} bucket="hero-slides" folder="hero" aspect="wide" />
-            )}
-          />
-        </Field>
-      </Panel>
-
-      <Panel className="space-y-4 p-5">
-        <Field label="Фон слайда" hint="Выберите любой цвет или оставьте по теме">
-          <Controller
-            control={control}
-            name="bg_color"
-            render={({ field }) => {
-              const val = field.value || "";
-              return (
-                <div className="space-y-2.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      type="color"
-                      aria-label="Палитра цветов"
-                      value={val || "#1d1d1f"}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      className="h-10 w-12 cursor-pointer rounded-md border border-border bg-white p-1"
-                    />
-                    <TextInput
-                      placeholder="#1d1d1f"
-                      value={val}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      className="w-32 font-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => field.onChange("")}
-                      className={cn(
-                        "h-9 rounded-md border px-3 text-[13px] font-medium transition-colors",
-                        val ? "border-border text-ink-muted hover:text-ink" : "border-ink bg-ink text-white"
-                      )}
-                    >
-                      По теме
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {BG_PRESETS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        aria-label={c}
-                        title={c}
-                        onClick={() => field.onChange(c)}
-                        className={cn(
-                          "size-7 rounded-md border transition-transform hover:scale-110",
-                          val.toLowerCase() === c ? "border-ink ring-2 ring-ink/30" : "border-border"
-                        )}
-                        style={{ backgroundColor: c }}
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="Изображение" hint="Показывается справа на слайде">
+            <Controller
+              control={control}
+              name="image_url"
+              render={({ field }) => (
+                <ImageField value={field.value || null} onChange={(u) => field.onChange(u ?? "")} bucket="hero-slides" folder="hero" aspect="wide" />
+              )}
+            />
+          </Field>
+          <div className="space-y-4">
+            <Field label="Фон слайда" hint="Цвет из палитры или HEX-код">
+              <Controller
+                control={control}
+                name="bg_color"
+                render={({ field }) => {
+                  const val = field.value || "";
+                  return (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        aria-label="Палитра цветов"
+                        value={/^#[0-9a-fA-F]{6}$/.test(val) ? val : "#1d1d1f"}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        className="h-10 w-12 shrink-0 cursor-pointer rounded-md border border-border bg-white p-1"
                       />
-                    ))}
-                  </div>
-                </div>
-              );
-            }}
-          />
-        </Field>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Цвет текста" hint="Поверх фона">
-            <Controller control={control} name="theme" render={({ field }) => (
-              <Select value={field.value} onChange={field.onChange}>
-                <option value="dark">Светлый текст</option>
-                <option value="light">Тёмный текст</option>
-              </Select>
-            )} />
-          </Field>
-          <Field label="Порядок">
-            <TextInput type="number" min={0} {...register("sort_order")} />
-          </Field>
-          <div className="flex items-end pb-1.5">
+                      <TextInput
+                        placeholder="#1d1d1f"
+                        value={val}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        className="flex-1 font-mono"
+                      />
+                    </div>
+                  );
+                }}
+              />
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Цвет текста">
+                <Controller control={control} name="theme" render={({ field }) => (
+                  <Select value={field.value} onChange={field.onChange}>
+                    <option value="dark">Светлый</option>
+                    <option value="light">Тёмный</option>
+                  </Select>
+                )} />
+              </Field>
+              <Field label="Порядок">
+                <TextInput type="number" min={0} {...register("sort_order")} />
+              </Field>
+            </div>
             <Controller control={control} name="is_published" render={({ field }) => <Switch checked={!!field.value} onChange={field.onChange} label="Активен" />} />
           </div>
         </div>
