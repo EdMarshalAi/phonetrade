@@ -30,10 +30,14 @@ export default async function StaticPage({
   const page = await getStaticPage(slug);
   if (!page) notFound();
 
+  // Контент может задать собственный заголовок (внутри вёрстки) — тогда
+  // автоматический h1 не выводим (маркер <!--hide-title-->).
+  const hideTitle = page.content?.includes("<!--hide-title-->") ?? false;
+
   return (
     <article className="container-page py-16 md:py-24">
       <div className="w-full">
-        <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-4xl">{page.title}</h1>
+        {!hideTitle && <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-4xl">{page.title}</h1>}
         {page.content ? (
           <div
             className="prose prose-neutral mt-8 w-full max-w-none prose-headings:tracking-tight prose-img:rounded-2xl prose-img:max-w-3xl prose-table:w-full [&_details]:my-3 [&_details]:rounded-2xl [&_details]:border [&_details]:border-border/60 [&_details]:bg-white [&_details]:px-5 [&_summary]:flex [&_summary]:cursor-pointer [&_summary]:list-none [&_summary]:items-center [&_summary]:gap-3 [&_summary]:py-4 [&_summary]:font-semibold [&_summary]:text-ink [&_summary::-webkit-details-marker]:hidden [&_summary]:after:ml-auto [&_summary]:after:text-2xl [&_summary]:after:font-normal [&_summary]:after:leading-none [&_summary]:after:text-ink-muted [&_summary]:after:content-['+'] [&_details[open]_summary]:after:content-['−'] [&_details>*:last-child]:pb-5"

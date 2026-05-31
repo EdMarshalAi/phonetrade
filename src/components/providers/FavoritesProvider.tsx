@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth, normalizePhone } from "@/components/providers/AuthProvider";
 import type { Product } from "@/lib/data/products";
 import { getFavoriteIds, setFavorite } from "@/lib/favorites/favorites-actions";
 
 type FavoritesContextValue = {
-  /** Показывать ли «в избранное» (только для авторизованных). */
+  /** Кнопка «в избранное» видна всегда; гостя при клике отправляем на вход. */
   enabled: boolean;
   ids: Set<string>;
   has: (productId: string) => boolean;
@@ -18,6 +19,8 @@ const FavoritesContext = React.createContext<FavoritesContextValue | null>(null)
 /** Избранное в БД, привязано к телефону текущего пользователя. */
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
   const userKey = user ? normalizePhone(user.phone) : "";
   const [ids, setIds] = React.useState<Set<string>>(new Set());
 
@@ -37,7 +40,11 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
 
   const toggle = React.useCallback(
     async (product: Product) => {
-      if (!userKey) return;
+      if (!userKey) {
+        // Гость — отправляем на вход, после входа вернём на текущую страницу.
+        router.push(`/auth/login?returnTo=${encodeURIComponent(pathname || "/")}`);
+        return;
+      }
       const on = !ids.has(product.id);
       // оптимистично
       setIds((prev) => {
@@ -53,12 +60,12 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         /* откат не критичен — перезагрузка синхронизирует */
       }
     },
-    [userKey, ids]
+    [userKey, ids, router, pathname]
   );
 
   const value = React.useMemo<FavoritesContextValue>(
-    () => ({ enabled: !!userKey, ids, has: (id) => ids.has(id), toggle }),
-    [userKey, ids, toggle]
+    () => ({ enabled: true, ids, has: (id) => ids.has(id), toggle }),
+    [ids, toggle]
   );
 
   return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>;

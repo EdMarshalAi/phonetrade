@@ -72,25 +72,37 @@ const FEATURES: [string, string, string][] = [
 const SOCIAL_BTN =
   "display:inline-flex;width:46px;height:46px;align-items:center;justify-content:center;border-radius:14px;background:#f5f5f7;color:#1d1d1f;text-decoration:none";
 
-const ABOUT = `<div class="not-prose" style="color:#1d1d1f">
-<div style="${GRID("300px")};gap:40px;align-items:center;margin-bottom:56px">
+const ABOUT = `<!--hide-title-->
+<div class="not-prose pt-about" style="color:#1d1d1f">
+<style>
+.pt-hero{display:grid;gap:40px;align-items:center;grid-template-columns:1fr;margin-bottom:56px}
+.pt-hero img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:24px;border:1px solid rgba(0,0,0,.08);display:block;margin:0}
+.pt-tilewrap{display:grid;gap:1px;background:rgba(0,0,0,.08);border:1px solid rgba(0,0,0,.08);border-radius:24px;overflow:hidden;margin-bottom:64px}
+.pt-stats{grid-template-columns:1fr 1fr}
+.pt-features{grid-template-columns:1fr}
+.pt-contacts{display:grid;gap:40px;align-items:start;grid-template-columns:1fr}
+@media(min-width:640px){.pt-features{grid-template-columns:1fr 1fr}}
+@media(min-width:900px){.pt-hero{grid-template-columns:1.05fr .95fr}.pt-stats{grid-template-columns:repeat(4,1fr)}.pt-features{grid-template-columns:1fr 1fr 1fr}.pt-contacts{grid-template-columns:1fr 1fr}}
+</style>
+<div class="pt-hero">
 <div>
-<p style="font-size:16px;line-height:1.6;color:#6e6e73;margin:0;max-width:36rem">PhoneTrade — магазин оригинальной техники Apple в Белгороде. У нас можно купить iPhone, iPad, MacBook, Apple Watch, AirPods и оригинальные аксессуары с официальной гарантией. Все устройства проходят проверку, имеют подтверждённую оригинальность и поддерживаются нашим собственным сервисным центром.</p>
+<h1 style="font-size:clamp(27px,4.4vw,42px);line-height:1.08;letter-spacing:-.03em;font-weight:600;margin:0;color:#1d1d1f">Айфоны и техника Apple в Белгороде</h1>
+<p style="font-size:16px;line-height:1.6;color:#6e6e73;margin:20px 0 0;max-width:36rem">PhoneTrade — магазин оригинальной техники Apple в Белгороде. У нас можно купить iPhone, iPad, MacBook, Apple Watch, AirPods и оригинальные аксессуары с официальной гарантией. Все устройства проходят проверку, имеют подтверждённую оригинальность и поддерживаются нашим собственным сервисным центром.</p>
 <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:26px">
 <a href="/catalog" style="${BTN_PRIMARY}">Смотреть каталог</a>
 <a href="/trade-in" style="${BTN_OUTLINE}">Оценить Trade-in</a>
 </div>
 </div>
-<div><img src="${STORE}" alt="Магазин Phone Trade в Белгороде — ул. Попова, 36" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:24px;border:1px solid rgba(0,0,0,0.08);display:block;margin:0" /></div>
+<div><img src="${STORE}" alt="Магазин Phone Trade в Белгороде — ул. Попова, 36" /></div>
 </div>
 
-<div style="${TILES_WRAP};grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:64px">
+<div class="pt-tilewrap pt-stats">
 ${STATS.map(([v, l]) => `<div style="background:#fff;padding:24px;text-align:center"><div style="font-size:28px;font-weight:600;letter-spacing:-.01em">${v}</div><div style="font-size:13px;color:#6e6e73;margin-top:4px">${l}</div></div>`).join("")}
 </div>
 
 <h2 style="font-size:clamp(24px,3vw,34px);font-weight:600;letter-spacing:-.02em;margin:0 0 8px">Почему покупают у нас</h2>
 <p style="color:#6e6e73;max-width:44rem;margin:0 0 32px;line-height:1.6">Благодаря прямым поставкам цены ниже среднерыночных, а постоянные покупатели получают накопительные скидки и бонусы. При комплексной покупке — дополнительная выгода.</p>
-<div style="${TILES_WRAP};grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin-bottom:64px">
+<div class="pt-tilewrap pt-features">
 ${FEATURES.map(([ic, t, d]) => `<div style="background:#fff;padding:28px"><span style="${CHIP}">${ic}</span><h3 style="font-size:16px;font-weight:600;margin:16px 0 0">${t}</h3><p style="font-size:14px;line-height:1.6;color:#6e6e73;margin:8px 0 0">${d}</p></div>`).join("")}
 </div>
 
@@ -100,7 +112,7 @@ ${FEATURES.map(([ic, t, d]) => `<div style="background:#fff;padding:28px"><span 
 <p style="font-size:13px;color:#86868b;margin:24px 0 0">* Актуальную цену и наличие интересующей вас модели уточняйте в сообщениях или по телефону.</p>
 </div>
 
-<div style="${GRID("300px")};gap:40px;align-items:start">
+<div class="pt-contacts">
 <div>
 <h2 style="font-size:clamp(24px,3vw,34px);font-weight:600;letter-spacing:-.02em;margin:0 0 24px">Контакты</h2>
 <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:18px"><span style="${SOCIAL_BTN};background:transparent;border:1px solid rgba(0,0,0,0.12)">${I.pin}</span><span style="padding-top:10px">Белгород, ул. Попова, 36 (Универмаг «Белгород», 1 этаж)</span></div>
