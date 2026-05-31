@@ -44,6 +44,24 @@ export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash
         const linePrice = (base === "card" ? product.priceCard : product.priceCash) * qty;
         const priceLabel = base === "card" ? "Картой" : "Наличные";
         const isFavorite = favHas(product.id);
+        const priceEl = (
+          <>
+            <div
+              className={cn(
+                "text-[17px] md:text-xl font-bold leading-none tracking-tight tabular-nums",
+                base === "card" ? "text-ink" : "text-sale"
+              )}
+            >
+              {formatPrice(linePrice)}
+            </div>
+            {base === "cash" && product.priceCard > product.priceCash ? (
+              <div className="mt-1 text-[12px] leading-none text-ink-subtle line-through tabular-nums">
+                {formatPrice(product.priceCard * qty)}
+              </div>
+            ) : null}
+            <div className="mt-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-subtle">{priceLabel}</div>
+          </>
+        );
         return (
           <li key={product.id} className="flex gap-4 sm:gap-5 p-5 sm:p-6">
             <a
@@ -81,27 +99,14 @@ export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash
                   </div>
                 </div>
 
-                {/* Цена + старая цена справа (как в референсе) */}
-                <div className="shrink-0 text-right">
-                  <div
-                    className={cn(
-                      "text-[17px] md:text-xl font-bold leading-none tracking-tight tabular-nums",
-                      base === "card" ? "text-ink" : "text-sale"
-                    )}
-                  >
-                    {formatPrice(linePrice)}
-                  </div>
-                  {base === "cash" && product.priceCard > product.priceCash ? (
-                    <div className="mt-1 text-[12px] leading-none text-ink-subtle line-through tabular-nums">
-                      {formatPrice(product.priceCard * qty)}
-                    </div>
-                  ) : null}
-                  <div className="mt-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-subtle">{priceLabel}</div>
-                </div>
+                {/* Цена справа — только на десктопе */}
+                <div className="hidden shrink-0 text-right sm:block">{priceEl}</div>
               </div>
 
-              {/* Контролы: минималистичный счётчик слева, избранное/удалить справа */}
-              <div className="mt-auto flex items-center justify-between gap-3 pt-4">
+              {/* Нижняя строка: на мобильном 3 колонки — цена · количество · действия */}
+              <div className="mt-auto flex items-center justify-between gap-2 pt-4">
+                {/* Цена слева — только на мобильном */}
+                <div className="text-left sm:hidden">{priceEl}</div>
                 <div className="inline-flex items-center gap-1">
                   <button
                     type="button"
