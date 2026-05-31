@@ -63,51 +63,47 @@ export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash
           </>
         );
         return (
-          <li key={product.id} className="flex gap-4 sm:gap-5 p-5 sm:p-6">
-            <a
-              href={`/product/${product.id}`}
-              className="relative shrink-0 size-24 sm:size-32 self-start overflow-hidden rounded-2xl bg-white ring-1 ring-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-            >
-              <Image
-                src={product.image}
-                alt={product.title}
-                fill
-                sizes="128px"
-                className="object-contain p-3"
-                unoptimized
-              />
-            </a>
+          <li key={product.id} className="p-5 sm:p-6">
+            {/* Верх: фото + название и характеристики */}
+            <div className="flex gap-4 sm:gap-5">
+              <a
+                href={`/product/${product.id}`}
+                className="relative shrink-0 size-24 sm:size-28 self-start overflow-hidden rounded-2xl bg-white ring-1 ring-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+              >
+                <Image
+                  src={product.image}
+                  alt={product.title}
+                  fill
+                  sizes="112px"
+                  className="object-contain p-3"
+                  unoptimized
+                />
+              </a>
 
-            <div className="flex min-w-0 flex-1 flex-col">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <a
-                    href={`/product/${product.id}`}
-                    className="block text-[15px] md:text-base font-semibold leading-snug text-ink transition-opacity hover:opacity-80"
-                  >
-                    {product.title}
-                  </a>
-                  <p className="mt-1 text-[12.5px] leading-snug text-ink-muted">
-                    {[product.color, product.memory, product.sim].filter(Boolean).join(" · ")}
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]">
-                    <span className="inline-flex items-center gap-1.5 text-ink-muted">
-                      <span aria-hidden className={cn("size-1.5 rounded-full", product.inStock ? "bg-emerald-500" : "bg-ink/30")} />
-                      {product.inStock ? "В наличии" : "Уточняйте наличие"}
-                    </span>
-                    {product.sku ? <span className="text-ink-subtle">· Арт. {product.sku}</span> : null}
-                  </div>
+              <div className="min-w-0 flex-1">
+                <a
+                  href={`/product/${product.id}`}
+                  className="block text-[15px] md:text-base font-semibold leading-snug text-ink transition-opacity hover:opacity-80"
+                >
+                  {product.title}
+                </a>
+                <p className="mt-1 text-[12.5px] leading-snug text-ink-muted">
+                  {[product.color, product.memory, product.sim].filter(Boolean).join(" · ")}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]">
+                  <span className="inline-flex items-center gap-1.5 text-ink-muted">
+                    <span aria-hidden className={cn("size-1.5 rounded-full", product.inStock ? "bg-emerald-500" : "bg-ink/30")} />
+                    {product.inStock ? "В наличии" : "Уточняйте наличие"}
+                  </span>
+                  {product.sku ? <span className="text-ink-subtle">· Арт. {product.sku}</span> : null}
                 </div>
-
-                {/* Цена справа — только на десктопе */}
-                <div className="hidden shrink-0 text-right sm:block">{priceEl}</div>
               </div>
+            </div>
 
-              {/* Нижняя строка: на мобильном 3 колонки — цена · количество · действия */}
-              <div className="mt-auto flex items-center justify-between gap-2 pt-4">
-                {/* Цена слева — только на мобильном */}
-                <div className="text-left sm:hidden">{priceEl}</div>
-                <div className="inline-flex items-center gap-1">
+            {/* Низ на всю ширину: цена · количество · действия */}
+            <div className="mt-4 flex items-center justify-between gap-2 border-t border-border/60 pt-4">
+              <div className="text-left">{priceEl}</div>
+              <div className="inline-flex items-center gap-1">
                   <button
                     type="button"
                     aria-label="Уменьшить количество"
@@ -160,7 +156,6 @@ export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash
                   </button>
                 </div>
               </div>
-            </div>
           </li>
         );
       })}

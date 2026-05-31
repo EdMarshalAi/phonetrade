@@ -272,7 +272,7 @@ export function CartShell({
           )}
         </div>
 
-        <div className="grid gap-6 lg:gap-8 lg:grid-cols-12 items-start">
+        <div className="grid grid-cols-1 gap-6 lg:gap-8 lg:grid-cols-12 items-start">
           <div className="lg:col-span-8 flex flex-col gap-4 md:gap-5">
             <SectionStep
               step={1}
