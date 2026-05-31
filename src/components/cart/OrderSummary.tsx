@@ -9,6 +9,8 @@ import type { CartItem, CheckoutState } from "@/lib/cart/types";
 import type { InfoBlock, CartDeliveryOption, CartPaymentMethod } from "@/lib/content";
 import { cn } from "@/lib/utils/cn";
 
+export type Consent = { oferta: boolean; pd: boolean; marketing: boolean };
+
 type Props = {
   items: CartItem[];
   state: CheckoutState;
@@ -18,6 +20,8 @@ type Props = {
   blocks: InfoBlock[];
   delivery: CartDeliveryOption[];
   payments: CartPaymentMethod[];
+  consent: Consent;
+  onConsent: (patch: Partial<Consent>) => void;
 };
 
 const PROMO_CODES: Record<string, number> = {
@@ -36,6 +40,8 @@ export function OrderSummary({
   blocks,
   delivery,
   payments,
+  consent,
+  onConsent,
 }: Props) {
   const deliveryOpt = delivery.find((d) => d.key === state.delivery);
   const paymentOpt = payments.find((p) => p.key === state.payment);
@@ -212,10 +218,27 @@ export function OrderSummary({
           <div className="mb-6" />
         )}
 
+        {/* Согласия (152-ФЗ) — две обязательные независимые галочки + опциональная */}
+        <div className="mb-4 space-y-2.5">
+          <label className="flex items-start gap-2.5 text-[12.5px] leading-snug text-ink-muted cursor-pointer">
+            <input type="checkbox" checked={consent.oferta} onChange={(e) => onConsent({ oferta: e.target.checked })} className="mt-0.5 size-4 shrink-0 accent-[var(--color-ink)]" />
+            <span>Принимаю <a href="/offer" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">условия оферты</a> и <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">политику конфиденциальности</a></span>
+          </label>
+          <label className="flex items-start gap-2.5 text-[12.5px] leading-snug text-ink-muted cursor-pointer">
+            <input type="checkbox" checked={consent.pd} onChange={(e) => onConsent({ pd: e.target.checked })} className="mt-0.5 size-4 shrink-0 accent-[var(--color-ink)]" />
+            <span>Даю <a href="/consent" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">согласие на обработку персональных данных</a> для оформления и исполнения заказа</span>
+          </label>
+          <label className="flex items-start gap-2.5 text-[12.5px] leading-snug text-ink-subtle cursor-pointer">
+            <input type="checkbox" checked={consent.marketing} onChange={(e) => onConsent({ marketing: e.target.checked })} className="mt-0.5 size-4 shrink-0 accent-[var(--color-ink)]" />
+            <span>Хочу получать акции и новинки (необязательно)</span>
+          </label>
+        </div>
+
         <button
           type="button"
           onClick={onSubmit}
-          className="inline-flex w-full items-center justify-center gap-2 h-12 px-7 rounded-2xl bg-ink text-white text-sm font-medium hover:bg-ink/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 focus-visible:ring-offset-2"
+          disabled={!consent.oferta || !consent.pd}
+          className="inline-flex w-full items-center justify-center gap-2 h-12 px-7 rounded-2xl bg-ink text-white text-sm font-medium hover:bg-ink/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Подтвердить заказ
         </button>
@@ -223,6 +246,11 @@ export function OrderSummary({
         {attempted && errorCount > 0 && (
           <p className="mt-2 text-[12px] text-sale text-center" role="alert">
             Заполните выделенные поля, чтобы продолжить
+          </p>
+        )}
+        {attempted && errorCount === 0 && (!consent.oferta || !consent.pd) && (
+          <p className="mt-2 text-[12px] text-sale text-center" role="alert">
+            Необходимо принять оферту и согласие на обработку персональных данных
           </p>
         )}
       </div>

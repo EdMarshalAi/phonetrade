@@ -44,6 +44,7 @@ export function CartShell({
   const [order, setOrder] = React.useState<{ id: string } | null>(null);
   const [submitPending, setSubmitPending] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+  const [consent, setConsent] = React.useState({ oferta: false, pd: false, marketing: false });
   const [undo, setUndo] = React.useState<{ item: CartItem } | null>(null);
   const prefilled = React.useRef(false);
 
@@ -112,6 +113,7 @@ export function CartShell({
   const handleSubmit = () => {
     setAttempted(true);
     if (items.length === 0 || errorCount > 0) return;
+    if (!consent.oferta || !consent.pd) return; // 152-ФЗ: без согласий заказ не оформляется
     if (submitPending) return;
 
     setSubmitError(null);
@@ -151,6 +153,9 @@ export function CartShell({
       subtotal,
       discountCash,
       total,
+      consentOferta: consent.oferta,
+      consentPd: consent.pd,
+      consentMarketing: consent.marketing,
     }).then((result) => {
       setSubmitPending(false);
       if (result.error) {
@@ -290,6 +295,8 @@ export function CartShell({
               blocks={checkoutBlocks}
               delivery={settings.delivery}
               payments={settings.payments}
+              consent={consent}
+              onConsent={(patch) => setConsent((c) => ({ ...c, ...patch }))}
             />
             {submitPending && (
               <p className="text-[13px] text-ink-muted text-center animate-pulse px-2">

@@ -1,7 +1,10 @@
 "use server";
 
+import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendTelegram, telegramRecipientsFor } from "@/lib/admin/telegram";
+
+const CONSENT_VERSION = "2026-01-15-v1";
 
 export type PlaceOrderInput = {
   items: {
@@ -23,6 +26,9 @@ export type PlaceOrderInput = {
   subtotal: number;
   discountCash: number;
   total: number;
+  consentOferta?: boolean;
+  consentPd?: boolean;
+  consentMarketing?: boolean;
 };
 
 export type PlaceOrderResult = {
@@ -38,6 +44,11 @@ function normalizePhone(phone: string): string {
 
 export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
   const db = createSupabaseAdminClient();
+
+  // 152-ФЗ: без согласия на оферту/политику и на обработку ПД заказ не оформляется.
+  if (!input.consentOferta || !input.consentPd) {
+    return { error: "Необходимо принять оферту и согласие на обработку персональных данных" };
+  }
 
   try {
     const year = new Date().getFullYear();
@@ -124,6 +135,53 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     if (orderError) {
       console.error("[placeOrder] insert order error:", orderError);
       return { error: "Не удалось создать заказ. Попробуйте ещё раз." };
+    }
+
+    // 152-ФЗ: фиксируем согласия в реестре с метаданными (IP/UA/страница/действие).
+    try {
+      const h = await headers();
+      const ip =
+        h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || null;
+      const ua = h.get("user-agent") || null;
+      const baseConsent = {
+        user_email: input.email ?? null,
+        user_phone: phoneDigits || null,
+        customer_id: customerId,
+        consent_version: CONSENT_VERSION,
+        ip_address: ip,
+        user_agent: ua,
+        source_page: "/cart",
+        source_action: "checkout",
+        given_at: new Date().toISOString(),
+      };
+      const consentRows = [
+        {
+          ...baseConsent,
+          consent_type: "offer_acceptance",
+          consent_purpose: "Принятие публичной оферты и политики конфиденциальности",
+          document_url: "/offer",
+        },
+        {
+          ...baseConsent,
+          consent_type: "pd_processing",
+          consent_purpose: "Обработка персональных данных для оформления и исполнения заказа",
+          document_url: "/consent",
+        },
+        ...(input.consentMarketing
+          ? [
+              {
+                ...baseConsent,
+                consent_type: "marketing",
+                consent_purpose: "Получение рекламных и информационных рассылок",
+                document_url: "/consent",
+              },
+            ]
+          : []),
+      ];
+      await db.from("data_consents").insert(consentRows);
+    } catch (e) {
+      // Не критично для оформления — только логируем.
+      console.error("[placeOrder] record consents error:", e);
     }
 
     // Вставляем строки заказа.
