@@ -90,11 +90,7 @@ export function CartItemsSection({ items, onQty, onRemove, base = "cash" }: Prop
                       product.inStock ? "bg-emerald-500" : "bg-ink/30"
                     )}
                   />
-                  {product.inStock ? "В наличии" : "Уточняйте"}
-                </span>
-                <span className="text-ink-subtle">·</span>
-                <span className="text-ink-muted">
-                  Доставим завтра по Белгороду
+                  {product.inStock ? "В наличии" : "Уточняйте наличие"}
                 </span>
               </div>
 
