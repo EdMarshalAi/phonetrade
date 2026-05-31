@@ -5,7 +5,7 @@ import { adminMutation } from "@/lib/admin/mutations";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin/auth";
 import { sendTelegram, telegramRecipientsFor } from "@/lib/admin/telegram";
-import { ORDER_STATUS, ORDER_TRANSITIONS } from "./labels";
+import { getOrderStatusConfig } from "@/lib/orders/status-config";
 
 const STAFF = ["admin", "manager"] as const;
 
@@ -18,10 +18,13 @@ export async function setOrderStatus(
   const { data: order } = await db.from("orders").select("status,order_number").eq("id", id).maybeSingle();
   if (!order) return { error: "Заказ не найден" };
 
-  const allowed = ORDER_TRANSITIONS[order.status] ?? [];
-  if (!allowed.includes(toStatus)) {
-    return { error: `Недопустимый переход: ${ORDER_STATUS[order.status] ?? order.status} → ${ORDER_STATUS[toStatus] ?? toStatus}` };
+  // Менеджер может выставить ЛЮБОЙ статус из настроенного списка (без жёсткой
+  // state-machine — иначе нельзя дойти до финального шага).
+  const statuses = await getOrderStatusConfig();
+  if (!statuses.some((s) => s.key === toStatus)) {
+    return { error: "Неизвестный статус" };
   }
+  if (toStatus === order.status) return {};
 
   const admin = await getAdminUser();
   try {

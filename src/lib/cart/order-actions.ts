@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { sendTelegram, telegramRecipientsFor } from "@/lib/admin/telegram";
 
 const CONSENT_VERSION = "2026-01-15-v1";
@@ -69,6 +70,17 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     }
     const orderNumber = `PT-${year}-${String(seq).padStart(4, "0")}`;
 
+    // Текущий пользователь (если оформляет авторизованный) — для связи заказа и
+    // клиента с личным кабинетом.
+    let userId: string | null = null;
+    try {
+      const supa = await createSupabaseServerClient();
+      const { data: au } = await supa.auth.getUser();
+      userId = au.user?.id ?? null;
+    } catch {
+      /* гость */
+    }
+
     // Единый реестр «Клиенты»: апсерт по телефону (последние 10 цифр) + сумма
     // заказа в статистику. Та же функция, что у заявок/регистрации.
     const phoneDigits = normalizePhone(input.phone);
@@ -78,6 +90,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
         p_phone: input.phone,
         p_name: input.name,
         p_email: input.email ?? null,
+        p_user_id: userId,
         p_add_order_total: input.total,
       });
       customerId = typeof cid === "string" ? cid : null;
@@ -90,6 +103,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       id: orderId,
       order_number: orderNumber,
       customer_id: customerId,
+      user_id: userId,
       customer_type: input.customerType,
       customer_name: input.name,
       customer_email: input.email ?? null,

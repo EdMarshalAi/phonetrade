@@ -5,17 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { Package } from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
-import { ORDER_STATUS_LABEL, type Order, type OrderStatus } from "@/lib/account/orders";
+import { type Order } from "@/lib/account/orders";
+import { customerToneClass } from "@/lib/orders/statuses";
 import { getOrdersByPhone } from "@/lib/account/orders-server";
 import { formatPrice } from "@/lib/utils/format-price";
 import { pluralizeItems } from "@/lib/utils/plural";
 import { cn } from "@/lib/utils/cn";
-
-const STATUS_STYLES: Record<OrderStatus, string> = {
-  placed: "bg-surface text-ink",
-  shipping: "bg-ink text-white",
-  delivered: "bg-emerald-50 text-emerald-700",
-};
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -94,10 +89,10 @@ export function OrdersSection() {
               <span
                 className={cn(
                   "inline-flex items-center h-7 px-3 rounded-full text-[12px] font-medium",
-                  STATUS_STYLES[order.status]
+                  customerToneClass(order.statusTone)
                 )}
               >
-                {ORDER_STATUS_LABEL[order.status]}
+                {order.statusLabel}
               </span>
             </div>
 

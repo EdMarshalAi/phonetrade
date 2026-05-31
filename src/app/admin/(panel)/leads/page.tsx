@@ -21,6 +21,7 @@ interface Row {
   contact_name: string | null;
   contact_phone: string | null;
   contact_email: string | null;
+  customer_id: string | null;
   payload: { model?: string; estimated_price_rub?: number; lead_number?: string } | null;
   status: string;
   created_at: string;
@@ -39,7 +40,7 @@ export default async function LeadsPage({
   const page = Math.max(1, Number(sp.page) || 1);
   const db = createSupabaseAdminClient();
 
-  let query = db.from("leads").select("id,type,contact_name,contact_phone,contact_email,payload,status,created_at", { count: "exact" });
+  let query = db.from("leads").select("id,type,contact_name,contact_phone,contact_email,customer_id,payload,status,created_at", { count: "exact" });
   if (sp.type) query = query.eq("type", sp.type);
   if (sp.status) query = query.eq("status", sp.status);
   if (sp.q) query = query.or(`contact_name.ilike.%${sp.q}%,contact_phone.ilike.%${sp.q}%`);
@@ -49,6 +50,14 @@ export default async function LeadsPage({
   const rows = (data ?? []) as Row[];
   const total = count ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Кто стоит за заявкой: зарегистрированный клиент или просто оставленный номер.
+  const custIds = [...new Set(rows.map((r) => r.customer_id).filter(Boolean))] as string[];
+  const custMap: Record<string, { user_id: string | null }> = {};
+  if (custIds.length > 0) {
+    const { data: custs } = await db.from("customers").select("id,user_id").in("id", custIds);
+    for (const c of (custs ?? []) as { id: string; user_id: string | null }[]) custMap[c.id] = { user_id: c.user_id };
+  }
 
   return (
     <>
@@ -85,6 +94,17 @@ export default async function LeadsPage({
                   <TD>
                     <div className="font-medium">{r.contact_name || "—"}</div>
                     <PhoneCell phone={r.contact_phone} />
+                    <div className="mt-1">
+                      {r.customer_id ? (
+                        <Link href={`/admin/customers/${r.customer_id}`} className="inline-flex items-center gap-1 text-[11px] hover:underline">
+                          <StatusBadge tone={custMap[r.customer_id]?.user_id ? "strong" : "neutral"}>
+                            {custMap[r.customer_id]?.user_id ? "Зарегистрирован" : "По номеру"}
+                          </StatusBadge>
+                        </Link>
+                      ) : (
+                        <span className="text-[11px] text-ink-subtle">Без авторизации</span>
+                      )}
+                    </div>
                   </TD>
                   <TD>
                     <StatusBadge tone={leadStatusTone(r.status)}>{LEAD_STATUS[r.status] ?? r.status}</StatusBadge>

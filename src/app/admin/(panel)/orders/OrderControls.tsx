@@ -3,43 +3,52 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { AdminButton } from "@/components/admin/form";
-import { ORDER_STATUS, ORDER_TRANSITIONS } from "./labels";
+import { AdminButton, Select } from "@/components/admin/form";
+import type { OrderStatusDef } from "@/lib/orders/statuses";
 import { setOrderStatus, updateOrderNotes } from "./actions";
 
-export function OrderStatusControl({ id, status }: { id: string; status: string }) {
+export function OrderStatusControl({
+  id,
+  status,
+  statuses,
+}: {
+  id: string;
+  status: string;
+  statuses: OrderStatusDef[];
+}) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
-  const allowed = ORDER_TRANSITIONS[status] ?? [];
+  const [target, setTarget] = React.useState(status);
 
-  const move = (to: string) =>
+  const labelFor = (key: string) => statuses.find((s) => s.key === key)?.label ?? key;
+
+  const apply = () =>
     start(async () => {
-      const res = await setOrderStatus(id, to);
+      const res = await setOrderStatus(id, target);
       if (res.error) {
         toast.error(res.error);
         return;
       }
-      toast.success(`Статус: ${ORDER_STATUS[to] ?? to}`);
+      toast.success(`Статус: ${labelFor(target)}`);
       router.refresh();
     });
 
-  if (allowed.length === 0) {
-    return <p className="text-[13px] text-ink-subtle">Финальный статус — переходов нет.</p>;
-  }
   return (
     <div className="flex flex-col gap-2">
-      {allowed.map((to) => (
-        <AdminButton
-          key={to}
-          type="button"
-          size="sm"
-          variant={to === "cancelled" ? "danger" : "primary"}
-          disabled={pending}
-          onClick={() => move(to)}
-        >
-          {ORDER_STATUS[to] ?? to}
-        </AdminButton>
-      ))}
+      <Select value={target} onChange={(e) => setTarget(e.target.value)} disabled={pending}>
+        {statuses.map((s) => (
+          <option key={s.key} value={s.key}>{s.label}</option>
+        ))}
+      </Select>
+      <AdminButton
+        type="button"
+        size="sm"
+        variant={target === "cancelled" ? "danger" : "primary"}
+        disabled={pending || target === status}
+        onClick={apply}
+      >
+        {target === status ? "Текущий статус" : `Установить: ${labelFor(target)}`}
+      </AdminButton>
     </div>
   );
 }

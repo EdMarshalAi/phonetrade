@@ -22,6 +22,14 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   const payloadRows = Object.entries(payload);
   const created = new Date(data.created_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
 
+  // Кто оставил заявку: связанный клиент (зарегистрированный или по номеру) либо аноним.
+  type LinkedCustomer = { id: string; name: string | null; user_id: string | null };
+  let customer: LinkedCustomer | null = null;
+  if (data.customer_id) {
+    const { data: cust } = await db.from("customers").select("id,name,user_id").eq("id", data.customer_id).maybeSingle();
+    customer = (cust as LinkedCustomer | null) ?? null;
+  }
+
   // Build URL for "create order from lead"
   const newOrderParams = new URLSearchParams();
   if (data.contact_name) newOrderParams.set("name", data.contact_name);
@@ -93,6 +101,24 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
             <PanelHeader><PanelTitle>Статус</PanelTitle></PanelHeader>
             <div className="p-5">
               <LeadStatusControl id={id} status={data.status} />
+            </div>
+          </Panel>
+          <Panel>
+            <PanelHeader><PanelTitle>Клиент</PanelTitle></PanelHeader>
+            <div className="space-y-3 p-5 text-[14px]">
+              {customer ? (
+                <>
+                  <StatusBadge tone={customer.user_id ? "strong" : "neutral"}>
+                    {customer.user_id ? "Зарегистрирован на сайте" : "Только по номеру"}
+                  </StatusBadge>
+                  <div>{customer.name || data.contact_name || "—"}</div>
+                  <Link href={`/admin/customers/${customer.id}`}>
+                    <AdminButton variant="outline" size="sm">Открыть карточку клиента</AdminButton>
+                  </Link>
+                </>
+              ) : (
+                <span className="text-[13px] text-ink-muted">Заявка оставлена без авторизации.</span>
+              )}
             </div>
           </Panel>
         </div>

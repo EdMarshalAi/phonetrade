@@ -1,4 +1,4 @@
-export type OrderStatus = "placed" | "shipping" | "delivered";
+import type { OrderStatusTone } from "@/lib/orders/statuses";
 
 export type OrderItem = {
   id: string;
@@ -12,14 +12,13 @@ export type Order = {
   id: string;
   /** ISO date, e.g. "2026-05-20" */
   date: string;
-  status: OrderStatus;
+  /** Сырой ключ статуса (orders.status). */
+  statusKey: string;
+  /** Название статуса для клиента (из настроек статусов заказа). */
+  statusLabel: string;
+  /** Цвет бейджа статуса. */
+  statusTone: OrderStatusTone;
   items: OrderItem[];
   total: number;
   delivery: string;
-};
-
-export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
-  placed: "Оформлен",
-  shipping: "В пути",
-  delivered: "Доставлен",
 };

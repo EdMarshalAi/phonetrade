@@ -8,6 +8,7 @@ import { Table, THead, TH, TBody, TR, TD } from "@/components/admin/table";
 import { AdminButton } from "@/components/admin/form";
 import { OrderStatusControl, OrderNotes } from "../OrderControls";
 import { ORDER_STATUS, orderStatusTone, PAYMENT_LABEL, DELIVERY_LABEL, PAYMENT_STATUS_LABEL } from "../labels";
+import { getOrderStatusConfig } from "@/lib/orders/status-config";
 
 export const metadata: Metadata = { title: "Заказ" };
 
@@ -24,12 +25,15 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const { data: order } = await db.from("orders").select("*").eq("id", id).maybeSingle();
   if (!order) notFound();
 
-  const [{ data: items }, { data: history }] = await Promise.all([
+  const [{ data: items }, { data: history }, statuses] = await Promise.all([
     db.from("order_items").select("*").eq("order_id", id),
     db.from("order_status_history").select("*").eq("order_id", id).order("created_at", { ascending: false }),
+    getOrderStatusConfig(),
   ]);
   const orderItems = (items ?? []) as Record<string, unknown>[];
   const log = (history ?? []) as Record<string, unknown>[];
+  const labelOf = (k: string) => statuses.find((s) => s.key === k)?.label ?? ORDER_STATUS[k] ?? k;
+  const toneOf = (k: string) => statuses.find((s) => s.key === k)?.tone ?? orderStatusTone(k);
 
   return (
     <>
@@ -48,7 +52,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           <Panel>
             <PanelHeader>
               <PanelTitle>Состав заказа</PanelTitle>
-              <StatusBadge tone={orderStatusTone(order.status)}>{ORDER_STATUS[order.status] ?? order.status}</StatusBadge>
+              <StatusBadge tone={toneOf(order.status)}>{labelOf(order.status)}</StatusBadge>
             </PanelHeader>
             {orderItems.length === 0 ? (
               <div className="p-5 text-sm text-ink-muted">Позиции не записаны (заказ создан без детализации).</div>
@@ -76,7 +80,14 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
           <div className="grid gap-5 sm:grid-cols-2">
             <Panel>
-              <PanelHeader><PanelTitle>Клиент</PanelTitle></PanelHeader>
+              <PanelHeader>
+                <PanelTitle>Клиент</PanelTitle>
+                {order.customer_id ? (
+                  <Link href={`/admin/customers/${order.customer_id}`}>
+                    <AdminButton variant="outline" size="sm">Карточка клиента</AdminButton>
+                  </Link>
+                ) : null}
+              </PanelHeader>
               <div className="space-y-1.5 p-5 text-[14px]">
                 <div>{order.customer_name || "—"}</div>
                 <div className="text-ink-muted">{order.phone || order.customer_phone || ""}</div>
@@ -104,8 +115,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                 {log.map((h, i) => (
                   <li key={(h.id as string) ?? i} className="flex items-center justify-between gap-4 px-5 py-2.5 text-[13.5px]">
                     <span>
-                      {h.from_status ? `${ORDER_STATUS[h.from_status as string] ?? h.from_status} → ` : ""}
-                      <span className="font-medium">{ORDER_STATUS[h.to_status as string] ?? (h.to_status as string)}</span>
+                      {h.from_status ? `${labelOf(h.from_status as string)} → ` : ""}
+                      <span className="font-medium">{labelOf(h.to_status as string)}</span>
                       {h.comment ? <span className="text-ink-muted"> · {h.comment as string}</span> : null}
                     </span>
                     <span className="shrink-0 text-ink-subtle">{dt(h.created_at as string)}</span>
@@ -134,7 +145,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           </Panel>
           <Panel>
             <PanelHeader><PanelTitle>Смена статуса</PanelTitle></PanelHeader>
-            <div className="p-5"><OrderStatusControl id={id} status={order.status} /></div>
+            <div className="p-5"><OrderStatusControl id={id} status={order.status} statuses={statuses} /></div>
           </Panel>
         </div>
       </div>
