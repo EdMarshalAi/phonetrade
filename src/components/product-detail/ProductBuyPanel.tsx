@@ -85,7 +85,7 @@ export function ProductBuyPanel({ product, variants }: Props) {
             aria-label="Артикул"
             className="text-[11px] tabular-nums tracking-wider text-ink-subtle/60 shrink-0"
           >
-            Арт. {product.id.toUpperCase()}
+            Арт. {product.sku || product.id.toUpperCase()}
           </span>
         </div>
         {/* Характеристики товара — показываем всегда (не зависят от вариантов) */}

@@ -4,6 +4,7 @@ import {
   getProductById,
   getRelatedProducts,
   getVariantsForProduct,
+  getCategories,
 } from "@/lib/products";
 import { getProductBlocks } from "@/lib/content";
 import { ProductDetailShell } from "@/components/product-detail/ProductDetailShell";
@@ -43,10 +44,11 @@ export default async function ProductPage({
   const product = await getProductById(id);
   if (!product) notFound();
 
-  const [related, variants, productBlocks] = await Promise.all([
+  const [related, variants, productBlocks, allCats] = await Promise.all([
     getRelatedProducts(product, 8),
     getVariantsForProduct(product),
     getProductBlocks(),
+    getCategories().catch(() => []),
   ]);
 
   // Schema.org Product (JSON-LD) — расширенные сниппеты в поиске.
@@ -72,9 +74,25 @@ export default async function ProductPage({
     },
   };
 
+  // Хлебные крошки для сниппета: Главная > Каталог > [родитель] > Категория > Товар
+  const cat = allCats.find((c) => c.slug === product.categorySlug);
+  const parent = cat?.parentSlug ? allCats.find((c) => c.slug === cat.parentSlug) : null;
+  const crumbs = [
+    { name: "Главная", url: `${base}/` },
+    { name: "Каталог", url: `${base}/catalog` },
+    ...(parent ? [{ name: parent.title, url: `${base}/category/${parent.slug}` }] : []),
+    ...(cat ? [{ name: cat.title, url: `${base}/category/${cat.slug}` }] : []),
+    { name: product.title, url: `${base}/product/${product.id}` },
+  ];
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, item: c.url })),
+  };
+
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify([jsonLd, breadcrumbLd]) }} />
       <ProductDetailShell
         product={product}
         related={related}

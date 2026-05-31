@@ -84,14 +84,30 @@ export default async function CategoryPage({ params }: { params: Promise<RoutePa
 
   const facetOptions = extractFacetOptions(products, config.facets);
 
+  // BreadcrumbList для сниппета
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://31.129.97.8";
+  const crumbs = [
+    { name: "Главная", url: `${base}/` },
+    ...(breadcrumbParent ? [{ name: breadcrumbParent.title, url: `${base}${breadcrumbParent.href}` }] : []),
+    { name: title, url: `${base}/category/${slug}` },
+  ];
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, item: c.url })),
+  };
+
   return (
-    <CatalogShell
-      config={config}
-      products={products}
-      facetOptions={facetOptions}
-      seoHtml={meta?.seo_text ?? null}
-      tabs={tabs}
-      breadcrumbParent={breadcrumbParent}
-    />
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <CatalogShell
+        config={config}
+        products={products}
+        facetOptions={facetOptions}
+        seoHtml={meta?.seo_text ?? null}
+        tabs={tabs}
+        breadcrumbParent={breadcrumbParent}
+      />
+    </>
   );
 }

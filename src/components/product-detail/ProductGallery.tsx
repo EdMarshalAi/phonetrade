@@ -39,7 +39,7 @@ export function ProductGallery({ product }: Props) {
               >
                 <Image
                   src={src}
-                  alt=""
+                  alt={`${product.title} — фото ${i + 1}`}
                   fill
                   sizes="80px"
                   className="object-contain p-1.5"
