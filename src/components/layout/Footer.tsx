@@ -2,6 +2,7 @@ import * as React from "react";
 import Image from "next/image";
 import { MapPin, Clock, Phone, Mail } from "lucide-react";
 import { ContactLinks } from "@/components/layout/ContactLinks";
+import { CookieSettingsButton } from "@/components/legal/CookieConsent";
 
 
 const LEGAL = [
@@ -156,6 +157,9 @@ export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | nul
               </a>
             </li>
           ))}
+          <li>
+            <CookieSettingsButton className="text-onDark hover:text-white underline-offset-4 hover:underline transition-colors" />
+          </li>
         </ul>
       </div>
 

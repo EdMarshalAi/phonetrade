@@ -16,7 +16,13 @@ export async function generateMetadata({
   const { slug } = await params;
   const post = await getBlogPost(slug);
   if (!post) return {};
-  return { title: post.title, description: post.excerpt || undefined };
+  const canonical = `/blog/${slug}`;
+  return {
+    title: post.title,
+    description: post.excerpt || undefined,
+    alternates: { canonical },
+    openGraph: { title: post.title, description: post.excerpt || undefined, url: canonical, type: "article", images: post.cover_url ? [post.cover_url] : undefined },
+  };
 }
 
 export default async function BlogPostPage({
@@ -28,8 +34,23 @@ export default async function BlogPostPage({
   const post = await getBlogPost(slug);
   if (!post) notFound();
 
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "http://31.129.97.8";
+  const articleLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: post.excerpt || undefined,
+    image: post.cover_url || undefined,
+    datePublished: post.published_at || undefined,
+    dateModified: post.published_at || undefined,
+    author: { "@type": "Organization", name: "PhoneTrade" },
+    publisher: { "@id": `${base}/#organization` },
+    mainEntityOfPage: `${base}/blog/${slug}`,
+  };
+
   return (
     <article className="container-page py-16 md:py-24">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
       <div className="mx-auto max-w-3xl">
         <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
           <ArrowLeft className="h-4 w-4" strokeWidth={1.75} /> Все статьи

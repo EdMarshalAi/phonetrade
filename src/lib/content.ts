@@ -316,6 +316,19 @@ export async function getCartSettings(): Promise<CartSettings> {
   };
 }
 
+/** ID счётчика Я.Метрики (если интеграция включена). Метрика грузится только
+ *  при cookie-согласии на аналитику (см. CookieConsentProvider). */
+export async function getMetrikaId(): Promise<string | null> {
+  if (!supabase) return null;
+  try {
+    const { data } = await supabase.from("integrations").select("config,is_enabled").eq("key", "metrika").maybeSingle();
+    if (!data || data.is_enabled === false) return null;
+    const cfg = (data.config ?? {}) as Record<string, unknown>;
+    const id = cfg.counter_id ?? cfg.id ?? cfg.counter ?? null;
+    return id ? String(id) : null;
+  } catch { return null; }
+}
+
 export interface HeroSlideRow {
   id: string;
   overline: string | null;

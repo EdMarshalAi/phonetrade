@@ -8,7 +8,8 @@ import { PageViewTracker } from "@/components/analytics/PageViewTracker";
 import { BackToTop } from "@/components/ui/BackToTop";
 import { BadgeRegistryProvider } from "@/components/product/ProductBadges";
 import { CardSettingsProvider } from "@/components/product/CardSettings";
-import { getShopContacts, getNavCategoryTree, getMenu, getProductBadges, getCardDisplay, getProductOptions } from "@/lib/content";
+import { CookieConsentProvider } from "@/components/legal/CookieConsent";
+import { getShopContacts, getNavCategoryTree, getMenu, getProductBadges, getCardDisplay, getProductOptions, getMetrikaId } from "@/lib/content";
 
 /**
  * Публичный сайт: шапка, подвал и клиентские провайдеры.
@@ -20,7 +21,7 @@ export default async function SiteLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [contacts, navTree, topMenu, footerMenu, badges, cardDisplay, cardOptions] = await Promise.all([
+  const [contacts, navTree, topMenu, footerMenu, badges, cardDisplay, cardOptions, metrikaId] = await Promise.all([
     getShopContacts(),
     getNavCategoryTree(),
     getMenu("top"),
@@ -28,6 +29,7 @@ export default async function SiteLayout({
     getProductBadges(),
     getCardDisplay(),
     getProductOptions(),
+    getMetrikaId(),
   ]);
   return (
     <AuthProvider>
@@ -36,13 +38,15 @@ export default async function SiteLayout({
           <FavoritesProvider>
             <BadgeRegistryProvider badges={badges}>
             <CardSettingsProvider display={cardDisplay} options={cardOptions}>
-              <div className="flex min-h-dvh flex-col">
-                <Header contacts={contacts} categoryTree={navTree} topLinks={topMenu} />
-                <main className="flex-1">{children}</main>
-                <Footer contacts={contacts} legalLinks={footerMenu} />
-              </div>
-              <PageViewTracker />
-              <BackToTop />
+              <CookieConsentProvider metrikaId={metrikaId}>
+                <div className="flex min-h-dvh flex-col">
+                  <Header contacts={contacts} categoryTree={navTree} topLinks={topMenu} />
+                  <main className="flex-1">{children}</main>
+                  <Footer contacts={contacts} legalLinks={footerMenu} />
+                </div>
+                <PageViewTracker />
+                <BackToTop />
+              </CookieConsentProvider>
             </CardSettingsProvider>
             </BadgeRegistryProvider>
           </FavoritesProvider>
