@@ -5,14 +5,15 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2, Check, ArrowUpRight, Download, Upload, Info, Pencil, ChevronLeft, ChevronRight, Send, Rss, Copy } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2, Check, ArrowUpRight, Download, Upload, Info, Pencil, ChevronLeft, ChevronRight, ChevronDown, Send, Rss, Copy } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format-price";
 import { Modal } from "@/components/admin/Modal";
 import { AdminButton, Field, TextInput, Switch, Select } from "@/components/admin/form";
 import { calculatePrices, type PricingSettings } from "@/lib/pricing/calculate";
 import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, recalcSelected, updateProductCost, updateCategoryPricing, type PricingSettingsInput } from "./actions";
-import { exportPricing, exportPricingToTelegram, parsePricingFile, applyPricingImport, bulkUpdateCost, type ImportPreviewRow, type BulkOp } from "./io-actions";
+import { exportPricing, exportPricingToTelegram, savePricingExportPrefs, saveYmlFeedPrefs, parsePricingFile, applyPricingImport, bulkUpdateCost, type ImportPreviewRow, type BulkOp } from "./io-actions";
+import { EXPORT_COLUMNS, type ExportColumnKey, type PricingExportPrefs, type YmlFeedPrefs } from "./export-columns";
 
 function downloadBase64(filename: string, base64: string, mime: string) {
   const bytes = atob(base64);
@@ -59,11 +60,15 @@ export function PricingShell({
   course,
   rows,
   categories,
+  exportPrefs,
+  ymlPrefs,
 }: {
   settings: PricingSettingsInput;
   course: CourseInfo;
   rows: PricingRow[];
   categories: PricingCategory[];
+  exportPrefs: PricingExportPrefs;
+  ymlPrefs: YmlFeedPrefs;
 }) {
   const router = useRouter();
   const savedRate = r2(settings.working_usd_rate);
@@ -200,31 +205,15 @@ export function PricingShell({
     router.refresh();
   };
 
-  /* ── экспорт ── */
-  const onExport = async (format: "xlsx" | "csv", onlyVisible: boolean) => {
-    setExportOpen(false);
-    await runExport(onlyVisible ? filtered.map((r) => r.id) : null, format);
-  };
+  /* ── экспорт выбранных (по галочкам в таблице) — текущими колонками ── */
   const onExportIds = async (ids: string[]) => {
     if (!ids.length) return toast.error("Ничего не выбрано");
-    await runExport(ids, "xlsx");
-  };
-  const runExport = async (ids: string[] | null, format: "xlsx" | "csv") => {
     setBusy(true);
-    const res = await exportPricing(ids, format);
+    const res = await exportPricing({ ids, categories: null, columns: exportPrefs.columns, format: "xlsx" });
     setBusy(false);
     if ("error" in res) return toast.error(res.error);
     downloadBase64(res.filename, res.base64, res.mime);
     toast.success("Файл сформирован");
-  };
-  // Отправить файл прайса прямо в Telegram-бот (приходит документом в чат).
-  const onExportTg = async (format: "xlsx" | "csv", onlyVisible: boolean) => {
-    setExportOpen(false);
-    setBusy(true);
-    const res = await exportPricingToTelegram(onlyVisible ? filtered.map((r) => r.id) : null, format);
-    setBusy(false);
-    if (res.error) return toast.error(res.error);
-    toast.success(`Прайс отправлен в Telegram (${res.ok} чат(ов))`);
   };
 
   /* ── выбор / bulk ── */
@@ -329,26 +318,7 @@ export function PricingShell({
       <div className="grid gap-3 sm:grid-cols-3">
         <ActionTile icon={<Upload className="h-5 w-5" strokeWidth={1.5} />} title="Импорт прайса" hint="XLSX или CSV" onClick={() => setImportOpen(true)} />
         <ActionTile icon={<Rss className="h-5 w-5" strokeWidth={1.5} />} title="YML-фид" hint="Для ВКонтакте · авто-цены" onClick={() => setFeedOpen(true)} />
-        <div className="relative">
-          <ActionTile icon={<Download className="h-5 w-5" strokeWidth={1.5} />} title="Экспорт" hint="XLSX · CSV" onClick={() => setExportOpen((o) => !o)} />
-          {exportOpen ? (
-            <div className="absolute right-0 top-full z-30 mt-1 w-72 rounded-lg border border-border/70 bg-white py-1 shadow-lg">
-              <p className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
-                По фильтру: {cat ? catBy.get(cat)?.title ?? cat : "все категории"} ({filtered.length})
-              </p>
-              <p className="px-3 pb-0.5 pt-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-subtle/70">Скачать файл</p>
-              <button type="button" onClick={() => onExport("xlsx", true)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink hover:bg-surface"><Download className="h-3.5 w-3.5 text-ink-subtle" /> XLSX — по фильтру</button>
-              <button type="button" onClick={() => onExport("csv", true)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink hover:bg-surface"><Download className="h-3.5 w-3.5 text-ink-subtle" /> CSV — по фильтру</button>
-              <button type="button" onClick={() => onExport("xlsx", false)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-muted hover:bg-surface"><Download className="h-3.5 w-3.5 text-ink-subtle" /> XLSX — все товары</button>
-              <button type="button" onClick={() => onExport("csv", false)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-muted hover:bg-surface"><Download className="h-3.5 w-3.5 text-ink-subtle" /> CSV — все товары</button>
-              <div className="my-1 border-t border-border/50" />
-              <p className="px-3 pb-0.5 pt-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-subtle/70">Отправить в Telegram-бот</p>
-              <button type="button" onClick={() => onExportTg("xlsx", true)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink hover:bg-surface"><Send className="h-3.5 w-3.5 text-ink-subtle" /> XLSX — по фильтру</button>
-              <button type="button" onClick={() => onExportTg("csv", true)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink hover:bg-surface"><Send className="h-3.5 w-3.5 text-ink-subtle" /> CSV — по фильтру</button>
-              <button type="button" onClick={() => onExportTg("xlsx", false)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-muted hover:bg-surface"><Send className="h-3.5 w-3.5 text-ink-subtle" /> XLSX — все товары</button>
-            </div>
-          ) : null}
-        </div>
+        <ActionTile icon={<Download className="h-5 w-5" strokeWidth={1.5} />} title="Экспорт" hint="Скачать или в Telegram" onClick={() => setExportOpen(true)} />
       </div>
 
       {/* ── Фильтры (тулбар, один ряд) ── */}
@@ -525,34 +495,8 @@ export function PricingShell({
       <FormulaModal open={formulaOpen} onClose={() => setFormulaOpen(false)} initial={settings} course={course} categories={categories} affected={localRows.filter((r) => !r.is_used && !r.price_override && r.cost_rub != null).length} onSaved={() => { router.refresh(); }} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onDone={() => { setImportOpen(false); router.refresh(); }} />
 
-      <Modal open={feedOpen} onClose={() => setFeedOpen(false)} title="YML-фид для ВКонтакте"
-        footer={<AdminButton type="button" variant="outline" onClick={() => setFeedOpen(false)}>Закрыть</AdminButton>}>
-        <p className="mb-3 text-[13px] text-ink-muted">
-          Постоянная ссылка на фид в формате YML. Отдайте её в рекламном кабинете ВКонтакте
-          (Магазин / Товары → загрузка по ссылке). Цены и наличие подтягиваются из прайса
-          автоматически — обновляйте каталог в ВК по расписанию, файл всегда свежий.
-        </p>
-        <div className="flex items-center gap-2">
-          <input
-            readOnly
-            value={feedUrl}
-            onFocus={(e) => e.currentTarget.select()}
-            className="h-9 flex-1 rounded-sm border border-border bg-surface/40 px-3 text-[13px] text-ink outline-none focus:border-ink/40"
-          />
-          <AdminButton type="button" variant="outline" size="sm" onClick={() => { navigator.clipboard?.writeText(feedUrl); toast.success("Ссылка скопирована"); }}>
-            <Copy className="h-4 w-4" strokeWidth={1.75} /> Копировать
-          </AdminButton>
-          <a href={feedUrl} target="_blank" rel="noopener noreferrer">
-            <AdminButton type="button" size="sm"><ArrowUpRight className="h-4 w-4" strokeWidth={1.75} /> Открыть</AdminButton>
-          </a>
-        </div>
-        <ul className="mt-4 space-y-1.5 text-[12.5px] text-ink-subtle">
-          <li>· В фид попадают все опубликованные новые товары в наличии с ценой.</li>
-          <li>· Цена — наличными; старая цена (зачёркнутая) — картой, чтобы показать выгоду.</li>
-          <li>· Передаются картинки, бренд и характеристики (цвет, память, SIM, гарантия).</li>
-          <li>· Б/У и архив в фид не входят.</li>
-        </ul>
-      </Modal>
+      {exportOpen ? <ExportModal open onClose={() => setExportOpen(false)} categories={categories} prefs={exportPrefs} /> : null}
+      {feedOpen ? <FeedModal open onClose={() => setFeedOpen(false)} categories={categories} prefs={ymlPrefs} feedUrl={feedUrl} /> : null}
 
       <Modal open={!!dialog} onClose={() => setDialog(null)} title={dialog?.title ?? ""}
         footer={<><AdminButton type="button" variant="outline" onClick={() => setDialog(null)}>Отмена</AdminButton><AdminButton type="button" onClick={submitDialog}>{dialog?.confirmLabel ?? "Применить"}</AdminButton></>}>
@@ -907,6 +851,171 @@ function ImportModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
           </div>
         </div>
       )}
+    </Modal>
+  );
+}
+
+// ── Выбор главных категорий (чекбоксы в выпадающем списке) ────────────────────
+function CategoryPicker({ categories, value, onChange }: { categories: PricingCategory[]; value: string[] | null; onChange: (v: string[] | null) => void }) {
+  const [open, setOpen] = React.useState(false);
+  const parents = categories.filter((c) => !c.parent_slug);
+  const sel = value ?? [];
+  const isAll = sel.length === 0;
+  const toggle = (slug: string) => {
+    const next = sel.includes(slug) ? sel.filter((s) => s !== slug) : [...sel, slug];
+    onChange(next.length === 0 ? null : next);
+  };
+  return (
+    <div className="relative">
+      <button type="button" onClick={() => setOpen((o) => !o)}
+        className="flex h-9 w-full items-center justify-between gap-2 rounded-sm border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface">
+        <span className="truncate">{isAll ? "Все категории" : `Выбрано: ${sel.length}`}</span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 text-ink-subtle transition-transform", open && "rotate-180")} />
+      </button>
+      {open ? (
+        <div className="absolute z-40 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border/70 bg-white py-1 shadow-lg">
+          <button type="button" onClick={() => onChange(null)}
+            className={cn("flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] hover:bg-surface", isAll ? "font-medium text-ink" : "text-ink-muted")}>
+            <span className={cn("flex h-4 w-4 items-center justify-center rounded-[4px] border", isAll ? "border-ink bg-ink text-white" : "border-border")}>{isAll ? <Check className="h-3 w-3" /> : null}</span>
+            Все категории
+          </button>
+          <div className="my-1 border-t border-border/50" />
+          {parents.map((c) => {
+            const on = sel.includes(c.slug);
+            return (
+              <button key={c.slug} type="button" onClick={() => toggle(c.slug)}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-ink hover:bg-surface">
+                <span className={cn("flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border", on ? "border-ink bg-ink text-white" : "border-border")}>{on ? <Check className="h-3 w-3" /> : null}</span>
+                <span className="truncate">{c.title}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+// ── Модалка экспорта прайса (категории + колонки + куда отправить) ────────────
+function ExportModal({ open, onClose, categories, prefs }: { open: boolean; onClose: () => void; categories: PricingCategory[]; prefs: PricingExportPrefs }) {
+  // Модалка монтируется только когда открыта (см. рендер) — state из prefs при маунте.
+  const [cols, setCols] = React.useState<ExportColumnKey[]>((prefs.columns?.length ? prefs.columns : ["title", "price_cash", "price_card"]) as ExportColumnKey[]);
+  const [cats, setCats] = React.useState<string[] | null>(prefs.categories ?? null);
+  const [busy, setBusy] = React.useState(false);
+
+  const persist = (nextCols: ExportColumnKey[], nextCats: string[] | null) => { void savePricingExportPrefs({ columns: nextCols, categories: nextCats }); };
+  const setColsP = (next: ExportColumnKey[]) => { setCols(next); persist(next, cats); };
+  const setCatsP = (next: string[] | null) => { setCats(next); persist(cols, next); };
+
+  const run = async (dest: "download" | "telegram", format: "xlsx" | "csv") => {
+    if (cols.length === 0) return toast.error("Выберите хотя бы одну колонку");
+    setBusy(true);
+    persist(cols, cats);
+    if (dest === "download") {
+      const res = await exportPricing({ categories: cats, columns: cols, format });
+      setBusy(false);
+      if ("error" in res) return toast.error(res.error);
+      downloadBase64(res.filename, res.base64, res.mime);
+      toast.success("Файл сформирован");
+    } else {
+      const res = await exportPricingToTelegram({ categories: cats, columns: cols, format });
+      setBusy(false);
+      if (res.error) return toast.error(res.error);
+      toast.success(`Отправлено в Telegram (${res.ok} чат.)`);
+    }
+  };
+
+  const groups = Array.from(new Set(EXPORT_COLUMNS.map((c) => c.group)));
+  return (
+    <Modal open={open} onClose={onClose} title="Экспорт прайса" className="max-w-2xl"
+      footer={<AdminButton type="button" variant="outline" onClick={onClose}>Закрыть</AdminButton>}>
+      <div className="space-y-5">
+        <div>
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-subtle">Категории</p>
+          <CategoryPicker categories={categories} value={cats} onChange={setCatsP} />
+          <p className="mt-1 text-[12px] text-ink-subtle">Выбор главной категории включает её подкатегории. Пусто = весь каталог.</p>
+        </div>
+        <div>
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-subtle">Какие данные включить</p>
+          <div className="space-y-3">
+            {groups.map((g) => (
+              <div key={g}>
+                <p className="mb-1 text-[11px] text-ink-subtle">{g}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {EXPORT_COLUMNS.filter((c) => c.group === g).map((c) => {
+                    const on = cols.includes(c.key);
+                    return (
+                      <button key={c.key} type="button"
+                        onClick={() => setColsP(on ? cols.filter((x) => x !== c.key) : [...cols, c.key])}
+                        className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12.5px] transition-colors", on ? "border-ink bg-ink text-white" : "border-border bg-white text-ink-muted hover:border-ink/40")}>
+                        {on ? <Check className="h-3 w-3" /> : null}{c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-xl border border-border/60 bg-surface/30 p-3">
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-subtle">Куда отправить</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <AdminButton type="button" variant="outline" size="sm" disabled={busy} onClick={() => run("download", "xlsx")}><Download className="h-4 w-4" strokeWidth={1.75} /> Скачать XLSX</AdminButton>
+            <AdminButton type="button" variant="outline" size="sm" disabled={busy} onClick={() => run("download", "csv")}><Download className="h-4 w-4" strokeWidth={1.75} /> Скачать CSV</AdminButton>
+            <span className="mx-1 hidden h-7 w-px bg-border sm:block" />
+            <AdminButton type="button" size="sm" loading={busy} onClick={() => run("telegram", "xlsx")}><Send className="h-4 w-4" strokeWidth={1.75} /> В Telegram (XLSX)</AdminButton>
+            <AdminButton type="button" variant="outline" size="sm" disabled={busy} onClick={() => run("telegram", "csv")}><Send className="h-4 w-4" strokeWidth={1.75} /> В Telegram (CSV)</AdminButton>
+          </div>
+          <p className="mt-2 text-[12px] text-ink-subtle">Выбранные категории и колонки сохраняются автоматически.</p>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Модалка YML-фида (ссылка + выбор главных категорий + Б/У) ─────────────────
+function FeedModal({ open, onClose, categories, prefs, feedUrl }: { open: boolean; onClose: () => void; categories: PricingCategory[]; prefs: YmlFeedPrefs; feedUrl: string }) {
+  // Монтируется только когда открыта (см. рендер) — state из prefs при маунте.
+  const [cats, setCats] = React.useState<string[] | null>(prefs.categories ?? null);
+  const [includeUsed, setIncludeUsed] = React.useState(prefs.includeUsed !== false);
+  const persist = (nextCats: string[] | null, used: boolean) => { void saveYmlFeedPrefs({ categories: nextCats, includeUsed: used }); };
+
+  return (
+    <Modal open={open} onClose={onClose} title="YML-фид для ВКонтакте" className="max-w-2xl"
+      footer={<AdminButton type="button" variant="outline" onClick={onClose}>Закрыть</AdminButton>}>
+      <p className="mb-3 text-[13px] text-ink-muted">
+        Постоянная ссылка на фид в формате YML. Отдайте её в рекламном кабинете ВКонтакте
+        (Магазин / Товары → загрузка по ссылке). Цены и наличие подтягиваются из прайса
+        автоматически — новые товары появляются в фиде сами, файл всегда свежий.
+      </p>
+      <div className="flex items-center gap-2">
+        <input readOnly value={feedUrl} onFocus={(e) => e.currentTarget.select()}
+          className="h-9 flex-1 rounded-sm border border-border bg-surface/40 px-3 text-[13px] text-ink outline-none focus:border-ink/40" />
+        <AdminButton type="button" variant="outline" size="sm" onClick={() => { navigator.clipboard?.writeText(feedUrl); toast.success("Ссылка скопирована"); }}>
+          <Copy className="h-4 w-4" strokeWidth={1.75} /> Копировать
+        </AdminButton>
+        <a href={feedUrl} target="_blank" rel="noopener noreferrer">
+          <AdminButton type="button" size="sm"><ArrowUpRight className="h-4 w-4" strokeWidth={1.75} /> Открыть</AdminButton>
+        </a>
+      </div>
+
+      <div className="mt-5 space-y-4">
+        <div>
+          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-ink-subtle">Категории в фиде</p>
+          <CategoryPicker categories={categories} value={cats} onChange={(v) => { setCats(v); persist(v, includeUsed); }} />
+          <p className="mt-1 text-[12px] text-ink-subtle">Только главные категории — подкатегории включаются автоматически. Пусто = все.</p>
+        </div>
+        <label className="flex items-center gap-2.5 text-[13px] text-ink">
+          <Switch checked={includeUsed} onChange={(v) => { setIncludeUsed(v); persist(cats, v); }} />
+          Включать Б/У товары в фид
+        </label>
+      </div>
+
+      <ul className="mt-4 space-y-1.5 text-[12.5px] text-ink-subtle">
+        <li>· Цена — наличными; старая цена (зачёркнутая) — картой, чтобы показать выгоду.</li>
+        <li>· Передаются картинки, бренд и характеристики (цвет, память, SIM, гарантия).</li>
+        <li>· Товары без цены и архив в фид не входят.</li>
+      </ul>
     </Modal>
   );
 }

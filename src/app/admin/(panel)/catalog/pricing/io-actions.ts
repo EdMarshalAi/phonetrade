@@ -6,58 +6,109 @@ import { adminMutation } from "@/lib/admin/mutations";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { notifyTelegram, sendTelegramDocument } from "@/lib/admin/telegram";
+import { EXPORT_COLUMNS, DEFAULT_EXPORT_COLUMNS, type ExportColumnKey, type PricingExportPrefs, type YmlFeedPrefs } from "./export-columns";
 
 const ROLES = ["admin", "manager"] as const;
 const num = (v: unknown): number | null => (v == null || v === "" ? null : Number(v));
 
 type ExportRow = Record<string, string | number | null>;
 
+export interface ExportOptions {
+  /** Выбранные категории (slug). null/пусто = все. Родитель раскрывается на детей. */
+  categories: string[] | null;
+  /** Ключи колонок из EXPORT_COLUMNS. */
+  columns: ExportColumnKey[];
+  format: "xlsx" | "csv";
+  /** Явный список id (для «Экспорт выбранных») — приоритетнее категорий. */
+  ids?: string[] | null;
+}
+
+const optionsStr = (v: unknown): string => {
+  if (!v || typeof v !== "object") return "";
+  return Object.entries(v as Record<string, unknown>)
+    .filter(([, val]) => val != null && val !== "")
+    .map(([k, val]) => `${k}: ${val}`)
+    .join("; ");
+};
+
+/** Строит строку файла только из выбранных колонок (порядок — из EXPORT_COLUMNS). */
+function rowFor(p: Record<string, unknown>, cols: ExportColumnKey[]): ExportRow {
+  const set = new Set(cols);
+  const row: ExportRow = {};
+  for (const c of EXPORT_COLUMNS) {
+    if (!set.has(c.key)) continue;
+    switch (c.key) {
+      case "title": row["Название"] = (p.title as string) ?? ""; break;
+      case "price_cash": row["Цена наличными"] = num(p.price_cash); break;
+      case "price_card": row["Цена картой"] = num(p.price_card); break;
+      case "sku": row["Артикул"] = (p.sku as string) ?? (p.id as string); break;
+      case "category": row["Категория"] = (p.category_slug as string) ?? ""; break;
+      case "color": row["Цвет"] = (p.color as string) ?? ""; break;
+      case "memory": row["Память"] = (p.memory as string) ?? ""; break;
+      case "sim": row["SIM"] = (p.sim as string) ?? ""; break;
+      case "options": row["Доп. характеристики"] = optionsStr(p.options); break;
+      case "credit":
+        row["Рассрочка 6 мес"] = num(p.credit_6m_total);
+        row["Рассрочка 12 мес"] = num(p.credit_12m_total);
+        row["Рассрочка 24 мес"] = num(p.credit_24m_total);
+        break;
+      case "cost_rub": row["Закупка ₽"] = num(p.cost_rub); break;
+      case "cost_rate": row["Курс закупа"] = num(p.cost_rate); break;
+      case "cost_usd": row["Закупка $"] = num(p.cost_usd) != null ? +Number(p.cost_usd).toFixed(2) : null; break;
+      case "margin": {
+        const cr = num(p.cost_rub), ca = num(p.price_cash);
+        row["Маржа %"] = cr && ca ? +(((ca - cr) / cr) * 100).toFixed(1) : null;
+        break;
+      }
+      case "override": row["Зафиксировано"] = p.price_override ? "да" : ""; break;
+      case "updated": row["Обновлено"] = (p.prices_recalculated_at as string)?.slice(0, 19).replace("T", " ") ?? ""; break;
+    }
+  }
+  return row;
+}
+
 /** Сборка файла прайса (XLSX/CSV) в Buffer — общая для скачивания и Telegram. */
 async function buildPricingFile(
-  ids: string[] | null,
-  format: "xlsx" | "csv"
+  opts: ExportOptions
 ): Promise<{ filename: string; buffer: Buffer; mime: string; count: number } | { error: string }> {
+  const columns = (opts.columns?.length ? opts.columns : DEFAULT_EXPORT_COLUMNS).filter((k) =>
+    EXPORT_COLUMNS.some((c) => c.key === k)
+  );
+  if (columns.length === 0) return { error: "Выберите хотя бы одну колонку для экспорта" };
   try {
     const db = createSupabaseAdminClient();
+
+    // Раскрываем выбранные категории на их подкатегории.
+    let catFilter: string[] | null = null;
+    if (opts.categories && opts.categories.length) {
+      const { data: allCats } = await db.from("categories").select("slug,parent_slug");
+      const sel = new Set(opts.categories);
+      const expanded = new Set(opts.categories);
+      for (const c of (allCats ?? []) as { slug: string; parent_slug: string | null }[]) {
+        if (c.parent_slug && sel.has(c.parent_slug)) expanded.add(c.slug);
+      }
+      catFilter = [...expanded];
+    }
+
     let query = db
       .from("products")
-      .select("id,sku,title,category_slug,color,memory,cost_rub,cost_rate,cost_usd,price_cash,price_card,credit_6m_total,credit_6m_monthly,credit_12m_total,credit_12m_monthly,credit_24m_total,credit_24m_monthly,price_override,prices_recalculated_at")
+      .select("id,sku,title,category_slug,color,memory,sim,options,cost_rub,cost_rate,cost_usd,price_cash,price_card,credit_6m_total,credit_12m_total,credit_24m_total,price_override,prices_recalculated_at")
       .is("deleted_at", null)
       .neq("type", "used")
       .order("category_slug")
       .order("title")
       .limit(5000);
-    if (ids && ids.length) query = query.in("id", ids);
+    if (opts.ids && opts.ids.length) query = query.in("id", opts.ids);
+    else if (catFilter) query = query.in("category_slug", catFilter);
     const { data: prods } = await query;
 
-    const rows: ExportRow[] = (prods ?? []).map((p) => {
-      const costRub = num(p.cost_rub);
-      const cash = num(p.price_cash);
-      const marginPct = costRub && cash ? ((cash - costRub) / costRub) * 100 : null;
-      return {
-        SKU: (p.sku as string) ?? p.id,
-        Название: p.title as string,
-        Категория: (p.category_slug as string) ?? "",
-        Цвет: (p.color as string) ?? "",
-        Память: (p.memory as string) ?? "",
-        "Закупка ₽": costRub,
-        "Курс закупа": num(p.cost_rate),
-        "Закупка $": num(p.cost_usd) != null ? +Number(p.cost_usd).toFixed(2) : null,
-        "Цена нал": cash,
-        "Цена карта": num(p.price_card),
-        "Кредит 6м всего": num(p.credit_6m_total),
-        "Кредит 6м/мес": num(p.credit_6m_monthly),
-        "Кредит 12м всего": num(p.credit_12m_total),
-        "Кредит 12м/мес": num(p.credit_12m_monthly),
-        "Кредит 24м всего": num(p.credit_24m_total),
-        "Кредит 24м/мес": num(p.credit_24m_monthly),
-        "Маржа %": marginPct != null ? +marginPct.toFixed(1) : null,
-        "Зафиксировано": p.price_override ? "да" : "",
-        "Обновлено": (p.prices_recalculated_at as string)?.slice(0, 19).replace("T", " ") ?? "",
-      };
-    });
+    if (!prods || prods.length === 0) {
+      return { error: "Под выбранные категории нет товаров для экспорта" };
+    }
 
-    if (format === "csv") {
+    const rows: ExportRow[] = prods.map((p) => rowFor(p as Record<string, unknown>, columns));
+
+    if (opts.format === "csv") {
       const csv = Papa.unparse(rows, { delimiter: ";" });
       const buffer = Buffer.from("﻿" + csv, "utf-8");
       return { filename: fileName("csv"), buffer, mime: "text/csv;charset=utf-8", count: rows.length };
@@ -65,23 +116,8 @@ async function buildPricingFile(
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws["!cols"] = Object.keys(rows[0] ?? { SKU: "" }).map((k) => ({ wch: Math.max(12, k.length + 2) }));
+    ws["!cols"] = Object.keys(rows[0] ?? {}).map((k) => ({ wch: Math.max(12, k.length + 2) }));
     XLSX.utils.book_append_sheet(wb, ws, "Прайс");
-
-    const { data: s } = await db.from("pricing_settings").select("*").eq("id", 1).maybeSingle();
-    if (s) {
-      const settingsRows = [
-        { Параметр: "Рабочий курс USD", Значение: num(s.working_usd_rate) },
-        { Параметр: "Наценка по умолчанию, %", Значение: num(s.default_markup_percent) },
-        { Параметр: "Наценка карта, %", Значение: num(s.card_markup_percent) },
-        { Параметр: "Кредит 6м, %", Значение: num(s.credit_6m_markup_percent) },
-        { Параметр: "Кредит 12м, %", Значение: num(s.credit_12m_markup_percent) },
-        { Параметр: "Кредит 24м, %", Значение: num(s.credit_24m_markup_percent) },
-        { Параметр: "Округление, ₽", Значение: num(s.price_rounding) },
-      ];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(settingsRows), "Настройки");
-    }
-
     const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
     return { filename: fileName("xlsx"), buffer, mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", count: rows.length };
   } catch (e) {
@@ -91,28 +127,68 @@ async function buildPricingFile(
 
 /** Экспорт прайса в XLSX/CSV. Возвращает base64 для скачивания на клиенте. */
 export async function exportPricing(
-  ids: string[] | null,
-  format: "xlsx" | "csv"
+  opts: ExportOptions
 ): Promise<{ filename: string; base64: string; mime: string } | { error: string }> {
   await requireAdmin([...ROLES]);
-  const r = await buildPricingFile(ids, format);
+  const r = await buildPricingFile(opts);
   if ("error" in r) return { error: r.error };
   return { filename: r.filename, base64: r.buffer.toString("base64"), mime: r.mime };
 }
 
 /** Отправка файла прайса прямо в Telegram-бот (приходит документом в чат). */
 export async function exportPricingToTelegram(
-  ids: string[] | null,
-  format: "xlsx" | "csv"
+  opts: ExportOptions
 ): Promise<{ ok?: number; error?: string }> {
   await requireAdmin([...ROLES]);
-  const r = await buildPricingFile(ids, format);
+  const r = await buildPricingFile(opts);
   if ("error" in r) return { error: r.error };
-  const scope = ids && ids.length ? `по фильтру (${r.count})` : `все товары (${r.count})`;
+  const scope = opts.categories && opts.categories.length ? `${opts.categories.length} катег. (${r.count})` : `все товары (${r.count})`;
   const caption = `📋 Прайс PhoneTrade · ${scope} · ${new Date().toLocaleDateString("ru-RU")}`;
   const ok = await sendTelegramDocument(r.buffer, r.filename, r.mime, caption);
   if (ok === 0) return { error: "Не доставлено. Проверьте Telegram-бот в Интеграциях (токен и chat_id)." };
   return { ok };
+}
+
+/** Сохранить настройки экспорта (колонки + категории) в shop_settings. */
+export async function savePricingExportPrefs(prefs: PricingExportPrefs): Promise<{ error?: string }> {
+  try {
+    await adminMutation({
+      roles: [...ROLES],
+      action: "update",
+      entityType: "pricing_export_prefs",
+      entityId: null,
+      changes: prefs,
+      revalidate: ["/admin/catalog/pricing"],
+      run: async (db) => {
+        const { error } = await db.from("shop_settings").upsert({ key: "pricing_export_prefs", value: prefs }, { onConflict: "key" });
+        if (error) throw error;
+      },
+    });
+    return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Не удалось сохранить настройки" };
+  }
+}
+
+/** Сохранить настройки YML-фида (категории + Б/У) в shop_settings. Фид читает их при отдаче. */
+export async function saveYmlFeedPrefs(prefs: YmlFeedPrefs): Promise<{ error?: string }> {
+  try {
+    await adminMutation({
+      roles: [...ROLES],
+      action: "update",
+      entityType: "yml_feed_prefs",
+      entityId: null,
+      changes: prefs,
+      revalidate: ["/admin/catalog/pricing"],
+      run: async (db) => {
+        const { error } = await db.from("shop_settings").upsert({ key: "yml_feed_prefs", value: prefs }, { onConflict: "key" });
+        if (error) throw error;
+      },
+    });
+    return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Не удалось сохранить настройки" };
+  }
 }
 
 function fileName(ext: string): string {

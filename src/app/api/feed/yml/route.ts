@@ -33,23 +33,38 @@ const stripHtml = (s: unknown): string =>
 export async function GET() {
   const db = createSupabaseAdminClient();
 
-  const [{ data: cats }, { data: prods }] = await Promise.all([
-    db.from("categories").select("slug,title,parent_slug").order("slug"),
-    db
-      .from("products")
-      .select(
-        "id,sku,title,category_slug,brand,color,memory,sim,price_cash,price_card,image,gallery,short_description,description_html,warranty_months,in_stock,options"
-      )
-      .eq("status", "published")
-      .neq("type", "used")
-      .or("is_available.is.null,is_available.eq.true")
-      .gt("price_cash", 0)
-      .order("category_slug")
-      .limit(5000),
-  ]);
+  // Настройки фида из админки (категории + включать ли Б/У).
+  const { data: prefRow } = await db.from("shop_settings").select("value").eq("key", "yml_feed_prefs").maybeSingle();
+  const prefs = (prefRow?.value ?? {}) as { categories?: string[] | null; includeUsed?: boolean };
+  const includeUsed = prefs.includeUsed !== false; // по умолчанию Б/У включены
+
+  const { data: cats } = await db.from("categories").select("slug,title,parent_slug").order("slug");
+  const catList = (cats ?? []) as { slug: string; title: string; parent_slug: string | null }[];
+
+  // Раскрываем выбранные ГЛАВНЫЕ категории на их подкатегории.
+  let catFilter: string[] | null = null;
+  if (Array.isArray(prefs.categories) && prefs.categories.length) {
+    const sel = new Set(prefs.categories);
+    const expanded = new Set(prefs.categories);
+    for (const c of catList) if (c.parent_slug && sel.has(c.parent_slug)) expanded.add(c.slug);
+    catFilter = [...expanded];
+  }
+
+  let pq = db
+    .from("products")
+    .select(
+      "id,sku,title,category_slug,brand,color,memory,sim,price_cash,price_card,image,gallery,short_description,description_html,warranty_months,in_stock,options,type"
+    )
+    .eq("status", "published")
+    .or("is_available.is.null,is_available.eq.true")
+    .gt("price_cash", 0)
+    .order("category_slug")
+    .limit(5000);
+  if (!includeUsed) pq = pq.neq("type", "used");
+  if (catFilter) pq = pq.in("category_slug", catFilter);
+  const { data: prods } = await pq;
 
   // Категории → числовые id (требование YML). Стабильно по алфавиту slug.
-  const catList = (cats ?? []) as { slug: string; title: string; parent_slug: string | null }[];
   const catId = new Map<string, number>();
   catList.forEach((c, i) => catId.set(c.slug, i + 1));
 

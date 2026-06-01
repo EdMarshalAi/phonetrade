@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/admin/ui";
 import { AdminButton } from "@/components/admin/form";
 import { PricingShell, type PricingRow, type CourseInfo } from "./PricingShell";
 import type { PricingSettingsInput } from "./actions";
+import { DEFAULT_EXPORT_PREFS, DEFAULT_YML_PREFS, type PricingExportPrefs, type YmlFeedPrefs } from "./export-columns";
 
 export const metadata: Metadata = { title: "Прайс" };
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export default async function PricingPage() {
   await requireAdmin(["admin", "manager"]);
   const db = createSupabaseAdminClient();
 
-  const [{ data: s }, { data: rates }, { data: prods }, { data: cats }] = await Promise.all([
+  const [{ data: s }, { data: rates }, { data: prods }, { data: cats }, { data: exportPrefsRow }, { data: ymlPrefsRow }] = await Promise.all([
     db.from("pricing_settings").select("*").eq("id", 1).maybeSingle(),
     db.from("currency_rates").select("date,usd,eur,fetched_at").order("date", { ascending: false }).limit(2),
     db
@@ -29,6 +30,8 @@ export default async function PricingPage() {
       .order("title")
       .limit(5000),
     db.from("categories").select("slug,title,parent_slug,sort,markup_percent,min_margin_rub").order("sort"),
+    db.from("shop_settings").select("value").eq("key", "pricing_export_prefs").maybeSingle(),
+    db.from("shop_settings").select("value").eq("key", "yml_feed_prefs").maybeSingle(),
   ]);
 
   const settings: PricingSettingsInput = {
@@ -96,7 +99,7 @@ export default async function PricingPage() {
           </Link>
         }
       />
-      <PricingShell settings={settings} course={course} rows={rows} categories={categories} />
+      <PricingShell settings={settings} course={course} rows={rows} categories={categories} exportPrefs={(exportPrefsRow?.value as PricingExportPrefs) ?? DEFAULT_EXPORT_PREFS} ymlPrefs={(ymlPrefsRow?.value as YmlFeedPrefs) ?? DEFAULT_YML_PREFS} />
     </>
   );
 }
