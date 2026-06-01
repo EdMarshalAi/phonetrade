@@ -180,10 +180,11 @@ export async function deleteProductImage(
       revalidate: ["/", `/product/${productId}`],
       run: async (db) => {
         const { image, gallery } = await readImages(db, productId);
+        const rest = Array.from(new Set(gallery)).filter((g) => g && g !== url);
         const patch =
           url === image
-            ? { image: gallery[0] ?? "", gallery: gallery.slice(1) }
-            : { gallery: gallery.filter((g) => g !== url) };
+            ? { image: rest[0] ?? "", gallery: rest.slice(1) }
+            : { image, gallery: rest.filter((g) => g !== image) };
         const { error } = await db.from("products").update(patch).eq("id", productId);
         if (error) throw error;
       },
@@ -210,10 +211,10 @@ export async function setPrimaryImage(
       run: async (db) => {
         const { image, gallery } = await readImages(db, productId);
         if (url === image) return;
-        const nextGallery = [
-          ...(image ? [image] : []),
-          ...gallery.filter((g) => g !== url),
-        ];
+        // Дедуп + новое главное не остаётся в галерее (gallery — БЕЗ главного).
+        const nextGallery = Array.from(
+          new Set([...(image ? [image] : []), ...gallery])
+        ).filter((g) => g && g !== url);
         const { error } = await db
           .from("products")
           .update({ image: url, gallery: nextGallery })

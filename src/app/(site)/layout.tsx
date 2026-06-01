@@ -26,10 +26,11 @@ export default async function SiteLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [contacts, navTree, topMenu, footerMenu, badges, cardDisplay, cardOptions, metrikaId, maintenance, codeSnippets] = await Promise.all([
+  const [contacts, navTree, topMenu, mainMenu, footerMenu, badges, cardDisplay, cardOptions, metrikaId, maintenance, codeSnippets] = await Promise.all([
     getShopContacts(),
     getNavCategoryTree(),
     getMenu("top"),
+    getMenu("main"),
     getMenu("footer"),
     getProductBadges(),
     getCardDisplay(),
@@ -120,7 +121,7 @@ export default async function SiteLayout({
                       <Link href="/admin/settings/shop" className="underline underline-offset-2 hover:opacity-80">Выключить режим</Link>
                     </div>
                   ) : null}
-                  <Header contacts={contacts} categoryTree={navTree} topLinks={topMenu} />
+                  <Header contacts={contacts} categoryTree={navTree} topLinks={topMenu} mainMenu={mainMenu} />
                   <main className="flex-1">{children}</main>
                   <Footer contacts={contacts} legalLinks={footerMenu} />
                 </div>

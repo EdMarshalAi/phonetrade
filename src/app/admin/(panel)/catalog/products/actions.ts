@@ -177,7 +177,27 @@ export async function updateProduct(id: string, input: ProductInput): Promise<{ 
       changes: parsed.data,
       revalidate: ["/", "/catalog", `/category/${parsed.data.category_slug}`, `/product/${id}`],
       run: async (db) => {
-        const { error } = await db.from("products").update(toRow(parsed.data)).eq("id", id);
+        // Реконсиляция фото: главное фото товара редактируется в двух местах —
+        // в форме (поле «Главное фото») и в табе «Галерея» («Сделать главным»).
+        // Чтобы смена главного в одном месте не «осиротила» фото из другого,
+        // прежнее главное уходит в галерею. Галерея дедупится и не содержит
+        // текущее главное (правило: products.gallery — БЕЗ главного).
+        const { data: cur } = await db
+          .from("products")
+          .select("image,gallery")
+          .eq("id", id)
+          .maybeSingle();
+        const nextImage = parsed.data.image || "";
+        const prevImage = (cur?.image as string | null) ?? null;
+        const prevGallery = Array.isArray(cur?.gallery) ? (cur!.gallery as string[]) : [];
+        const merged = [...prevGallery];
+        if (prevImage && prevImage !== nextImage) merged.push(prevImage);
+        const nextGallery = Array.from(new Set(merged)).filter((g) => g && g !== nextImage);
+
+        const { error } = await db
+          .from("products")
+          .update({ ...toRow(parsed.data), gallery: nextGallery })
+          .eq("id", id);
         if (error) throw error;
         await applyPricing(db, id, parsed.data, admin.id, "manual_edit");
       },

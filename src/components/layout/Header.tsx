@@ -54,7 +54,11 @@ const ALL_CATEGORIES: CategoryMenuItem[] = [
   { href: "/trade-in", label: "Trade-in", slug: "trade-in" },
 ];
 
-const NAV_PRIMARY = [
+type MainNavItem = { href: string; label: string; highlight?: boolean };
+
+// Фолбэк основного меню — используется ТОЛЬКО если в БД (menu_items, location='main')
+// нет пунктов. Источник истины — админка «Навигация → Основное меню».
+const NAV_PRIMARY_FALLBACK: MainNavItem[] = [
   { href: "/new", label: "Новинки", highlight: true },
   { href: "/used", label: "Б/У" },
   { href: "/category/iphone", label: "iPhone" },
@@ -63,8 +67,6 @@ const NAV_PRIMARY = [
   { href: "/category/watch", label: "Watch" },
   { href: "/category/airpods", label: "AirPods" },
   { href: "/category/accessories", label: "Аксессуары" },
-  { href: "/category/gaming-consoles", label: "Приставки" },
-  { href: "/category/dyson", label: "Дайсон" },
 ];
 
 type MobileSection = {
@@ -72,11 +74,8 @@ type MobileSection = {
   items: { href: string; label: string }[];
 };
 
-const MOBILE_SECTIONS: MobileSection[] = [
-  {
-    heading: "Каталог",
-    items: NAV_PRIMARY.map(({ href, label }) => ({ href, label })),
-  },
+// Дополнительные секции мобильного меню (раздел «Каталог» строится из main-меню БД).
+const MOBILE_EXTRA_SECTIONS: MobileSection[] = [
   {
     heading: "Сервисы",
     items: [
@@ -100,11 +99,13 @@ export function Header({
   categories,
   categoryTree,
   topLinks,
+  mainMenu,
 }: {
   contacts?: import("@/lib/content").ShopContacts | null;
   categories?: { slug: string; title: string; icon_url?: string | null }[];
   categoryTree?: { slug: string; title: string; icon_url?: string | null; children: { slug: string; title: string }[] }[];
   topLinks?: { title: string; href: string }[];
+  mainMenu?: { title: string; href: string }[];
 }) {
   const { count: cartCount } = useCart();
   const { user: authUser } = useAuth();
@@ -133,6 +134,16 @@ export function Header({
         ? categories.map((c) => ({ href: `/category/${c.slug}`, label: c.title, slug: c.slug as CategorySlug, iconUrl: c.icon_url ?? null }))
         : ALL_CATEGORIES;
   const topItems = topLinks && topLinks.length > 0 ? topLinks.map((t) => ({ href: t.href, label: t.title })) : TOP_LINKS;
+  // Основное меню — из БД (admin → Навигация → Основное меню); фолбэк только если пусто.
+  // «Новинки» (/new) подсвечиваем как акцентный пункт.
+  const navPrimary: MainNavItem[] =
+    mainMenu && mainMenu.length > 0
+      ? mainMenu.map((m) => ({ href: m.href, label: m.title, highlight: m.href === "/new" }))
+      : NAV_PRIMARY_FALLBACK;
+  const mobileSections: MobileSection[] = [
+    { heading: "Каталог", items: navPrimary.map(({ href, label }) => ({ href, label })) },
+    ...MOBILE_EXTRA_SECTIONS,
+  ];
   const [scrolled, setScrolled] = React.useState(false);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [contactOpen, setContactOpen] = React.useState(false);
@@ -399,7 +410,7 @@ export function Header({
               aria-label="Основная навигация"
             >
               <ul className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-hide">
-                {NAV_PRIMARY.map((item) => (
+                {navPrimary.map((item) => (
                   <li key={item.href} className="shrink-0">
                     <a
                       href={item.href}
@@ -595,7 +606,7 @@ export function Header({
                 <SearchInput tone="dark" />
               </div>
               <div className="space-y-6">
-                {MOBILE_SECTIONS.map((section) => (
+                {mobileSections.map((section) => (
                   <section key={section.heading}>
                     <h3 className="text-[10px] uppercase tracking-[0.18em] text-onDark-muted mb-2">
                       {section.heading}
