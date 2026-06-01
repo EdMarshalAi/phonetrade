@@ -1,10 +1,10 @@
 /**
- * Каталог устройств и типовых поломок для страницы «Ремонт техники».
- * Отдельный модуль (не HTML-страница) — данные в коде, как у trade-in/options.
- * Модельный ряд и услуги собраны с pedant.ru. ЦЕН НЕТ — только перечень работ.
+ * Каталог устройств и ТИПОВЫХ поломок для страницы «Ремонт техники».
+ * Поломки СВОИ под каждый тип техники (у AirPods нет экрана и т.п.) — собрано
+ * из веб-ресёрча (pedant.ru и сервисные центры). ЦЕН НЕТ — только перечень работ.
  */
 
-export type DeviceCategoryKey = "iphone" | "ipad" | "mac" | "other";
+export type DeviceCategoryKey = "iphone" | "ipad" | "mac" | "watch" | "airpods" | "other";
 
 export interface DeviceCategory {
   key: DeviceCategoryKey;
@@ -52,14 +52,29 @@ export const DEVICE_CATEGORIES: DeviceCategory[] = [
     ],
   },
   {
+    key: "watch",
+    title: "Apple Watch",
+    models: [
+      "Apple Watch Ultra 2", "Apple Watch Ultra",
+      "Apple Watch Series 10", "Apple Watch Series 9", "Apple Watch Series 8", "Apple Watch Series 7",
+      "Apple Watch Series 6", "Apple Watch Series 5", "Apple Watch Series 4", "Apple Watch Series 3",
+      "Apple Watch SE (2022)", "Apple Watch SE",
+    ],
+  },
+  {
+    key: "airpods",
+    title: "AirPods",
+    models: ["AirPods Pro 2", "AirPods Pro", "AirPods 4", "AirPods 3", "AirPods 2", "AirPods", "AirPods Max"],
+  },
+  {
     key: "other",
-    title: "Другое устройство",
+    title: "Другое",
     freeInput: true,
-    models: ["Apple Watch", "AirPods", "iMac", "Mac mini", "Другое устройство Apple"],
+    models: ["iMac", "Mac mini", "Mac Studio", "Mac Pro", "Apple TV", "HomePod", "Другое устройство Apple"],
   },
 ];
 
-/** Типовая услуга/поломка (с pedant.ru) — БЕЗ ЦЕН. */
+/** Типовая услуга/поломка (без цены). */
 export interface RepairIssue {
   key: string;
   label: string;
@@ -67,11 +82,7 @@ export interface RepairIssue {
   free?: boolean;
 }
 
-/**
- * Поломки СВОИ под каждый тип техники (iPhone/iPad/Mac/прочее) — собрано с
- * pedant.ru. Ключи уникальны в пределах категории; для текста заявки берём
- * label из соответствующей категории.
- */
+/** Поломки СВОИ под каждый тип техники. */
 export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
   iphone: [
     { key: "diagnostics", label: "Бесплатная диагностика", free: true },
@@ -86,7 +97,7 @@ export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
     { key: "water", label: "Попадание влаги" },
     { key: "no_power", label: "Не включается" },
     { key: "buttons", label: "Кнопки (звук, питание)" },
-    { key: "software", label: "Прошивка / ПО / зависает" },
+    { key: "board", label: "Ремонт материнской платы" },
     { key: "other", label: "Другая проблема" },
   ],
   ipad: [
@@ -100,7 +111,7 @@ export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
     { key: "audio", label: "Динамик, микрофон" },
     { key: "water", label: "Попадание влаги" },
     { key: "no_power", label: "Не включается" },
-    { key: "software", label: "Прошивка / ПО" },
+    { key: "board", label: "Ремонт материнской платы" },
     { key: "other", label: "Другая проблема" },
   ],
   mac: [
@@ -118,14 +129,42 @@ export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
     { key: "software", label: "macOS / ПО / переустановка" },
     { key: "other", label: "Другая проблема" },
   ],
+  watch: [
+    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
+    { key: "glass", label: "Замена стекла" },
+    { key: "screen", label: "Замена дисплея" },
+    { key: "battery", label: "Замена аккумулятора" },
+    { key: "crown", label: "Кнопка / колёсико Digital Crown" },
+    { key: "side_button", label: "Боковая кнопка" },
+    { key: "strap", label: "Ремешок / крепление" },
+    { key: "back", label: "Задняя крышка / датчики" },
+    { key: "water", label: "Попадание влаги" },
+    { key: "no_power", label: "Не включается / не заряжается" },
+    { key: "other", label: "Другая проблема" },
+  ],
+  airpods: [
+    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
+    { key: "cleaning", label: "Чистка наушников и кейса" },
+    { key: "one_side", label: "Один наушник не работает" },
+    { key: "no_charge", label: "Не заряжаются / замена кейса" },
+    { key: "battery", label: "Быстро садятся / замена аккумулятора" },
+    { key: "sound", label: "Тихий звук / нет звука" },
+    { key: "mic", label: "Не работает микрофон" },
+    { key: "water", label: "Попадание влаги" },
+    { key: "tips", label: "Замена амбушюр (Pro)" },
+    { key: "other", label: "Другая проблема" },
+  ],
   other: [
     { key: "diagnostics", label: "Бесплатная диагностика", free: true },
-    { key: "screen", label: "Экран / дисплей" },
-    { key: "battery", label: "Замена аккумулятора" },
-    { key: "charge_port", label: "Зарядка / разъём" },
+    { key: "no_power", label: "Не включается" },
+    { key: "imac_screen", label: "Экран / матрица (iMac)" },
+    { key: "ssd", label: "Замена / увеличение диска (SSD)" },
+    { key: "board", label: "Ремонт материнской платы" },
+    { key: "cooling", label: "Чистка от пыли, термопаста" },
+    { key: "ports", label: "Разъёмы, питание" },
     { key: "audio", label: "Звук / динамики" },
     { key: "water", label: "Попадание влаги" },
-    { key: "no_power", label: "Не включается" },
+    { key: "software", label: "ПО / прошивка / настройка" },
     { key: "other", label: "Другая проблема" },
   ],
 };

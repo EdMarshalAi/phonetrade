@@ -9,6 +9,7 @@ import { DeleteButton } from "@/components/admin/DeleteButton";
 import { LeadStatusControl, LeadNotes } from "../LeadControls";
 import { deleteLead } from "../actions";
 import { LEAD_TYPE, LEAD_STATUS, leadStatusTone } from "../labels";
+import { EXTERNAL_LABELS, BATTERY_LABELS, KIT_LABELS } from "@/lib/trade-in/options";
 
 export const metadata: Metadata = { title: "Заявка" };
 
@@ -44,9 +45,34 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   if (!data) notFound();
 
   const payload = (data.payload ?? {}) as Record<string, unknown>;
-  const payloadRows: [string, string][] = Object.entries(payload)
+  let payloadRows: [string, string][] = Object.entries(payload)
     .filter(([k, v]) => !HIDE_PAYLOAD_KEYS.has(k) && v != null && v !== "")
     .map(([k, v]) => [PAYLOAD_LABELS[k] ?? k, fmtPayloadValue(k, v)]);
+
+  // Trade-in: полные ответы клиента берём из trade_in_leads (там вся анкета —
+  // вылечивает и старые заявки, где в payload было мало полей).
+  if (data.type === "trade_in") {
+    const ln = typeof payload.lead_number === "string" ? payload.lead_number : null;
+    const q = db
+      .from("trade_in_leads")
+      .select("lead_number,model_title,memory_gb,external_condition,battery_level,has_breakage,breakage_description,icloud_status,kit_status,estimated_price_rub");
+    const { data: ti } = ln
+      ? await q.eq("lead_number", ln).maybeSingle()
+      : await q.eq("customer_phone", data.contact_phone as string).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (ti) {
+      const t = ti as Record<string, unknown>;
+      payloadRows = [
+        ["Номер заявки", String(t.lead_number ?? ln ?? "—")],
+        ["Устройство", `${t.model_title} ${t.memory_gb}GB`],
+        ["Внешний вид", EXTERNAL_LABELS[t.external_condition as string] ?? String(t.external_condition ?? "—")],
+        ["Аккумулятор", BATTERY_LABELS[t.battery_level as string] ?? String(t.battery_level ?? "—")],
+        ["Поломки / дефекты", t.has_breakage ? (String(t.breakage_description || "есть")) : "нет"],
+        ["iCloud", t.icloud_status === "unlinked" ? "Отвязан" : t.icloud_status === "linked" ? "Привязан" : String(t.icloud_status ?? "—")],
+        ["Комплект", KIT_LABELS[t.kit_status as string] ?? String(t.kit_status ?? "—")],
+        ["Предв. оценка", t.estimated_price_rub != null ? moneyRub(Number(t.estimated_price_rub)) : "—"],
+      ];
+    }
+  }
   const created = new Date(data.created_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
 
   // Кто оставил заявку: связанный клиент (зарегистрированный или по номеру) либо аноним.
