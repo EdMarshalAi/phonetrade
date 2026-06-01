@@ -101,7 +101,7 @@ export function PricingShell({
   const [localRows, setLocalRows] = React.useState<PricingRow[]>(rows);
   React.useEffect(() => setLocalRows(rows), [rows]);
   const [sel, setSel] = React.useState<Set<string>>(new Set());
-  const [dialog, setDialog] = React.useState<null | { title: string; desc?: string; input?: { label: string; placeholder?: string; def?: string }; confirmLabel?: string; onConfirm: (v: number | null) => void }>(null);
+  const [dialog, setDialog] = React.useState<null | { title: string; desc?: string; node?: React.ReactNode; input?: { label: string; placeholder?: string; def?: string }; confirmLabel?: string; onConfirm: (v: number | null) => void }>(null);
   const [dlgVal, setDlgVal] = React.useState("");
   React.useEffect(() => { setDlgVal(dialog?.input?.def ?? ""); }, [dialog]);
   const submitDialog = () => {
@@ -141,6 +141,10 @@ export function PricingShell({
       .filter((r) => r.category_slug && catMatch.has(r.category_slug) && !r.is_used && !r.price_override && r.cost_rub != null)
       .map((r) => r.id);
   }, [catMatch, localRows]);
+  const allRecalcCount = React.useMemo(
+    () => localRows.filter((r) => !r.is_used && !r.price_override && r.cost_rub != null).length,
+    [localRows]
+  );
 
   const filtered = localRows.filter((r) => {
     if (catMatch && !(r.category_slug && catMatch.has(r.category_slug))) return false;
@@ -200,11 +204,26 @@ export function PricingShell({
   const onRecalcAll = () => {
     const isCat = !!cat;
     const ids = categoryRecalcIds;
+    const count = isCat ? ids.length : allRecalcCount;
     setDialog({
       title: isCat ? "Пересчитать категорию?" : "Пересчитать все цены?",
-      desc: isCat
-        ? `Будет пересчитана категория «${catName}» — ${ids.length} ${pluralTovar(ids.length)} (без зафиксированных и Б/У). Введённый курс будет сохранён.`
-        : "Цены всех товаров (кроме зафиксированных и Б/У) пересчитаются по текущей формуле и курсу. Введённый курс будет сохранён.",
+      node: (
+        <div className="mb-4 rounded-xl border border-border/60 bg-surface/40 p-4">
+          <div className="flex items-end justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-ink-subtle">{isCat ? "Категория" : "Объём"}</p>
+              <p className="truncate text-[18px] font-semibold text-ink">{isCat ? `«${catName}»` : "Весь каталог"}</p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-ink-subtle">{pluralTovar(count)}</p>
+              <p className="text-[30px] font-semibold leading-none tabular-nums text-ink">{count}</p>
+            </div>
+          </div>
+          <p className="mt-3 border-t border-border/50 pt-3 text-[12.5px] text-ink-muted">
+            Пересчёт по текущей формуле и курсу. Зафиксированные цены и Б/У не затрагиваются. Введённый курс будет сохранён.
+          </p>
+        </div>
+      ),
       confirmLabel: "Пересчитать",
       onConfirm: async () => {
         if (isCat && ids.length === 0) { toast.error("В этой категории нет товаров для пересчёта"); return; }
@@ -541,6 +560,7 @@ export function PricingShell({
 
       <Modal open={!!dialog} onClose={() => setDialog(null)} title={dialog?.title ?? ""}
         footer={<><AdminButton type="button" variant="outline" onClick={() => setDialog(null)}>Отмена</AdminButton><AdminButton type="button" onClick={submitDialog}>{dialog?.confirmLabel ?? "Применить"}</AdminButton></>}>
+        {dialog?.node ?? null}
         {dialog?.desc ? <p className="mb-3 text-[13px] text-ink-muted">{dialog.desc}</p> : null}
         {dialog?.input ? (
           <Field label={dialog.input.label}>
