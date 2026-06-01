@@ -39,6 +39,15 @@ export type PricingRow = {
 };
 
 const MARKUPS = [0, 1, 1.5, 2, 3];
+
+function pluralTovar(n: number): string {
+  const a = Math.abs(n) % 100;
+  const b = n % 10;
+  if (a > 10 && a < 20) return "товаров";
+  if (b > 1 && b < 5) return "товара";
+  if (b === 1) return "товар";
+  return "товаров";
+}
 const CATEGORY_LABEL: Record<string, string> = { iphone: "iPhone", ipad: "iPad", mac: "Mac", watch: "Apple Watch", airpods: "AirPods", accessories: "Аксессуары", used: "Б/У" };
 const PAGE_SIZES = [20, 50, 100];
 
@@ -124,6 +133,15 @@ export function PricingShell({
     return new Set<string>([cat, ...kids]);
   }, [cat, categories]);
 
+  // Имя выбранной категории и id её товаров под пересчёт (без зафиксированных и Б/У).
+  const catName = cat ? catBy.get(cat)?.title ?? cat : null;
+  const categoryRecalcIds = React.useMemo(() => {
+    if (!catMatch) return [];
+    return localRows
+      .filter((r) => r.category_slug && catMatch.has(r.category_slug) && !r.is_used && !r.price_override && r.cost_rub != null)
+      .map((r) => r.id);
+  }, [catMatch, localRows]);
+
   const filtered = localRows.filter((r) => {
     if (catMatch && !(r.category_slug && catMatch.has(r.category_slug))) return false;
     if (hideFixed && r.price_override) return false;
@@ -179,25 +197,32 @@ export function PricingShell({
     toast.success(`Рабочий курс: ${value} ₽ (ЦБ ${r2(r.usd)} + ${markup}%). Нажмите «Пересчитать всё».`);
     router.refresh();
   };
-  const onRecalcAll = () => setDialog({
-    title: "Пересчитать все цены?",
-    desc: "Цены всех товаров (кроме зафиксированных и Б/У) пересчитаются по текущей формуле и курсу. Введённый курс будет сохранён.",
-    confirmLabel: "Пересчитать",
-    onConfirm: async () => {
-      setBusy(true);
-      // Сохраняем введённый курс перед пересчётом (на случай, если автосейв не сработал).
-      if (dirtyRate) {
-        const rate = r2(Number(working.replace(",", ".")));
-        const s = await setWorkingRate(rate);
-        if (s.error) { setBusy(false); return toast.error(s.error); }
-      }
-      const res = await recalcAllPrices();
-      setBusy(false);
-      if (res.error) return toast.error(res.error);
-      toast.success(`Пересчитано товаров: ${res.recalculated ?? 0}`);
-      router.refresh();
-    },
-  });
+  const onRecalcAll = () => {
+    const isCat = !!cat;
+    const ids = categoryRecalcIds;
+    setDialog({
+      title: isCat ? "Пересчитать категорию?" : "Пересчитать все цены?",
+      desc: isCat
+        ? `Будет пересчитана категория «${catName}» — ${ids.length} ${pluralTovar(ids.length)} (без зафиксированных и Б/У). Введённый курс будет сохранён.`
+        : "Цены всех товаров (кроме зафиксированных и Б/У) пересчитаются по текущей формуле и курсу. Введённый курс будет сохранён.",
+      confirmLabel: "Пересчитать",
+      onConfirm: async () => {
+        if (isCat && ids.length === 0) { toast.error("В этой категории нет товаров для пересчёта"); return; }
+        setBusy(true);
+        // Сохраняем введённый курс перед пересчётом (на случай, если автосейв не сработал).
+        if (dirtyRate) {
+          const rate = r2(Number(working.replace(",", ".")));
+          const s = await setWorkingRate(rate);
+          if (s.error) { setBusy(false); return toast.error(s.error); }
+        }
+        const res = isCat ? await recalcSelected(ids) : await recalcAllPrices();
+        setBusy(false);
+        if (res.error) return toast.error(res.error);
+        toast.success(`Пересчитано товаров: ${res.recalculated ?? 0}`);
+        router.refresh();
+      },
+    });
+  };
 
   /* ── inline-правка закупки + пересчёт строки ── */
   const saveCost = async (row: PricingRow, costRub: number | null, costRate: number | null) => {
@@ -319,7 +344,9 @@ export function PricingShell({
                 </div>
               ) : null}
             </div>
-            <AdminButton type="button" size="sm" onClick={onRecalcAll} loading={busy} className="col-span-2 w-full"><RefreshCw className="h-4 w-4" strokeWidth={1.75} /> Пересчитать всё</AdminButton>
+            <AdminButton type="button" size="sm" onClick={onRecalcAll} loading={busy} className="col-span-2 w-full">
+              <RefreshCw className="h-4 w-4" strokeWidth={1.75} /> {cat ? `Пересчитать «${catName}»` : "Пересчитать всё"}
+            </AdminButton>
           </div>
         </div>
         <p className="mt-3 text-[12px] text-ink-subtle">
