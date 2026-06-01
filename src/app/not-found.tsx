@@ -13,11 +13,11 @@ export const metadata: Metadata = {
  */
 export default function NotFound() {
   return (
-    <main className="relative mx-auto flex min-h-[58vh] max-w-2xl flex-col items-center justify-center overflow-hidden px-6 py-16 text-center md:py-20">
+    <main className="relative flex min-h-[58vh] w-full flex-col items-center justify-center overflow-hidden px-6 py-16 text-center md:py-20">
       {/* лёгкие кляксы для глубины */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-24 top-10 size-[320px] rounded-full blur-3xl" style={{ background: "radial-gradient(circle, rgba(167,139,250,0.18), transparent 70%)" }} />
-        <div className="absolute -right-24 bottom-10 size-[320px] rounded-full blur-3xl" style={{ background: "radial-gradient(circle, rgba(96,165,250,0.16), transparent 70%)" }} />
+        <div className="absolute -left-32 top-0 size-[480px] rounded-full blur-3xl" style={{ background: "radial-gradient(circle, rgba(167,139,250,0.18), transparent 70%)" }} />
+        <div className="absolute -right-32 bottom-0 size-[480px] rounded-full blur-3xl" style={{ background: "radial-gradient(circle, rgba(96,165,250,0.16), transparent 70%)" }} />
       </div>
 
       <div className="relative flex select-none items-center justify-center gap-3 md:gap-6" style={{ animation: "floatSoft 6s ease-in-out infinite" }}>
