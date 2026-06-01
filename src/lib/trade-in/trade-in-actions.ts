@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getStorefrontUser } from "@/lib/auth/server-user";
 import { notifyTelegram } from "@/lib/admin/telegram";
 import type { TradeInModel } from "@/lib/trade-in/options";
 
@@ -247,9 +248,11 @@ export type MyTradeInLead = {
   created_at: string;
 };
 
-/** Заявки trade-in пользователя (по телефону) — для личного кабинета. */
-export async function getMyTradeInLeads(phone?: string): Promise<MyTradeInLead[]> {
-  const ph = phone ? digits(phone) : "";
+/** Заявки trade-in ТЕКУЩЕГО пользователя — для личного кабинета.
+ *  Идентификация по серверной сессии (не по телефону с клиента → без IDOR). */
+export async function getMyTradeInLeads(_phone?: string): Promise<MyTradeInLead[]> {
+  const user = await getStorefrontUser();
+  const ph = user?.phone ? digits(user.phone) : "";
   if (!ph) return [];
   const db = createSupabaseAdminClient();
   const { data } = await db

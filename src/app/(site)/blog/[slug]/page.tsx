@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft } from "lucide-react";
 import { getBlogPost } from "@/lib/content";
+import { jsonLdScript } from "@/lib/utils/json-ld";
+import { sanitizeRichHtml } from "@/lib/utils/sanitize-html";
 
 // ISR: новая статья доступна без редеплоя.
 export const revalidate = 300;
@@ -50,7 +52,7 @@ export default async function BlogPostPage({
 
   return (
     <article className="container-page py-16 md:py-24">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(articleLd) }} />
       <div className="mx-auto max-w-3xl">
         <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
           <ArrowLeft className="h-4 w-4" strokeWidth={1.75} /> Все статьи
@@ -67,7 +69,7 @@ export default async function BlogPostPage({
         {post.content ? (
           <div
             className="prose prose-neutral mt-8 max-w-none"
-            dangerouslySetInnerHTML={{ __html: post.content }}
+            dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(post.content) }}
           />
         ) : null}
       </div>

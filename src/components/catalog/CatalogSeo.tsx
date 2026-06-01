@@ -1,6 +1,8 @@
 import * as React from "react";
 import type { SeoBlock } from "@/lib/catalog/category-config";
 import { cn } from "@/lib/utils/cn";
+// HTML приходит уже санитайзенным с сервера (страницы category/used) —
+// здесь не санитайзим, т.к. компонент попадает в клиентский бандл CatalogShell.
 
 type Props = {
   blocks: SeoBlock[];

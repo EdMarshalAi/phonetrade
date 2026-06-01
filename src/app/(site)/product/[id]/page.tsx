@@ -9,6 +9,7 @@ import {
 import { getProductBlocks } from "@/lib/content";
 import { ProductDetailShell } from "@/components/product-detail/ProductDetailShell";
 import { productImages } from "@/lib/utils/product-images";
+import { jsonLdScript } from "@/lib/utils/json-ld";
 
 type RouteParams = { id: string };
 
@@ -101,7 +102,7 @@ export default async function ProductPage({
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify([jsonLd, breadcrumbLd]) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript([jsonLd, breadcrumbLd]) }} />
       <ProductDetailShell
         product={product}
         related={related}

@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { ProductDescription as DescBlock } from "@/lib/data/products";
 import { cn } from "@/lib/utils/cn";
+import { sanitizeRichHtml } from "@/lib/utils/sanitize-html";
 
 type Props = {
   blocks: DescBlock[];
@@ -38,7 +39,7 @@ export function ProductDescription({ blocks, productTitle }: Props) {
             <section
               key={i}
               className={proseClass}
-              dangerouslySetInnerHTML={{ __html: b.html }}
+              dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(b.html) }}
             />
           ) : (
             <section key={i} className={proseClass}>

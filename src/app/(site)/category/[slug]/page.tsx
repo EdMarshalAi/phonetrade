@@ -5,6 +5,8 @@ import { extractFacetOptions } from "@/lib/catalog/filters";
 import { getProductsByCategory, getCategories, getProductCountsByCategory } from "@/lib/products";
 import { getCategoryMeta } from "@/lib/content";
 import { CatalogShell } from "@/components/catalog/CatalogShell";
+import { jsonLdScript } from "@/lib/utils/json-ld";
+import { sanitizeRichHtml } from "@/lib/utils/sanitize-html";
 
 // Единый список фасетов; конкретный набор берётся из настроек категории
 // (categories.available_filters) в админке. Хардкода по слагу больше нет.
@@ -113,12 +115,12 @@ export default async function CategoryPage({ params }: { params: Promise<RoutePa
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify([breadcrumbLd, itemListLd]) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript([breadcrumbLd, itemListLd]) }} />
       <CatalogShell
         config={config}
         products={products}
         facetOptions={facetOptions}
-        seoHtml={meta?.seo_text ?? null}
+        seoHtml={meta?.seo_text ? sanitizeRichHtml(meta.seo_text) : null}
         tabs={tabs}
         breadcrumbParent={breadcrumbParent}
       />

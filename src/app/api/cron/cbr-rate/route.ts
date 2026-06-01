@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { refreshAndStoreCbr } from "@/lib/pricing/cbr";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { notifyTelegram } from "@/lib/admin/telegram";
 
 export const dynamic = "force-dynamic";
+
+/** Сравнение секрета без утечки по времени (constant-time). */
+function secretMatches(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 /**
  * Ежечасное обновление курса ЦБ (вызывается внешним планировщиком — GitHub Actions).
@@ -25,7 +35,7 @@ export async function GET(req: Request) {
     expected = typeof v === "string" ? v : v?.secret ?? null;
   }
   if (!expected) return NextResponse.json({ error: "cron secret not configured" }, { status: 503 });
-  if (!provided || provided !== expected) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!secretMatches(provided, expected)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   try {
     const rates = await refreshAndStoreCbr();

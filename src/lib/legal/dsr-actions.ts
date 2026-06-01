@@ -2,7 +2,9 @@
 
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getStorefrontUser } from "@/lib/auth/server-user";
 import { notifyTelegram } from "@/lib/admin/telegram";
+import { clientIp, rateLimited } from "@/lib/utils/rate-limit";
 import { DSR_TYPES, type DsrType } from "@/lib/legal/dsr";
 
 export type SubmitDataRequestInput = {
@@ -22,23 +24,24 @@ export type MyConsent = {
   source_action: string | null;
 };
 
-/** Активные согласия пользователя (по телефону/email) для личного кабинета. */
-export async function getMyConsents(phone?: string, email?: string): Promise<MyConsent[]> {
-  const ph = phone ? phone.replace(/\D/g, "") : "";
-  const em = email?.trim() || "";
+/** Активные согласия ТЕКУЩЕГО пользователя для личного кабинета.
+ *  Идентификация по серверной сессии (не по телефону/почте с клиента → без IDOR).
+ *  Фильтры — отдельными .eq-запросами (без склейки сырого email в .or → без инъекции). */
+export async function getMyConsents(_phone?: string, _email?: string): Promise<MyConsent[]> {
+  const user = await getStorefrontUser();
+  const ph = user?.phone ? user.phone.replace(/\D/g, "") : "";
+  const em = user?.email?.trim() || "";
   if (!ph && !em) return [];
   const db = createSupabaseAdminClient();
   try {
-    const ors: string[] = [];
-    if (ph) ors.push(`user_phone.eq.${ph}`);
-    if (em) ors.push(`user_email.eq.${em}`);
-    const { data } = await db
-      .from("data_consents")
-      .select("consent_type,consent_purpose,given_at,source_action,revoked_at")
-      .or(ors.join(","))
-      .is("revoked_at", null)
-      .order("given_at", { ascending: false });
-    const rows = (data ?? []) as (MyConsent & { revoked_at: string | null })[];
+    const sel = "consent_type,consent_purpose,given_at,source_action,revoked_at";
+    const queries = [];
+    if (ph) queries.push(db.from("data_consents").select(sel).eq("user_phone", ph).is("revoked_at", null));
+    if (em) queries.push(db.from("data_consents").select(sel).eq("user_email", em).is("revoked_at", null));
+    const results = await Promise.all(queries);
+    const rows = results
+      .flatMap((r) => (r.data ?? []) as (MyConsent & { revoked_at: string | null })[])
+      .sort((a, b) => (b.given_at ?? "").localeCompare(a.given_at ?? ""));
     // Последнее активное согласие по каждому типу.
     const seen = new Set<string>();
     const out: MyConsent[] = [];
@@ -67,6 +70,9 @@ export async function submitDataRequest(
 ): Promise<SubmitDataRequestResult> {
   if (!input.requestType || !(input.requestType in DSR_TYPES)) {
     return { error: "Выберите тип обращения" };
+  }
+  if (rateLimited(`dsr:${await clientIp()}`, 5, 3600_000)) {
+    return { error: "Слишком много обращений. Попробуйте позже." };
   }
   const email = input.email?.trim() || null;
   const phone = input.phone ? normalizePhone(input.phone) || null : null;

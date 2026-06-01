@@ -1,13 +1,20 @@
 "use server";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getStorefrontUser } from "@/lib/auth/server-user";
 import { getOrderStatusConfig } from "@/lib/orders/status-config";
 import { findStatus } from "@/lib/orders/statuses";
 import type { Order } from "./orders";
 
-/** Заказы пользователя из БД по нормализованному телефону (без localStorage/моков). */
-export async function getOrdersByPhone(phone: string): Promise<Order[]> {
-  const key = phone.replace(/\D/g, "");
+/**
+ * Заказы ТЕКУЩЕГО пользователя из БД. Идентификация — строго по серверной
+ * cookie-сессии (getStorefrontUser), а НЕ по телефону с клиента (иначе IDOR:
+ * любой мог бы запросить чужие заказы). Параметр сохранён для обратной
+ * совместимости вызовов, но игнорируется.
+ */
+export async function getOrdersByPhone(_phone?: string): Promise<Order[]> {
+  const user = await getStorefrontUser();
+  const key = user?.phone ? user.phone.replace(/\D/g, "") : "";
   if (!key) return [];
   const db = createSupabaseAdminClient();
   const [{ data }, statuses] = await Promise.all([

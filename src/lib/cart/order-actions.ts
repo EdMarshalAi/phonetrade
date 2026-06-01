@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyTelegram } from "@/lib/admin/telegram";
+import { clientIp, rateLimited } from "@/lib/utils/rate-limit";
 
 const CONSENT_VERSION = "2026-01-15-v1";
 
@@ -50,6 +51,11 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   // 152-ФЗ: без согласия на оферту/политику и на обработку ПД заказ не оформляется.
   if (!input.consentOferta || !input.consentPd) {
     return { error: "Необходимо принять оферту и согласие на обработку персональных данных" };
+  }
+
+  // Антиспам: не более 10 заказов с одного IP за 10 минут.
+  if (rateLimited(`order:${await clientIp()}`, 10, 600_000)) {
+    return { error: "Слишком много заказов подряд. Попробуйте через несколько минут." };
   }
 
   try {

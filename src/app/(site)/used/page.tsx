@@ -4,6 +4,7 @@ import { extractFacetOptions } from "@/lib/catalog/filters";
 import { getProductsByCategory, getCategories, getProductCountsByCategory } from "@/lib/products";
 import { getCategoryMeta } from "@/lib/content";
 import { CatalogShell } from "@/components/catalog/CatalogShell";
+import { sanitizeRichHtml } from "@/lib/utils/sanitize-html";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +79,7 @@ export default async function UsedPage() {
         config={config}
         products={products}
         facetOptions={facetOptions}
-        seoHtml={meta?.seo_text ?? null}
+        seoHtml={meta?.seo_text ? sanitizeRichHtml(meta.seo_text) : null}
         tabs={tabs}
       />
     </>

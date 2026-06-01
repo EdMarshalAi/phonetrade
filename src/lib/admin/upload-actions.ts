@@ -3,6 +3,7 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/admin/auth";
 import { slugify } from "@/lib/admin/slug";
+import { assertPublicHost } from "@/lib/utils/ssrf";
 
 export type AdminBucket =
   | "product-images"
@@ -89,6 +90,9 @@ export async function uploadImageFromUrl(
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     return { error: "Ссылка должна начинаться с http:// или https://" };
   }
+  // SSRF: запрет внутренних/служебных адресов (loopback, private, 169.254.169.254 и т.п.).
+  const ssrf = await assertPublicHost(parsed.hostname);
+  if (ssrf) return { error: ssrf };
 
   let resp: Response;
   try {
