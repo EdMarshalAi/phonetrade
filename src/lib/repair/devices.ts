@@ -89,8 +89,47 @@ export const DEVICE_CATEGORIES: DeviceCategory[] = [
   },
 ];
 
-/** Фото устройств (модель → URL в Storage). Заполняется отдельным скриптом. */
-export const DEVICE_IMAGES: Record<string, string> = {};
+/** Фото устройств (модель → URL в Storage). Залиты с М.Видео/Ozon. */
+const IMG = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/repair/iphone/";
+export const DEVICE_IMAGES: Record<string, string> = {
+  "iPhone 17 Pro Max": IMG + "iphone-17-pro-max.jpg",
+  "iPhone 17 Pro": IMG + "iphone-17-pro.jpg",
+  "iPhone 17": IMG + "iphone-17.jpg",
+  "iPhone 17e": IMG + "iphone-17e.jpg",
+  "iPhone Air": IMG + "iphone-air.jpg",
+  "iPhone 16 Pro Max": IMG + "iphone-16-pro-max.jpg",
+  "iPhone 16 Pro": IMG + "iphone-16-pro.jpg",
+  "iPhone 16 Plus": IMG + "iphone-16-plus.jpg",
+  "iPhone 16": IMG + "iphone-16.jpg",
+  "iPhone 16e": IMG + "iphone-16e.jpg",
+  "iPhone 15 Pro Max": IMG + "iphone-15-pro-max.jpg",
+  "iPhone 15 Pro": IMG + "iphone-15-pro.jpg",
+  "iPhone 15 Plus": IMG + "iphone-15-plus.jpg",
+  "iPhone 15": IMG + "iphone-15.jpg",
+  "iPhone 14 Pro Max": IMG + "iphone-14-pro-max.jpg",
+  "iPhone 14 Pro": IMG + "iphone-14-pro.jpg",
+  "iPhone 14 Plus": IMG + "iphone-14-plus.jpg",
+  "iPhone 14": IMG + "iphone-14.jpg",
+  "iPhone 13 Pro Max": IMG + "iphone-13-pro-max.jpg",
+  "iPhone 13 Pro": IMG + "iphone-13-pro.jpg",
+  "iPhone 13": IMG + "iphone-13.jpg",
+  "iPhone 13 mini": IMG + "iphone-13-mini.jpg",
+  "iPhone 12 Pro Max": IMG + "iphone-12-pro-max.jpg",
+  "iPhone 12 Pro": IMG + "iphone-12-pro.jpg",
+  "iPhone 12": IMG + "iphone-12.jpg",
+  "iPhone 12 mini": IMG + "iphone-12-mini.jpg",
+  "iPhone 11 Pro Max": IMG + "iphone-11-pro-max.jpg",
+  "iPhone 11 Pro": IMG + "iphone-11-pro.jpg",
+  "iPhone 11": IMG + "iphone-11.jpg",
+  "iPhone XS Max": IMG + "iphone-xs-max.webp",
+  "iPhone XS": IMG + "iphone-xs.jpg",
+  "iPhone XR": IMG + "iphone-xr.jpg",
+  "iPhone X": IMG + "iphone-x.jpg",
+  "iPhone 8 Plus": IMG + "iphone-8-plus.jpg",
+  "iPhone 8": IMG + "iphone-8.jpg",
+  "iPhone SE (2022)": IMG + "iphone-se-2022.jpg",
+  "iPhone SE (2020)": IMG + "iphone-se-2022.jpg",
+};
 
 export function deviceImage(model: string): string | null {
   return DEVICE_IMAGES[model] ?? null;
