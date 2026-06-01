@@ -170,8 +170,8 @@ export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | nul
       </div>
 
       <div className="border-t border-white/5">
-        <div className="container-page space-y-1 py-5 text-xs text-onDark-muted">
-          {requisites ? <p>{requisites}</p> : null}
+        <div className="container-page flex flex-col gap-1 py-5 text-xs text-onDark-muted sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          {requisites ? <p>{requisites}</p> : <span />}
           <p>© PhoneTrade, 2025 г. Все права защищены.</p>
         </div>
       </div>
