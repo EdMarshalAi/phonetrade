@@ -402,8 +402,8 @@ export function PricingShell({
 
       {/* ── Плавающая bulk-плашка ── */}
       {sel.size > 0 ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-ink/95 text-white shadow-[0_-8px_30px_rgba(0,0,0,0.28)] backdrop-blur">
-          <div className="container-page flex flex-wrap items-center gap-x-2 gap-y-2 py-2.5">
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-ink/95 text-white shadow-[0_-8px_30px_rgba(0,0,0,0.28)] backdrop-blur lg:left-[264px]">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-2 px-4 py-2.5 lg:px-8">
             <span className="inline-flex items-center gap-2 text-[13px] font-medium">
               <span className="rounded-full bg-white/15 px-2 py-0.5 text-[12px] tabular-nums">{sel.size}</span>
               <span className="hidden sm:inline">{pluralTovar(sel.size)} выбрано</span>
@@ -501,7 +501,6 @@ export function PricingShell({
                           <td>
                             <div className="flex items-center justify-end gap-1">
                               <button type="button" onClick={() => recalcOne(r.id)} title="Пересчитать по формуле" className="inline-flex size-7 items-center justify-center rounded-sm border border-border bg-white text-ink-subtle hover:bg-surface hover:text-ink"><RefreshCw className="h-3.5 w-3.5" strokeWidth={1.75} /></button>
-                              <Link href={`/admin/catalog/products/${r.id}/edit`} className="inline-flex size-7 items-center justify-center rounded-sm border border-border bg-white text-ink-subtle hover:bg-surface hover:text-ink" title="Открыть карточку"><ArrowUpRight className="h-4 w-4" strokeWidth={1.75} /></Link>
                             </div>
                           </td>
                         </tr>
