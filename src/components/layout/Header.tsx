@@ -11,6 +11,7 @@ import {
   Search,
   ShoppingBag,
   User,
+  Wrench,
   X,
 } from "lucide-react";
 import { resolveIcon } from "@/lib/admin/icons";
@@ -80,6 +81,7 @@ const MOBILE_EXTRA_SECTIONS: MobileSection[] = [
     heading: "Сервисы",
     items: [
       { href: "/trade-in", label: "Trade-in" },
+      { href: "/repair", label: "Ремонт техники" },
       { href: "/delivery", label: "Доставка" },
       { href: "/payment", label: "Оплата" },
       { href: "/warranty", label: "Гарантия" },
@@ -188,6 +190,15 @@ export function Header({
                   </a>
                 </li>
               ))}
+              {/* Заметная кнопка «Ремонт» с иконкой — сразу после сервисных ссылок. */}
+              <li>
+                <a
+                  href="/repair"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-0.5 font-medium text-white transition-colors hover:bg-white/20"
+                >
+                  <Wrench className="size-3.5" aria-hidden /> Ремонт
+                </a>
+              </li>
             </ul>
             <div className="flex items-center gap-3">
               <ContactLinks

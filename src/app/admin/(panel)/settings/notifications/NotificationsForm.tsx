@@ -27,6 +27,7 @@ const GROUPS: { title: string; items: { key: NotificationTrigger; label: string;
   ] },
   { title: "Заявки", items: [
     { key: "new_lead_trade_in", label: "Заявка Trade-in", desc: "Отправлен квиз оценки устройства" },
+    { key: "new_lead_repair", label: "Заявка на ремонт", desc: "Заявка со страницы «Ремонт техники»" },
     { key: "data_request_new", label: "Обращение по перс. данным", desc: "Запрос 152-ФЗ из личного кабинета" },
   ] },
   { title: "Прайс и курс", items: [

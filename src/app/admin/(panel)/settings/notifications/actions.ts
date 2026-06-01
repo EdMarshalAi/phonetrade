@@ -10,6 +10,7 @@ export type NotificationTrigger =
   | "order_cancelled"
   | "new_registration"
   | "new_lead_trade_in"
+  | "new_lead_repair"
   | "data_request_new"
   | "pricing_recalc_done"
   | "pricing_below_margin"
