@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2, Check, ArrowUpRight, Download, Upload, Info, Pencil, ChevronLeft, ChevronRight, Send } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2, Check, ArrowUpRight, Download, Upload, Info, Pencil, ChevronLeft, ChevronRight, Send, Rss, Copy } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format-price";
 import { Modal } from "@/components/admin/Modal";
@@ -74,6 +74,8 @@ export function PricingShell({
   const [markupOpen, setMarkupOpen] = React.useState(false);
   const [importOpen, setImportOpen] = React.useState(false);
   const [exportOpen, setExportOpen] = React.useState(false);
+  const [feedOpen, setFeedOpen] = React.useState(false);
+  const feedUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "") + "/api/feed/yml";
 
   const [cat, setCat] = React.useState("");
   const [q, setQ] = React.useState("");
@@ -297,11 +299,15 @@ export function PricingShell({
               <Pencil className="h-4 w-4 text-ink-subtle" strokeWidth={1.75} aria-hidden />
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Кнопки в сетке 2×2 равной ширины: «Формула» — верхний ряд, над курсовыми. */}
+          <div className="grid w-full grid-cols-2 gap-2 sm:w-[340px]">
+            <AdminButton type="button" variant="outline" size="sm" onClick={() => setFormulaOpen(true)} className="w-full">
+              <SlidersHorizontal className="h-4 w-4" strokeWidth={1.75} /> Формула
+            </AdminButton>
             <div className="relative">
-              <AdminButton type="button" variant="outline" size="sm" onClick={() => setMarkupOpen((o) => !o)}>Из ЦБ +%▾</AdminButton>
+              <AdminButton type="button" variant="outline" size="sm" onClick={() => setMarkupOpen((o) => !o)} className="w-full">Из ЦБ +%▾</AdminButton>
               {markupOpen ? (
-                <div className="absolute left-0 top-full z-30 mt-1 w-48 rounded-lg border border-border/70 bg-white py-1 shadow-lg">
+                <div className="absolute right-0 top-full z-30 mt-1 w-48 rounded-lg border border-border/70 bg-white py-1 shadow-lg">
                   <p className="px-3 py-1 text-[11px] text-ink-subtle">Свежий курс ЦБ + поправка:</p>
                   {MARKUPS.map((m) => (
                     <button key={m} type="button" onClick={() => applyFromCbr(m)} className="block w-full px-3 py-1.5 text-left text-[13px] text-ink hover:bg-surface">ЦБ + {m}%</button>
@@ -309,9 +315,8 @@ export function PricingShell({
                 </div>
               ) : null}
             </div>
-            <AdminButton type="button" variant="outline" size="sm" onClick={applyWorking} disabled={!dirtyRate} loading={busy}>Сохранить курс</AdminButton>
-            <span className="mx-1 hidden h-7 w-px bg-border sm:block" />
-            <AdminButton type="button" size="sm" onClick={onRecalcAll} loading={busy}><RefreshCw className="h-4 w-4" strokeWidth={1.75} /> Пересчитать всё</AdminButton>
+            <AdminButton type="button" variant="outline" size="sm" onClick={applyWorking} disabled={!dirtyRate} loading={busy} className="w-full">Сохранить курс</AdminButton>
+            <AdminButton type="button" size="sm" onClick={onRecalcAll} loading={busy} className="w-full"><RefreshCw className="h-4 w-4" strokeWidth={1.75} /> Пересчитать всё</AdminButton>
           </div>
         </div>
         <p className="mt-3 text-[12px] text-ink-subtle">
@@ -322,8 +327,8 @@ export function PricingShell({
 
       {/* ── Тулбар действий ── */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <ActionTile icon={<SlidersHorizontal className="h-5 w-5" strokeWidth={1.5} />} title="Формула" hint="Наценки и округление" onClick={() => setFormulaOpen(true)} />
         <ActionTile icon={<Upload className="h-5 w-5" strokeWidth={1.5} />} title="Импорт прайса" hint="XLSX или CSV" onClick={() => setImportOpen(true)} />
+        <ActionTile icon={<Rss className="h-5 w-5" strokeWidth={1.5} />} title="YML-фид" hint="Для ВКонтакте · авто-цены" onClick={() => setFeedOpen(true)} />
         <div className="relative">
           <ActionTile icon={<Download className="h-5 w-5" strokeWidth={1.5} />} title="Экспорт" hint="XLSX · CSV" onClick={() => setExportOpen((o) => !o)} />
           {exportOpen ? (
@@ -519,6 +524,35 @@ export function PricingShell({
 
       <FormulaModal open={formulaOpen} onClose={() => setFormulaOpen(false)} initial={settings} course={course} categories={categories} affected={localRows.filter((r) => !r.is_used && !r.price_override && r.cost_rub != null).length} onSaved={() => { router.refresh(); }} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onDone={() => { setImportOpen(false); router.refresh(); }} />
+
+      <Modal open={feedOpen} onClose={() => setFeedOpen(false)} title="YML-фид для ВКонтакте"
+        footer={<AdminButton type="button" variant="outline" onClick={() => setFeedOpen(false)}>Закрыть</AdminButton>}>
+        <p className="mb-3 text-[13px] text-ink-muted">
+          Постоянная ссылка на фид в формате YML. Отдайте её в рекламном кабинете ВКонтакте
+          (Магазин / Товары → загрузка по ссылке). Цены и наличие подтягиваются из прайса
+          автоматически — обновляйте каталог в ВК по расписанию, файл всегда свежий.
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            readOnly
+            value={feedUrl}
+            onFocus={(e) => e.currentTarget.select()}
+            className="h-9 flex-1 rounded-sm border border-border bg-surface/40 px-3 text-[13px] text-ink outline-none focus:border-ink/40"
+          />
+          <AdminButton type="button" variant="outline" size="sm" onClick={() => { navigator.clipboard?.writeText(feedUrl); toast.success("Ссылка скопирована"); }}>
+            <Copy className="h-4 w-4" strokeWidth={1.75} /> Копировать
+          </AdminButton>
+          <a href={feedUrl} target="_blank" rel="noopener noreferrer">
+            <AdminButton type="button" size="sm"><ArrowUpRight className="h-4 w-4" strokeWidth={1.75} /> Открыть</AdminButton>
+          </a>
+        </div>
+        <ul className="mt-4 space-y-1.5 text-[12.5px] text-ink-subtle">
+          <li>· В фид попадают все опубликованные новые товары в наличии с ценой.</li>
+          <li>· Цена — наличными; старая цена (зачёркнутая) — картой, чтобы показать выгоду.</li>
+          <li>· Передаются картинки, бренд и характеристики (цвет, память, SIM, гарантия).</li>
+          <li>· Б/У и архив в фид не входят.</li>
+        </ul>
+      </Modal>
 
       <Modal open={!!dialog} onClose={() => setDialog(null)} title={dialog?.title ?? ""}
         footer={<><AdminButton type="button" variant="outline" onClick={() => setDialog(null)}>Отмена</AdminButton><AdminButton type="button" onClick={submitDialog}>{dialog?.confirmLabel ?? "Применить"}</AdminButton></>}>
