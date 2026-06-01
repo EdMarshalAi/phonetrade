@@ -149,9 +149,12 @@ export async function createProduct(input: ProductInput): Promise<{ error?: stri
       revalidate: ["/", "/catalog", `/category/${parsed.data.category_slug}`, `/product/${id}`],
       run: async (db) => {
         const row = toRow({ ...parsed.data, slug });
+        // Галерея из формы: дедуп + без главного фото (правило: gallery БЕЗ главного).
+        const gallery = Array.from(new Set(parsed.data.gallery ?? [])).filter((g) => g && g !== row.image);
         const { error } = await db.from("products").insert({
           id,
           ...row,
+          gallery,
           published_at: row.status === "published" ? new Date().toISOString() : null,
         });
         if (error) throw error;

@@ -18,8 +18,9 @@ import { slugify } from "@/lib/admin/slug";
 import { Field, TextInput, Textarea, Select, Switch, ToggleRow, FormError, AdminButton } from "@/components/admin/form";
 import { ImageField } from "@/components/admin/ImageField";
 import { RichEditor } from "@/components/admin/RichEditor";
-import { Panel } from "@/components/admin/ui";
-import { Plus, X } from "lucide-react";
+import { Panel, PanelTitle } from "@/components/admin/ui";
+import { Plus, X, Upload } from "lucide-react";
+import { uploadImage, uploadImageFromUrl } from "@/lib/admin/upload-actions";
 import Image from "next/image";
 import type { ProductOption, ProductBadge } from "@/lib/content";
 import { createProduct, updateProduct } from "./actions";
@@ -114,6 +115,7 @@ export function ProductForm({
       options: product?.options ?? {},
       short_description: product?.short_description ?? "",
       image: product?.image ?? "",
+      gallery: (product as { gallery?: string[] } | undefined)?.gallery ?? [],
       price_cash: product?.price_cash ?? 0,
       price_card: product?.price_card ?? 0,
       price_old: product?.price_old ?? undefined,
@@ -228,8 +230,8 @@ export function ProductForm({
   };
 
   const visibleTabs = TABS.filter((t) => {
-    if (t.key === "variants" || t.key === "gallery") return isEdit;
-    return true;
+    if (t.key === "variants") return isEdit; // варианты — только у существующего товара
+    return true; // галерею показываем и при создании (через состояние формы)
   });
 
   return (
@@ -559,11 +561,19 @@ export function ProductForm({
       ) : null}
 
       {/* Галерея */}
-      {isEdit ? (
-        <div hidden={tab !== "gallery"}>
+      <div hidden={tab !== "gallery"}>
+        {isEdit ? (
           <GallerySection productId={product!.id} images={images} />
-        </div>
-      ) : null}
+        ) : (
+          <Controller
+            control={control}
+            name="gallery"
+            render={({ field }) => (
+              <GalleryField value={(field.value as string[]) ?? []} onChange={field.onChange} />
+            )}
+          />
+        )}
+      </div>
 
       <div className="flex items-center gap-2">
         <AdminButton type="submit" loading={isSubmitting}>
@@ -580,6 +590,84 @@ export function ProductForm({
 }
 
 /* ── Выбор категории: раздельно категория и подкатегория ──────────────────── */
+/* ── Галерея на состоянии формы (работает и при создании товара) ─────────────── */
+function GalleryField({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = React.useState(false);
+  const [urlMode, setUrlMode] = React.useState(false);
+  const [urlValue, setUrlValue] = React.useState("");
+
+  const add = (u: string) => { if (u && !value.includes(u)) onChange([...value, u]); };
+
+  const handleFiles = async (files: File[]) => {
+    setUploading(true);
+    for (const f of files) {
+      const fd = new FormData();
+      fd.set("file", f); fd.set("bucket", "product-images"); fd.set("folder", "products");
+      const res = await uploadImage(fd);
+      if (res.error) { toast.error(res.error); continue; }
+      if (res.url) add(res.url);
+    }
+    setUploading(false);
+  };
+
+  const handleUrl = async () => {
+    const u = urlValue.trim(); if (!u) return;
+    setUploading(true);
+    const res = await uploadImageFromUrl(u, "product-images", "products");
+    setUploading(false);
+    if (res.error || !res.url) { toast.error(res.error ?? "Не удалось загрузить"); return; }
+    add(res.url); setUrlValue(""); setUrlMode(false);
+  };
+
+  return (
+    <Panel className="space-y-4 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <PanelTitle>Галерея</PanelTitle>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="inline-flex h-8 items-center gap-2 rounded-sm border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface disabled:opacity-60">
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" strokeWidth={1.75} />} Загрузить фото
+          </button>
+          <button type="button" onClick={() => setUrlMode((m) => !m)} disabled={uploading}
+            className="inline-flex h-8 items-center gap-2 rounded-sm border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface disabled:opacity-60">
+            <Plus className="h-4 w-4" strokeWidth={1.75} /> По ссылке
+          </button>
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+          onChange={(e) => { const fs = Array.from(e.target.files ?? []); e.target.value = ""; void handleFiles(fs); }} />
+      </div>
+
+      {urlMode ? (
+        <div className="flex items-center gap-2">
+          <input type="url" value={urlValue} onChange={(e) => setUrlValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleUrl(); } }}
+            placeholder="https://…/photo.jpg" className="h-9 flex-1 rounded-sm border border-border bg-white px-2.5 text-[13px] outline-none focus:border-ink/40" />
+          <button type="button" onClick={() => void handleUrl()} disabled={uploading || !urlValue.trim()}
+            className="inline-flex h-9 items-center rounded-sm border border-ink bg-ink px-3 text-[13px] font-medium text-white disabled:opacity-50">Добавить</button>
+        </div>
+      ) : null}
+
+      {value.length === 0 ? (
+        <p className="text-[13px] text-ink-muted">Добавьте доп. фото сейчас — они сохранятся вместе с товаром. Главное фото — на вкладке «Основное».</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
+          {value.map((u) => (
+            <div key={u} className="group relative aspect-square overflow-hidden rounded-sm border border-border/70 bg-surface">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={u} alt="" className="h-full w-full object-contain p-1" />
+              <button type="button" onClick={() => onChange(value.filter((x) => x !== u))}
+                className="absolute right-1 top-1 inline-flex size-6 items-center justify-center rounded-full bg-ink/70 text-white opacity-0 transition-opacity group-hover:opacity-100" aria-label="Удалить">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 function CategoryPicker({
   value,
   onChange,

@@ -65,6 +65,7 @@ export const productSchema = z.object({
   options: z.record(z.string(), z.string()).default({}),
   short_description: z.string().trim().nullable().optional(),
   image: z.string().trim().nullable().optional(),
+  gallery: z.array(z.string()).default([]),
   price_cash: z.coerce.number().int().min(0).default(0),
   price_card: z.coerce.number().int().min(0).default(0),
   price_old: z.coerce.number().int().min(0).nullable().optional(),
