@@ -1,37 +1,46 @@
 /**
  * Каталог устройств и ТИПОВЫХ поломок для страницы «Ремонт техники».
- * Поломки СВОИ под каждый тип техники (у AirPods нет экрана и т.п.) — собрано
- * из веб-ресёрча (pedant.ru и сервисные центры). ЦЕН НЕТ — только перечень работ.
+ * Поломки СВОИ под каждый тип техники. iPhone выбирается в два шага: серия →
+ * модель (плитки с фото). ЦЕН НЕТ. Диагностику НЕ предлагаем (по требованию).
  */
 
 export type DeviceCategoryKey = "iphone" | "ipad" | "mac" | "watch" | "airpods" | "phone" | "other";
 
-export interface DeviceCategory {
-  key: DeviceCategoryKey;
+export interface PhoneSeries {
+  key: string;
   title: string;
-  /** Подпись для шага «другое устройство» (свободный ввод). */
-  freeInput?: boolean;
+  /** Представительная модель серии — её фото используется как плитка серии. */
+  cover: string;
   models: string[];
 }
 
+export interface DeviceCategory {
+  key: DeviceCategoryKey;
+  title: string;
+  freeInput?: boolean;
+  /** Для iPhone: выбор в два шага (серия → модель). */
+  series?: PhoneSeries[];
+  /** Для остальных типов: плоский список моделей. */
+  models?: string[];
+}
+
+/** Серии iPhone — начиная с iPhone 8 (по требованию). cover = модель для фото. */
+export const IPHONE_SERIES: PhoneSeries[] = [
+  { key: "17", title: "iPhone 17", cover: "iPhone 17 Pro Max", models: ["iPhone 17 Pro Max", "iPhone 17 Pro", "iPhone 17", "iPhone 17e"] },
+  { key: "air", title: "iPhone Air", cover: "iPhone Air", models: ["iPhone Air"] },
+  { key: "16", title: "iPhone 16", cover: "iPhone 16 Pro Max", models: ["iPhone 16 Pro Max", "iPhone 16 Pro", "iPhone 16 Plus", "iPhone 16", "iPhone 16e"] },
+  { key: "15", title: "iPhone 15", cover: "iPhone 15 Pro Max", models: ["iPhone 15 Pro Max", "iPhone 15 Pro", "iPhone 15 Plus", "iPhone 15"] },
+  { key: "14", title: "iPhone 14", cover: "iPhone 14 Pro Max", models: ["iPhone 14 Pro Max", "iPhone 14 Pro", "iPhone 14 Plus", "iPhone 14"] },
+  { key: "13", title: "iPhone 13", cover: "iPhone 13 Pro Max", models: ["iPhone 13 Pro Max", "iPhone 13 Pro", "iPhone 13", "iPhone 13 mini"] },
+  { key: "12", title: "iPhone 12", cover: "iPhone 12 Pro Max", models: ["iPhone 12 Pro Max", "iPhone 12 Pro", "iPhone 12", "iPhone 12 mini"] },
+  { key: "11", title: "iPhone 11", cover: "iPhone 11 Pro Max", models: ["iPhone 11 Pro Max", "iPhone 11 Pro", "iPhone 11"] },
+  { key: "x", title: "iPhone X / XR / XS", cover: "iPhone XR", models: ["iPhone XS Max", "iPhone XS", "iPhone XR", "iPhone X"] },
+  { key: "se", title: "iPhone SE", cover: "iPhone SE (2022)", models: ["iPhone SE (2022)", "iPhone SE (2020)"] },
+  { key: "8", title: "iPhone 8", cover: "iPhone 8", models: ["iPhone 8 Plus", "iPhone 8"] },
+];
+
 export const DEVICE_CATEGORIES: DeviceCategory[] = [
-  {
-    key: "iphone",
-    title: "iPhone",
-    models: [
-      "iPhone 17 Pro Max", "iPhone 17 Pro", "iPhone 17", "iPhone 17e", "iPhone Air",
-      "iPhone 16 Pro Max", "iPhone 16 Pro", "iPhone 16 Plus", "iPhone 16", "iPhone 16e",
-      "iPhone 15 Pro Max", "iPhone 15 Pro", "iPhone 15 Plus", "iPhone 15",
-      "iPhone 14 Pro Max", "iPhone 14 Pro", "iPhone 14 Plus", "iPhone 14",
-      "iPhone 13 Pro Max", "iPhone 13 Pro", "iPhone 13", "iPhone 13 mini",
-      "iPhone 12 Pro Max", "iPhone 12 Pro", "iPhone 12", "iPhone 12 mini",
-      "iPhone 11 Pro Max", "iPhone 11 Pro", "iPhone 11",
-      "iPhone XS Max", "iPhone XS", "iPhone XR", "iPhone X",
-      "iPhone SE (2022)", "iPhone SE (2020)",
-      "iPhone 8 Plus", "iPhone 8", "iPhone 7 Plus", "iPhone 7",
-      "iPhone 6s Plus", "iPhone 6s",
-    ],
-  },
+  { key: "iphone", title: "iPhone", series: IPHONE_SERIES },
   {
     key: "ipad",
     title: "iPad",
@@ -80,18 +89,22 @@ export const DEVICE_CATEGORIES: DeviceCategory[] = [
   },
 ];
 
+/** Фото устройств (модель → URL в Storage). Заполняется отдельным скриптом. */
+export const DEVICE_IMAGES: Record<string, string> = {};
+
+export function deviceImage(model: string): string | null {
+  return DEVICE_IMAGES[model] ?? null;
+}
+
 /** Типовая услуга/поломка (без цены). */
 export interface RepairIssue {
   key: string;
   label: string;
-  /** Бесплатная услуга (диагностика) — помечаем. */
-  free?: boolean;
 }
 
-/** Поломки СВОИ под каждый тип техники. */
+/** Поломки СВОИ под каждый тип техники (без диагностики). */
 export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
   iphone: [
-    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
     { key: "screen", label: "Замена экрана / дисплея" },
     { key: "glass", label: "Замена стекла" },
     { key: "battery", label: "Замена аккумулятора" },
@@ -107,7 +120,6 @@ export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
     { key: "other", label: "Другая проблема" },
   ],
   ipad: [
-    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
     { key: "screen", label: "Замена дисплея" },
     { key: "glass", label: "Замена стекла (тачскрина)" },
     { key: "battery", label: "Замена аккумулятора" },
@@ -121,7 +133,6 @@ export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
     { key: "other", label: "Другая проблема" },
   ],
   mac: [
-    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
     { key: "screen", label: "Замена матрицы / экрана" },
     { key: "keyboard", label: "Замена клавиатуры" },
     { key: "trackpad", label: "Замена тачпада" },
@@ -136,7 +147,6 @@ export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
     { key: "other", label: "Другая проблема" },
   ],
   watch: [
-    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
     { key: "glass", label: "Замена стекла" },
     { key: "screen", label: "Замена дисплея" },
     { key: "battery", label: "Замена аккумулятора" },
@@ -149,7 +159,6 @@ export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
     { key: "other", label: "Другая проблема" },
   ],
   airpods: [
-    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
     { key: "cleaning", label: "Чистка наушников и кейса" },
     { key: "one_side", label: "Один наушник не работает" },
     { key: "no_charge", label: "Не заряжаются / замена кейса" },
@@ -161,7 +170,6 @@ export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
     { key: "other", label: "Другая проблема" },
   ],
   phone: [
-    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
     { key: "screen", label: "Замена экрана / дисплея" },
     { key: "glass", label: "Замена стекла" },
     { key: "battery", label: "Замена аккумулятора" },
@@ -176,7 +184,6 @@ export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
     { key: "other", label: "Другая проблема" },
   ],
   other: [
-    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
     { key: "no_power", label: "Не включается" },
     { key: "imac_screen", label: "Экран / матрица (iMac)" },
     { key: "ssd", label: "Замена / увеличение диска (SSD)" },

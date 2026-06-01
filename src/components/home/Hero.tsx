@@ -123,6 +123,13 @@ export function Hero({ slides, autoplayMs = AUTOPLAY_DEFAULT }: Props) {
       onTouchEnd={onTouchEnd}
     >
       <div className="relative min-h-[30vh] md:min-h-[34vh] lg:min-h-[38vh]">
+        {/* Редкий «блик» — лёгкий световой проход по баннеру */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
+          <div
+            className="absolute inset-y-0 left-0 w-1/4"
+            style={{ background: "linear-gradient(100deg, transparent, rgba(255,255,255,0.45), transparent)", animation: "heroShine 9s ease-in-out infinite" }}
+          />
+        </div>
         <AnimatePresence initial={false} mode="sync">
           <motion.div
             key={slide.id}

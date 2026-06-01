@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Wrench, ShieldCheck, BadgeCheck, Clock, Check, Phone, ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
+import { Wrench, ShieldCheck, BadgeCheck, Clock, Check, Phone, ChevronLeft, ChevronRight, Loader2, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { ymReachGoal } from "@/lib/analytics/metrika";
-import { DEVICE_CATEGORIES, issuesFor, type DeviceCategoryKey } from "@/lib/repair/devices";
+import { DEVICE_CATEGORIES, issuesFor, deviceImage, type DeviceCategoryKey } from "@/lib/repair/devices";
 import { submitRepairRequest } from "@/lib/repair/repair-actions";
 
 const HERO_IMAGE = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/repair/hero-broken-iphone.png";
@@ -16,7 +16,6 @@ const ADVANTAGES = [
   { icon: Clock, title: "В день обращения", text: "Большинство работ — от 20 минут" },
 ];
 
-// Чередующееся слово вместо клише «Гарантийный».
 const WORDS = ["Быстрый", "Честный", "Выгодный", "Надёжный", "Качественный"];
 
 function RotatingWord() {
@@ -63,7 +62,7 @@ export function RepairShell({ initialPhone, initialName, authed }: { initialPhon
             </h1>
             <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-ink-muted">
               Сервисный центр PhoneTrade в Белгороде чинит технику Apple в день обращения —
-              с гарантией и оригинальными запчастями. Бесплатная диагностика.
+              с гарантией и оригинальными запчастями.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <button
@@ -108,10 +107,32 @@ export function RepairShell({ initialPhone, initialName, authed }: { initialPhon
   );
 }
 
+// ── Плитка устройства (фото + подпись) ───────────────────────────────────────
+function DeviceTile({ label, image, onClick }: { label: string; image: string | null; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex flex-col items-center gap-2 rounded-2xl border border-border/70 bg-white p-3 text-center transition-all hover:-translate-y-0.5 hover:border-ink hover:shadow-md"
+    >
+      <span className="flex h-16 w-full items-center justify-center sm:h-20">
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={image} alt={label} loading="lazy" className="h-full w-auto object-contain" />
+        ) : (
+          <Smartphone className="size-8 text-ink-subtle" strokeWidth={1.5} />
+        )}
+      </span>
+      <span className="text-[12px] font-medium leading-tight text-ink sm:text-[12.5px]">{label}</span>
+    </button>
+  );
+}
+
 // ── Пошаговый квиз ───────────────────────────────────────────────────────────
 function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; initialName?: string; initialPhone?: string }) {
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
   const [cat, setCat] = React.useState<DeviceCategoryKey>("iphone");
+  const [seriesKey, setSeriesKey] = React.useState<string | null>(null);
   const [device, setDevice] = React.useState<string | null>(null);
   const [issues, setIssues] = React.useState<string[]>([]);
   const [comment, setComment] = React.useState("");
@@ -125,14 +146,11 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
   const [done, setDone] = React.useState(false);
 
   const activeCat = DEVICE_CATEGORIES.find((c) => c.key === cat)!;
+  const activeSeries = activeCat.series?.find((s) => s.key === seriesKey) ?? null;
   const catIssues = issuesFor(cat);
 
-  const pickDevice = (d: string) => {
-    setDevice(d);
-    setIssues([]);
-    setStep(2);
-    ymReachGoal("repair_open");
-  };
+  const setCategory = (k: DeviceCategoryKey) => { setCat(k); setSeriesKey(null); };
+  const pickDevice = (d: string) => { setDevice(d); setIssues([]); setStep(2); ymReachGoal("repair_open"); };
   const toggleIssue = (k: string) => setIssues((s) => (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]));
 
   const submit = async () => {
@@ -153,19 +171,18 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
       <div className="mx-auto max-w-md rounded-3xl border border-border/60 bg-white p-8 text-center shadow-sm">
         <span className="mx-auto inline-flex size-14 items-center justify-center rounded-full bg-ink text-white"><Check className="size-7" /></span>
         <h3 className="mt-5 text-xl font-semibold text-ink">Заявка принята!</h3>
-        <p className="mt-2 text-[14px] text-ink-muted">Мастер свяжется с вами, уточнит детали и назовёт стоимость. Диагностика — бесплатно.</p>
+        <p className="mt-2 text-[14px] text-ink-muted">Мастер свяжется с вами, уточнит детали и назовёт стоимость ремонта.</p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-5xl">
       <div className="mb-6 text-center">
         <h2 className="text-2xl font-semibold tracking-tight text-ink md:text-3xl">Что у вас сломалось?</h2>
         <p className="mt-2 text-[15px] text-ink-muted">Соберём заявку за минуту — выберите устройство и поломку.</p>
       </div>
 
-      {/* Прогресс */}
       <div className="mb-6 flex items-center justify-center gap-2">
         {[1, 2, 3].map((s) => (
           <span key={s} className={cn("h-1.5 rounded-full transition-all", s === step ? "w-8 bg-ink" : s < step ? "w-6 bg-ink/40" : "w-6 bg-border")} />
@@ -179,22 +196,37 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
             <p className="text-[13px] font-medium text-ink-subtle">Шаг 1 · Устройство</p>
             <div className="mt-3 flex flex-wrap gap-2">
               {DEVICE_CATEGORIES.map((c) => (
-                <button key={c.key} type="button" onClick={() => setCat(c.key)}
+                <button key={c.key} type="button" onClick={() => setCategory(c.key)}
                   className={cn("inline-flex h-9 items-center rounded-full px-4 text-[13.5px] font-medium transition-colors",
                     cat === c.key ? "bg-ink text-white" : "border border-border bg-white text-ink-muted hover:border-ink/40 hover:text-ink")}>
                   {c.title}
                 </button>
               ))}
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-              {activeCat.models.map((m) => (
-                <button key={m} type="button" onClick={() => pickDevice(m)}
-                  className="group flex min-h-12 items-center justify-between gap-2 rounded-xl border border-border/70 bg-white px-3.5 py-3 text-left text-[13.5px] font-medium text-ink transition-colors hover:border-ink hover:bg-surface">
-                  <span className="leading-tight">{m}</span>
-                  <ChevronRight className="size-4 shrink-0 text-ink-subtle transition-transform group-hover:translate-x-0.5 group-hover:text-ink" />
-                </button>
-              ))}
-            </div>
+
+            {activeCat.series ? (
+              activeSeries ? (
+                <div className="mt-4">
+                  <button type="button" onClick={() => setSeriesKey(null)} className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-muted hover:text-ink">
+                    <ChevronLeft className="size-4" /> Все серии iPhone
+                  </button>
+                  <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-5">
+                    {activeSeries.models.map((m) => <DeviceTile key={m} label={m} image={deviceImage(m)} onClick={() => pickDevice(m)} />)}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <p className="mb-2 text-[12.5px] text-ink-subtle">Выберите серию iPhone:</p>
+                  <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-5">
+                    {activeCat.series.map((s) => <DeviceTile key={s.key} label={s.title} image={deviceImage(s.cover)} onClick={() => setSeriesKey(s.key)} />)}
+                  </div>
+                </div>
+              )
+            ) : (
+              <div className="mt-4 grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-5">
+                {(activeCat.models ?? []).map((m) => <DeviceTile key={m} label={m} image={deviceImage(m)} onClick={() => pickDevice(m)} />)}
+              </div>
+            )}
           </div>
         ) : null}
 
@@ -205,7 +237,7 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
               <p className="text-[13px] font-medium text-ink-subtle">Шаг 2 · Что чинить</p>
               <span className="truncate rounded-full bg-surface px-3 py-1 text-[12px] font-medium text-ink">{device}</span>
             </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {catIssues.map((it) => {
                 const on = issues.includes(it.key);
                 return (
@@ -214,7 +246,6 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
                       on ? "border-ink bg-ink/[0.04] text-ink" : "border-border bg-white text-ink-muted hover:border-ink/40")}>
                     <span className={cn("flex size-4 shrink-0 items-center justify-center rounded-[5px] border", on ? "border-ink bg-ink text-white" : "border-border")}>{on ? <Check className="size-3" /> : null}</span>
                     <span className="flex-1">{it.label}</span>
-                    {it.free ? <span className="rounded-full bg-surface px-1.5 py-0.5 text-[10px] font-medium text-ink-subtle">бесплатно</span> : null}
                   </button>
                 );
               })}
@@ -232,7 +263,7 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
 
         {/* Шаг 3 — контакты + согласия */}
         {step === 3 ? (
-          <div>
+          <div className="mx-auto max-w-xl">
             <p className="text-[13px] font-medium text-ink-subtle">Шаг 3 · Контакты</p>
             <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ваше имя" className="h-11 w-full rounded-xl border border-border bg-white px-3.5 text-[14px] text-ink outline-none placeholder:text-ink-subtle focus:border-ink/40" />

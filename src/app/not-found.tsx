@@ -13,7 +13,7 @@ export const metadata: Metadata = {
  */
 export default function NotFound() {
   return (
-    <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-surface px-6 text-center">
+    <main className="relative mx-auto flex min-h-[58vh] max-w-2xl flex-col items-center justify-center overflow-hidden px-6 py-16 text-center md:py-20">
       {/* лёгкие кляксы для глубины */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="absolute -left-24 top-10 size-[320px] rounded-full blur-3xl" style={{ background: "radial-gradient(circle, rgba(167,139,250,0.18), transparent 70%)" }} />
