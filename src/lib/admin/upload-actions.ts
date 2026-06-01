@@ -90,16 +90,31 @@ export async function uploadImageFromUrl(
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     return { error: "Ссылка должна начинаться с http:// или https://" };
   }
-  // SSRF: запрет внутренних/служебных адресов (loopback, private, 169.254.169.254 и т.п.).
-  const ssrf = await assertPublicHost(parsed.hostname);
-  if (ssrf) return { error: ssrf };
-
-  let resp: Response;
-  try {
-    resp = await fetch(parsed.toString(), { redirect: "follow", signal: AbortSignal.timeout(10000) });
-  } catch {
-    return { error: "Не удалось загрузить файл по ссылке" };
+  // SSRF: проверяем КАЖДЫЙ хоп редиректа (redirect:"manual"), запрещая внутренние/
+  // служебные адреса (loopback, private, 169.254.169.254 и т.п.) — иначе публичный
+  // хост мог бы 30x-редиректнуть на внутренний.
+  let current = parsed;
+  let resp: Response | null = null;
+  for (let hop = 0; hop < 4; hop++) {
+    const ssrf = await assertPublicHost(current.hostname);
+    if (ssrf) return { error: ssrf };
+    let r: Response;
+    try {
+      r = await fetch(current.toString(), { redirect: "manual", signal: AbortSignal.timeout(10000) });
+    } catch {
+      return { error: "Не удалось загрузить файл по ссылке" };
+    }
+    if (r.status >= 300 && r.status < 400 && r.headers.get("location")) {
+      let next: URL;
+      try { next = new URL(r.headers.get("location")!, current); } catch { return { error: "Некорректный редирект" }; }
+      if (next.protocol !== "http:" && next.protocol !== "https:") return { error: "Редирект на недопустимый протокол" };
+      current = next;
+      continue;
+    }
+    resp = r;
+    break;
   }
+  if (!resp) return { error: "Слишком много редиректов" };
   if (!resp.ok) return { error: `Файл недоступен по ссылке (HTTP ${resp.status})` };
 
   const contentType = (resp.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
