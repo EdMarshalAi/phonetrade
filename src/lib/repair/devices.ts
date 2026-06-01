@@ -94,6 +94,7 @@ export const DEVICE_CATEGORIES: DeviceCategory[] = [
  *  (часть старых iPhone, прочие бренды, десктопы), показывают иконку-заглушку. */
 const P = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/imported/";
 const R = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/repair/other/";
+const W = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/repair/watch/";
 export const DEVICE_IMAGES: Record<string, string> = {
   // iPhone (новые)
   "iPhone 17 Pro Max": P + "iphone-17-pro-max-1tb-silver-dual-sim-1tb.jpg",
@@ -146,19 +147,19 @@ export const DEVICE_IMAGES: Record<string, string> = {
   "MacBook Pro 14 (M3)": P + "macbook-pro-16-m4-pro-2024-24512-space-black.jpg",
   "MacBook Pro 13 (M2)": P + "macbook-pro-16-m4-pro-2024-24512-space-black.jpg",
   "MacBook Pro 13 (M1)": P + "macbook-pro-16-m4-pro-2024-24512-space-black.jpg",
-  // Apple Watch
-  "Apple Watch Ultra 2": P + "apple-watch-ultra-2-ocean-band-blue.jpg",
-  "Apple Watch Ultra": P + "apple-watch-ultra-2-ocean-band-blue.jpg",
-  "Apple Watch Series 10": P + "apple-watch-ultra-2-ocean-band-blue.jpg",
-  "Apple Watch Series 9": P + "apple-watch-ultra-2-ocean-band-blue.jpg",
-  "Apple Watch Series 8": P + "apple-watch-ultra-2-ocean-band-blue.jpg",
-  "Apple Watch Series 7": P + "apple-watch-ultra-2-ocean-band-blue.jpg",
-  "Apple Watch Series 6": P + "apple-watch-ultra-2-ocean-band-blue.jpg",
-  "Apple Watch Series 5": P + "apple-watch-ultra-2-ocean-band-blue.jpg",
-  "Apple Watch Series 4": P + "apple-watch-ultra-2-ocean-band-blue.jpg",
-  "Apple Watch Series 3": P + "apple-watch-ultra-2-ocean-band-blue.jpg",
-  "Apple Watch SE (2022)": P + "apple-watch-se3nd-2025-40mm-silverblue.jpg",
-  "Apple Watch SE": P + "apple-watch-se3nd-2025-40mm-silverblue.jpg",
+  // Apple Watch — по-модельные фото (Storage repair/watch/)
+  "Apple Watch Ultra 2": W + "apple-watch-ultra-2.jpg",
+  "Apple Watch Ultra": W + "apple-watch-ultra.jpg",
+  "Apple Watch Series 10": W + "apple-watch-series-10.jpg",
+  "Apple Watch Series 9": W + "apple-watch-series-9.jpg",
+  "Apple Watch Series 8": W + "apple-watch-series-8.jpg",
+  "Apple Watch Series 7": W + "apple-watch-series-7.jpg",
+  "Apple Watch Series 6": W + "apple-watch-series-6.jpg",
+  "Apple Watch Series 5": W + "apple-watch-series-5.jpg",
+  "Apple Watch Series 4": W + "apple-watch-series-4.jpg",
+  "Apple Watch Series 3": W + "apple-watch-series-4.jpg",
+  "Apple Watch SE (2022)": W + "apple-watch-se-2022.jpg",
+  "Apple Watch SE": W + "apple-watch-se.jpg",
   // AirPods
   "AirPods Pro 2": P + "AP-WHI-01.jpg",
   "AirPods Pro": P + "AP-WHI-03.jpg",
