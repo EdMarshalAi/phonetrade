@@ -3,12 +3,12 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { BarChart3, Send, MapPin, Mail, Code2, Plus, Loader2, Trash2, X } from "lucide-react";
+import { BarChart3, Send, MapPin, Mail, Code2, Plus, Loader2, Trash2, X, Sparkles } from "lucide-react";
 import { Field, TextInput, Textarea, Switch, Select, AdminButton } from "@/components/admin/form";
 import { cn } from "@/lib/utils/cn";
 import { saveIntegration, createCustomIntegration, deleteIntegration, type IntegrationRow } from "./actions";
 
-type FieldDef = { name: string; label: string; type?: string; placeholder?: string; hint?: string };
+type FieldDef = { name: string; label: string; type?: string; placeholder?: string; hint?: string; multiline?: boolean; rows?: number };
 type Builtin = { key: string; title: string; desc: string; icon: typeof BarChart3; fields: FieldDef[] };
 
 const BUILTIN: Builtin[] = [
@@ -28,6 +28,14 @@ const BUILTIN: Builtin[] = [
       { name: "user", label: "Пользователь", placeholder: "noreply@phonetrade.ru" },
       { name: "pass", label: "Пароль", type: "password" },
       { name: "from", label: "Адрес отправителя (From)", placeholder: "PhoneTrade <noreply@phonetrade.ru>" },
+    ] },
+  { key: "openai", title: "ChatGPT (OpenAI)", desc: "Генерация описаний и мета-тегов товара по кнопке", icon: Sparkles,
+    fields: [
+      { name: "api_key", label: "API-ключ", type: "password", placeholder: "sk-…", hint: "platform.openai.com → API keys" },
+      { name: "model", label: "Модель", placeholder: "gpt-4o-mini", hint: "напр. gpt-4o-mini (дёшево) или gpt-4o" },
+      { name: "prompt_short", label: "Промт: краткое описание", multiline: true, rows: 4, hint: "Доступна переменная {{title}}. JSON-формат и запрет цены добавляются автоматически." },
+      { name: "prompt_full", label: "Промт: подробное описание", multiline: true, rows: 5, hint: "Доступна переменная {{title}}. Просите чистый HTML." },
+      { name: "prompt_meta", label: "Промт: мета-теги", multiline: true, rows: 4, hint: "Доступна переменная {{title}}. Title ≤60, description ≤160." },
     ] },
 ];
 
@@ -179,12 +187,21 @@ function SettingsModal({ intKey, builtin, entry, onClose, onSaved, onDeleted }: 
         {builtin ? (
           builtin.fields.map((f) => (
             <Field key={f.name} label={f.label} hint={f.hint}>
-              <TextInput
-                type={f.type ?? "text"}
-                placeholder={f.placeholder}
-                value={String(cfg[f.name] ?? "")}
-                onChange={(e) => setCfg((p) => ({ ...p, [f.name]: e.target.value }))}
-              />
+              {f.multiline ? (
+                <Textarea
+                  rows={f.rows ?? 4}
+                  placeholder={f.placeholder}
+                  value={String(cfg[f.name] ?? "")}
+                  onChange={(e) => setCfg((p) => ({ ...p, [f.name]: e.target.value }))}
+                />
+              ) : (
+                <TextInput
+                  type={f.type ?? "text"}
+                  placeholder={f.placeholder}
+                  value={String(cfg[f.name] ?? "")}
+                  onChange={(e) => setCfg((p) => ({ ...p, [f.name]: e.target.value }))}
+                />
+              )}
             </Field>
           ))
         ) : (

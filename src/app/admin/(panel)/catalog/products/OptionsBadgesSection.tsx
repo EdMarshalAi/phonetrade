@@ -23,22 +23,26 @@ export function OptionsBadgesSection({
   control,
   options,
   badges,
+  isUsed,
 }: {
   control: Control<ProductFormValues>;
   options: ProductOption[];
   badges: ProductBadge[];
+  isUsed: boolean;
 }) {
+  // Для «Новый» прячем опции, применимые только к Б/У (состояние, аккумулятор).
+  const visibleOptions = options.filter((o) => (isUsed ? true : o.applies_to !== "used"));
   return (
     <div className="space-y-5">
       <Panel className="space-y-4 p-5">
         <PanelTitle>Опции</PanelTitle>
-        {options.length === 0 ? (
+        {visibleOptions.length === 0 ? (
           <p className="text-[13.5px] text-ink-muted">
             Опции ещё не созданы. Добавьте их в «Товары → Настройки → Опции».
           </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
-            {options.map((opt) => {
+            {visibleOptions.map((opt) => {
               // Аккумулятор — свободное значение (любой % от 0 до 100), не справочник:
               // число + ползунок, пишется в колонку battery и выводится на карточке как «%».
               if (opt.field === "battery") {
@@ -127,20 +131,22 @@ export function OptionsBadgesSection({
             })}
           </div>
         )}
-        <Field label="Категория состояния (Б/У)" hint="Группа для фильтра — выбирается только для Б/У">
-          <Controller
-            control={control}
-            name="condition_category"
-            render={({ field }) => (
-              <Select value={(field.value as string) ?? ""} onChange={(e) => field.onChange(e.target.value || undefined)}>
-                <option value="">— Не указано —</option>
-                <option value="perfect">Идеальное</option>
-                <option value="good">Хорошее</option>
-                <option value="fair">Удовлетворительное</option>
-              </Select>
-            )}
-          />
-        </Field>
+        {isUsed ? (
+          <Field label="Категория состояния (Б/У)" hint="Группа для фильтра — выбирается только для Б/У">
+            <Controller
+              control={control}
+              name="condition_category"
+              render={({ field }) => (
+                <Select value={(field.value as string) ?? ""} onChange={(e) => field.onChange(e.target.value || undefined)}>
+                  <option value="">— Не указано —</option>
+                  <option value="perfect">Идеальное</option>
+                  <option value="good">Хорошее</option>
+                  <option value="fair">Удовлетворительное</option>
+                </Select>
+              )}
+            />
+          </Field>
+        ) : null}
       </Panel>
 
       <Panel className="space-y-4 p-5">

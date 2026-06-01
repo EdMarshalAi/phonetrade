@@ -6,7 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
-import { RefreshCw, Lock } from "lucide-react";
+import { RefreshCw, Lock, Sparkles, Loader2 } from "lucide-react";
+import { generateProductCopy } from "./ai-actions";
+import type { AiKind } from "@/lib/admin/openai";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format-price";
 import { calculatePrices, margin, type PricingSettings } from "@/lib/pricing/calculate";
@@ -143,6 +145,36 @@ export function ProductForm({
     if (!slugTouched.current) setValue("slug", slugify(title));
   }, [title, setValue]);
 
+  // ── Генерация текстов через ChatGPT (кнопки у полей описаний и мета) ──
+  const [genBusy, setGenBusy] = React.useState<AiKind | null>(null);
+  const runGen = async (kind: AiKind) => {
+    const t = (watch("title") || "").trim();
+    if (!t) { toast.error("Сначала укажите название товара"); return; }
+    const catSlug2 = watch("category_slug") as string | undefined;
+    setGenBusy(kind);
+    const res = await generateProductCopy(kind, {
+      title: t,
+      category: categories.find((c) => c.slug === catSlug2)?.title,
+      color: watch("color") || undefined,
+      memory: watch("memory") || undefined,
+      sim: watch("sim") || undefined,
+      model: watch("model") || undefined,
+      type: watch("type"),
+    });
+    setGenBusy(null);
+    if ("error" in res) { toast.error(res.error); return; }
+    if (kind === "short" && "short_description" in res) { setValue("short_description", res.short_description, { shouldDirty: true }); toast.success("Краткое описание сгенерировано"); }
+    else if (kind === "full" && "description_html" in res) { setValue("description_html", res.description_html, { shouldDirty: true }); toast.success("Подробное описание сгенерировано"); }
+    else if (kind === "meta" && "meta_title" in res) { setValue("meta_title", res.meta_title, { shouldDirty: true }); setValue("meta_description", res.meta_description, { shouldDirty: true }); toast.success("Мета-теги сгенерированы"); }
+  };
+  const genBtn = (kind: AiKind, label: string) => (
+    <button type="button" onClick={() => runGen(kind)} disabled={genBusy !== null}
+      className="inline-flex h-7 items-center gap-1.5 rounded-sm border border-border bg-white px-2.5 text-[12px] font-medium text-ink transition-colors hover:bg-surface disabled:opacity-60">
+      {genBusy === kind ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-ink-subtle" />}
+      {label}
+    </button>
+  );
+
   // ── Прайс: живой предпросмотр расчётных цен ──
   const costRub = Number(watch("cost_rub")) || null;
   const costRate = Number(watch("cost_rate")) || null;
@@ -272,6 +304,7 @@ export function ProductForm({
             <TextInput placeholder="iPhone 17 Pro" {...register("model")} />
           </Field>
           <Field label="Краткое описание" hint="1–2 строки для карточки в списке">
+            <div className="mb-1.5 flex justify-end">{genBtn("short", "Сгенерировать")}</div>
             <Textarea {...register("short_description")} />
           </Field>
         </Panel>
@@ -291,7 +324,7 @@ export function ProductForm({
 
       {/* Опции и Бейджи */}
       <div hidden={tab !== "optionsBadges"}>
-        <OptionsBadgesSection control={control} options={optionDefs} badges={badgeDefs} />
+        <OptionsBadgesSection control={control} options={optionDefs} badges={badgeDefs} isUsed={type === "used"} />
       </div>
 
       {/* Сопутствующие товары */}
@@ -315,6 +348,7 @@ export function ProductForm({
       <div hidden={tab !== "description"}>
         <Panel className="space-y-3 p-5">
           <Field label="Подробное описание" hint="Показывается на странице товара под блоком «Сопутствующие товары».">
+            <div className="mb-1.5 flex justify-end">{genBtn("full", "Сгенерировать")}</div>
             <Controller
               control={control}
               name="description_html"
@@ -492,6 +526,7 @@ export function ProductForm({
       {/* SEO */}
       <div hidden={tab !== "seo"} className="space-y-5">
         <Panel className="space-y-4 p-5">
+          <div className="flex justify-end">{genBtn("meta", "Сгенерировать мета-теги")}</div>
           <Field label="Meta title">
             <TextInput {...register("meta_title")} />
           </Field>
@@ -553,7 +588,13 @@ function CategoryPicker({
   // Родитель выбранной категории (или сама, если она верхнего уровня)
   const initialParent = current ? (current.parent_slug ?? current.slug) : "";
   const [parent, setParent] = React.useState(initialParent);
-  React.useEffect(() => { setParent(current ? (current.parent_slug ?? current.slug) : ""); }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Не сбрасываем выбранного родителя, пока value пустое (ждём выбор подкатегории) —
+  // иначе при выборе родителя с детьми список подкатегорий тут же исчезал.
+  React.useEffect(() => {
+    if (!value) return;
+    const c = categories.find((x) => x.slug === value);
+    setParent(c ? (c.parent_slug ?? c.slug) : "");
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const kids = parent ? childrenOf(parent) : [];
   const subValue = current?.parent_slug === parent ? current.slug : "";
