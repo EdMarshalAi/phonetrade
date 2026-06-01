@@ -116,8 +116,16 @@ export function PricingShell({
   const deltaEur = course.eur && course.prevEur ? ((course.eur - course.prevEur) / course.prevEur) * 100 : null;
   const dirtyRate = Math.abs(Number(working.replace(",", ".")) - savedRate) > 1e-6 && Number(working.replace(",", ".")) > 0;
 
+  // Выбор категории включает её подкатегории (товары iPhone лежат в iphone-17 и т.п.,
+  // а не прямо в родителе «iphone» — иначе фильтр по родителю давал 0).
+  const catMatch = React.useMemo(() => {
+    if (!cat) return null;
+    const kids = categories.filter((c) => c.parent_slug === cat).map((c) => c.slug);
+    return new Set<string>([cat, ...kids]);
+  }, [cat, categories]);
+
   const filtered = localRows.filter((r) => {
-    if (cat && r.category_slug !== cat) return false;
+    if (catMatch && !(r.category_slug && catMatch.has(r.category_slug))) return false;
     if (hideFixed && r.price_override) return false;
     if (q.trim()) {
       const t = `${r.title} ${r.sku ?? ""} ${r.color ?? ""} ${r.memory ?? ""}`.toLowerCase();
