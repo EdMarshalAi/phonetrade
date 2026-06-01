@@ -93,6 +93,7 @@ export const DEVICE_CATEGORIES: DeviceCategory[] = [
  *  источник, чистые курированные фото на белом. Модели, которых нет в каталоге
  *  (часть старых iPhone, прочие бренды, десктопы), показывают иконку-заглушку. */
 const P = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/imported/";
+const R = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/repair/other/";
 export const DEVICE_IMAGES: Record<string, string> = {
   // iPhone (новые)
   "iPhone 17 Pro Max": P + "iphone-17-pro-max-1tb-silver-dual-sim-1tb.jpg",
@@ -166,8 +167,24 @@ export const DEVICE_IMAGES: Record<string, string> = {
   "AirPods 2": P + "AP-WHI-01.jpg",
   "AirPods": P + "AP-WHI-01.jpg",
   "AirPods Max": P + "AP-BLA-01.jpg",
-  // Другой смартфон
+  // Другой смартфон (бренды)
   "Samsung": P + "samsung-s25-ultra-12256-black-256gb.jpg",
+  "Xiaomi": R + "xiaomi.jpg",
+  "Honor": R + "honor.jpg",
+  "Huawei": R + "huawei.jpg",
+  "Realme": R + "realme.jpg",
+  "OPPO": R + "oppo.jpg",
+  "vivo": R + "vivo.jpg",
+  "Google Pixel": R + "google-pixel.jpg",
+  "OnePlus": R + "oneplus.jpg",
+  "Tecno": R + "tecno.jpg",
+  // Другое (десктопы и прочее)
+  "iMac": R + "imac.jpg",
+  "Mac mini": R + "mac-mini.jpg",
+  "Mac Studio": R + "mac-studio.jpg",
+  "Mac Pro": R + "mac-pro.jpg",
+  "Apple TV": R + "apple-tv.jpg",
+  "HomePod": R + "homepod.jpg",
 };
 
 export function deviceImage(model: string): string | null {
