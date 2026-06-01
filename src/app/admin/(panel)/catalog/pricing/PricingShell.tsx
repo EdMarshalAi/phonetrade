@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2, Check, ArrowUpRight, Download, Upload, Info, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2, Check, ArrowUpRight, Download, Upload, Info, Pencil, ChevronLeft, ChevronRight, Send } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format-price";
 import { Modal } from "@/components/admin/Modal";
 import { AdminButton, Field, TextInput, Switch, Select } from "@/components/admin/form";
 import { calculatePrices, type PricingSettings } from "@/lib/pricing/calculate";
 import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, recalcSelected, updateProductCost, updateCategoryPricing, type PricingSettingsInput } from "./actions";
-import { exportPricing, parsePricingFile, applyPricingImport, bulkUpdateCost, type ImportPreviewRow, type BulkOp } from "./io-actions";
+import { exportPricing, exportPricingToTelegram, parsePricingFile, applyPricingImport, bulkUpdateCost, type ImportPreviewRow, type BulkOp } from "./io-actions";
 
 function downloadBase64(filename: string, base64: string, mime: string) {
   const bytes = atob(base64);
@@ -215,6 +215,15 @@ export function PricingShell({
     downloadBase64(res.filename, res.base64, res.mime);
     toast.success("Файл сформирован");
   };
+  // Отправить файл прайса прямо в Telegram-бот (приходит документом в чат).
+  const onExportTg = async (format: "xlsx" | "csv", onlyVisible: boolean) => {
+    setExportOpen(false);
+    setBusy(true);
+    const res = await exportPricingToTelegram(onlyVisible ? filtered.map((r) => r.id) : null, format);
+    setBusy(false);
+    if (res.error) return toast.error(res.error);
+    toast.success(`Прайс отправлен в Telegram (${res.ok} чат(ов))`);
+  };
 
   /* ── выбор / bulk ── */
   const toggleSel = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -322,11 +331,16 @@ export function PricingShell({
               <p className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-subtle">
                 По фильтру: {cat ? catBy.get(cat)?.title ?? cat : "все категории"} ({filtered.length})
               </p>
-              <button type="button" onClick={() => onExport("xlsx", true)} className="block w-full px-3 py-2 text-left text-[13px] text-ink hover:bg-surface">XLSX — по фильтру</button>
-              <button type="button" onClick={() => onExport("csv", true)} className="block w-full px-3 py-2 text-left text-[13px] text-ink hover:bg-surface">CSV — по фильтру</button>
+              <p className="px-3 pb-0.5 pt-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-subtle/70">Скачать файл</p>
+              <button type="button" onClick={() => onExport("xlsx", true)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink hover:bg-surface"><Download className="h-3.5 w-3.5 text-ink-subtle" /> XLSX — по фильтру</button>
+              <button type="button" onClick={() => onExport("csv", true)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink hover:bg-surface"><Download className="h-3.5 w-3.5 text-ink-subtle" /> CSV — по фильтру</button>
+              <button type="button" onClick={() => onExport("xlsx", false)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-muted hover:bg-surface"><Download className="h-3.5 w-3.5 text-ink-subtle" /> XLSX — все товары</button>
+              <button type="button" onClick={() => onExport("csv", false)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-muted hover:bg-surface"><Download className="h-3.5 w-3.5 text-ink-subtle" /> CSV — все товары</button>
               <div className="my-1 border-t border-border/50" />
-              <button type="button" onClick={() => onExport("xlsx", false)} className="block w-full px-3 py-2 text-left text-[13px] text-ink-muted hover:bg-surface">XLSX — все товары</button>
-              <button type="button" onClick={() => onExport("csv", false)} className="block w-full px-3 py-2 text-left text-[13px] text-ink-muted hover:bg-surface">CSV — все товары</button>
+              <p className="px-3 pb-0.5 pt-0.5 text-[10px] font-medium uppercase tracking-wider text-ink-subtle/70">Отправить в Telegram-бот</p>
+              <button type="button" onClick={() => onExportTg("xlsx", true)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink hover:bg-surface"><Send className="h-3.5 w-3.5 text-ink-subtle" /> XLSX — по фильтру</button>
+              <button type="button" onClick={() => onExportTg("csv", true)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink hover:bg-surface"><Send className="h-3.5 w-3.5 text-ink-subtle" /> CSV — по фильтру</button>
+              <button type="button" onClick={() => onExportTg("xlsx", false)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-muted hover:bg-surface"><Send className="h-3.5 w-3.5 text-ink-subtle" /> XLSX — все товары</button>
             </div>
           ) : null}
         </div>

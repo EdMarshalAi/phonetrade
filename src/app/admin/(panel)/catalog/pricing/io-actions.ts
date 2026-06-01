@@ -5,19 +5,18 @@ import Papa from "papaparse";
 import { adminMutation } from "@/lib/admin/mutations";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { notifyTelegram } from "@/lib/admin/telegram";
+import { notifyTelegram, sendTelegramDocument } from "@/lib/admin/telegram";
 
 const ROLES = ["admin", "manager"] as const;
 const num = (v: unknown): number | null => (v == null || v === "" ? null : Number(v));
 
 type ExportRow = Record<string, string | number | null>;
 
-/** Экспорт прайса в XLSX или CSV. Возвращает base64 для скачивания на клиенте. */
-export async function exportPricing(
+/** Сборка файла прайса (XLSX/CSV) в Buffer — общая для скачивания и Telegram. */
+async function buildPricingFile(
   ids: string[] | null,
   format: "xlsx" | "csv"
-): Promise<{ filename: string; base64: string; mime: string } | { error: string }> {
-  await requireAdmin([...ROLES]);
+): Promise<{ filename: string; buffer: Buffer; mime: string; count: number } | { error: string }> {
   try {
     const db = createSupabaseAdminClient();
     let query = db
@@ -60,8 +59,8 @@ export async function exportPricing(
 
     if (format === "csv") {
       const csv = Papa.unparse(rows, { delimiter: ";" });
-      const base64 = Buffer.from("﻿" + csv, "utf-8").toString("base64");
-      return { filename: fileName("csv"), base64, mime: "text/csv;charset=utf-8" };
+      const buffer = Buffer.from("﻿" + csv, "utf-8");
+      return { filename: fileName("csv"), buffer, mime: "text/csv;charset=utf-8", count: rows.length };
     }
 
     const wb = XLSX.utils.book_new();
@@ -83,11 +82,37 @@ export async function exportPricing(
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(settingsRows), "Настройки");
     }
 
-    const base64 = XLSX.write(wb, { type: "base64", bookType: "xlsx" });
-    return { filename: fileName("xlsx"), base64, mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+    return { filename: fileName("xlsx"), buffer, mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", count: rows.length };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Ошибка экспорта" };
   }
+}
+
+/** Экспорт прайса в XLSX/CSV. Возвращает base64 для скачивания на клиенте. */
+export async function exportPricing(
+  ids: string[] | null,
+  format: "xlsx" | "csv"
+): Promise<{ filename: string; base64: string; mime: string } | { error: string }> {
+  await requireAdmin([...ROLES]);
+  const r = await buildPricingFile(ids, format);
+  if ("error" in r) return { error: r.error };
+  return { filename: r.filename, base64: r.buffer.toString("base64"), mime: r.mime };
+}
+
+/** Отправка файла прайса прямо в Telegram-бот (приходит документом в чат). */
+export async function exportPricingToTelegram(
+  ids: string[] | null,
+  format: "xlsx" | "csv"
+): Promise<{ ok?: number; error?: string }> {
+  await requireAdmin([...ROLES]);
+  const r = await buildPricingFile(ids, format);
+  if ("error" in r) return { error: r.error };
+  const scope = ids && ids.length ? `по фильтру (${r.count})` : `все товары (${r.count})`;
+  const caption = `📋 Прайс PhoneTrade · ${scope} · ${new Date().toLocaleDateString("ru-RU")}`;
+  const ok = await sendTelegramDocument(r.buffer, r.filename, r.mime, caption);
+  if (ok === 0) return { error: "Не доставлено. Проверьте Telegram-бот в Интеграциях (токен и chat_id)." };
+  return { ok };
 }
 
 function fileName(ext: string): string {
