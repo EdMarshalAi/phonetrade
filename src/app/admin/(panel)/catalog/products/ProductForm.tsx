@@ -167,12 +167,21 @@ export function ProductForm({
     else if (kind === "full" && "description_html" in res) { setValue("description_html", res.description_html, { shouldDirty: true }); toast.success("Подробное описание сгенерировано"); }
     else if (kind === "meta" && "meta_title" in res) { setValue("meta_title", res.meta_title, { shouldDirty: true }); setValue("meta_description", res.meta_description, { shouldDirty: true }); toast.success("Мета-теги сгенерированы"); }
   };
+  const noTitle = !(title || "").trim();
   const genBtn = (kind: AiKind, label: string) => (
-    <button type="button" onClick={() => runGen(kind)} disabled={genBusy !== null}
-      className="inline-flex h-7 items-center gap-1.5 rounded-sm border border-border bg-white px-2.5 text-[12px] font-medium text-ink transition-colors hover:bg-surface disabled:opacity-60">
-      {genBusy === kind ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-ink-subtle" />}
-      {label}
-    </button>
+    <div className="flex items-center gap-2">
+      {noTitle ? <span className="text-[11.5px] text-ink-subtle">Сначала введите название товара</span> : null}
+      <button
+        type="button"
+        onClick={() => runGen(kind)}
+        disabled={genBusy !== null || noTitle}
+        title={noTitle ? "Введите название товара, чтобы сгенерировать текст" : undefined}
+        className="inline-flex h-7 items-center gap-1.5 rounded-sm border border-border bg-white px-2.5 text-[12px] font-medium text-ink transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {genBusy === kind ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 text-ink-subtle" />}
+        {label}
+      </button>
+    </div>
   );
 
   // ── Прайс: живой предпросмотр расчётных цен ──

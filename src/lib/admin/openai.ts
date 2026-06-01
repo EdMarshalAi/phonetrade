@@ -93,20 +93,24 @@ export async function generateProductCopy(kind: AiKind, ctx: AiContext): Promise
     `${contextLines(ctx)}\n\n${JSON_SPEC[kind]}\n` +
     "Жёсткие правила: не указывай цену, суммы, скидки и проценты; не выдумывай характеристики, которых у товара нет; не упоминай конкурентов.";
 
+  // GPT-5 и o-серия (reasoning) принимают только temperature=1 — не шлём свой.
+  const isReasoning = /^(gpt-5|o\d)/i.test(model);
+  const body: Record<string, unknown> = {
+    model,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: user },
+    ],
+    response_format: { type: "json_object" },
+  };
+  if (!isReasoning) body.temperature = 0.7;
+
   try {
     const res = await fetch(ENDPOINT, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-      }),
-      signal: AbortSignal.timeout(45000),
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60000),
     });
     if (!res.ok) {
       const t = await res.text();

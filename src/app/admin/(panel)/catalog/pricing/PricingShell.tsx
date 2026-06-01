@@ -873,6 +873,8 @@ function CategoryPicker({ categories, value, onChange }: { categories: PricingCa
         <ChevronDown className={cn("h-4 w-4 shrink-0 text-ink-subtle transition-transform", open && "rotate-180")} />
       </button>
       {open ? (
+        <>
+        <button type="button" aria-hidden tabIndex={-1} onClick={() => setOpen(false)} className="fixed inset-0 z-30 cursor-default" />
         <div className="absolute z-40 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border/70 bg-white py-1 shadow-lg">
           <button type="button" onClick={() => onChange(null)}
             className={cn("flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] hover:bg-surface", isAll ? "font-medium text-ink" : "text-ink-muted")}>
@@ -891,6 +893,7 @@ function CategoryPicker({ categories, value, onChange }: { categories: PricingCa
             );
           })}
         </div>
+        </>
       ) : null}
     </div>
   );
@@ -901,7 +904,8 @@ function ExportModal({ open, onClose, categories, prefs }: { open: boolean; onCl
   // Модалка монтируется только когда открыта (см. рендер) — state из prefs при маунте.
   const [cols, setCols] = React.useState<ExportColumnKey[]>((prefs.columns?.length ? prefs.columns : ["title", "price_cash", "price_card"]) as ExportColumnKey[]);
   const [cats, setCats] = React.useState<string[] | null>(prefs.categories ?? null);
-  const [busy, setBusy] = React.useState(false);
+  const [busyKey, setBusyKey] = React.useState<string | null>(null);
+  const busy = busyKey !== null;
 
   const persist = (nextCols: ExportColumnKey[], nextCats: string[] | null) => { void savePricingExportPrefs({ columns: nextCols, categories: nextCats }); };
   const setColsP = (next: ExportColumnKey[]) => { setCols(next); persist(next, cats); };
@@ -909,17 +913,17 @@ function ExportModal({ open, onClose, categories, prefs }: { open: boolean; onCl
 
   const run = async (dest: "download" | "telegram", format: "xlsx" | "csv") => {
     if (cols.length === 0) return toast.error("Выберите хотя бы одну колонку");
-    setBusy(true);
+    setBusyKey(`${dest}-${format}`);
     persist(cols, cats);
     if (dest === "download") {
       const res = await exportPricing({ categories: cats, columns: cols, format });
-      setBusy(false);
+      setBusyKey(null);
       if ("error" in res) return toast.error(res.error);
       downloadBase64(res.filename, res.base64, res.mime);
       toast.success("Файл сформирован");
     } else {
       const res = await exportPricingToTelegram({ categories: cats, columns: cols, format });
-      setBusy(false);
+      setBusyKey(null);
       if (res.error) return toast.error(res.error);
       toast.success(`Отправлено в Telegram (${res.ok} чат.)`);
     }
@@ -959,12 +963,19 @@ function ExportModal({ open, onClose, categories, prefs }: { open: boolean; onCl
         </div>
         <div className="rounded-xl border border-border/60 bg-surface/30 p-3">
           <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-ink-subtle">Куда отправить</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <AdminButton type="button" variant="outline" size="sm" disabled={busy} onClick={() => run("download", "xlsx")}><Download className="h-4 w-4" strokeWidth={1.75} /> Скачать XLSX</AdminButton>
-            <AdminButton type="button" variant="outline" size="sm" disabled={busy} onClick={() => run("download", "csv")}><Download className="h-4 w-4" strokeWidth={1.75} /> Скачать CSV</AdminButton>
-            <span className="mx-1 hidden h-7 w-px bg-border sm:block" />
-            <AdminButton type="button" size="sm" loading={busy} onClick={() => run("telegram", "xlsx")}><Send className="h-4 w-4" strokeWidth={1.75} /> В Telegram (XLSX)</AdminButton>
-            <AdminButton type="button" variant="outline" size="sm" disabled={busy} onClick={() => run("telegram", "csv")}><Send className="h-4 w-4" strokeWidth={1.75} /> В Telegram (CSV)</AdminButton>
+          <div className="grid grid-cols-2 gap-2">
+            <AdminButton type="button" variant="outline" disabled={busy} loading={busyKey === "download-xlsx"} onClick={() => run("download", "xlsx")} className="w-full justify-center">
+              {busyKey === "download-xlsx" ? null : <Download className="h-4 w-4" strokeWidth={1.75} />} Скачать XLSX
+            </AdminButton>
+            <AdminButton type="button" variant="outline" disabled={busy} loading={busyKey === "download-csv"} onClick={() => run("download", "csv")} className="w-full justify-center">
+              {busyKey === "download-csv" ? null : <Download className="h-4 w-4" strokeWidth={1.75} />} Скачать CSV
+            </AdminButton>
+            <AdminButton type="button" disabled={busy} loading={busyKey === "telegram-xlsx"} onClick={() => run("telegram", "xlsx")} className="w-full justify-center">
+              {busyKey === "telegram-xlsx" ? null : <Send className="h-4 w-4" strokeWidth={1.75} />} В Telegram (XLSX)
+            </AdminButton>
+            <AdminButton type="button" disabled={busy} loading={busyKey === "telegram-csv"} onClick={() => run("telegram", "csv")} className="w-full justify-center">
+              {busyKey === "telegram-csv" ? null : <Send className="h-4 w-4" strokeWidth={1.75} />} В Telegram (CSV)
+            </AdminButton>
           </div>
           <p className="mt-2 text-[12px] text-ink-subtle">Выбранные категории и колонки сохраняются автоматически.</p>
         </div>
