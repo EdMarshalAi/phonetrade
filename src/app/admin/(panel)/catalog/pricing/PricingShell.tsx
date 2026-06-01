@@ -442,7 +442,6 @@ export function PricingShell({
                   <th className="w-24 text-right">Курс</th>
                   <th className="w-28 text-right">Нал</th>
                   <th className="w-28 text-right">Карта</th>
-                  <th className="w-28 text-right">Кредит 24м</th>
                   <th className="w-20 text-right">Наценка</th>
                   <th className="w-24 text-right">
                     <span className="inline-flex items-center justify-end gap-1">
@@ -491,7 +490,6 @@ export function PricingShell({
                           </td>
                           <td className="text-right font-semibold text-sale tabular-nums">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</td>
                           <td className="text-right tabular-nums text-ink-muted">{r.price_card != null ? formatPrice(r.price_card) : "—"}</td>
-                          <td className="text-right tabular-nums text-ink-muted">{r.credit_24m_monthly != null ? `${formatPrice(r.credit_24m_monthly)}` : "—"}</td>
                           <td className="text-right tabular-nums text-ink-subtle">{r.price_override ? "—" : `${markupOf(r.category_slug)}%`}</td>
                           <td className="text-right"><MarginPill rub={r.cost_rub != null && r.price_cash != null ? r.price_cash - r.cost_rub : null} minRub={minMarginOf(r.category_slug)} /></td>
                           <td>
