@@ -181,10 +181,16 @@ export function PricingShell({
   };
   const onRecalcAll = () => setDialog({
     title: "Пересчитать все цены?",
-    desc: "Цены всех товаров (кроме зафиксированных и Б/У) пересчитаются по текущей формуле и курсу.",
+    desc: "Цены всех товаров (кроме зафиксированных и Б/У) пересчитаются по текущей формуле и курсу. Введённый курс будет сохранён.",
     confirmLabel: "Пересчитать",
     onConfirm: async () => {
       setBusy(true);
+      // Сохраняем введённый курс перед пересчётом (на случай, если автосейв не сработал).
+      if (dirtyRate) {
+        const rate = r2(Number(working.replace(",", ".")));
+        const s = await setWorkingRate(rate);
+        if (s.error) { setBusy(false); return toast.error(s.error); }
+      }
       const res = await recalcAllPrices();
       setBusy(false);
       if (res.error) return toast.error(res.error);
@@ -287,6 +293,7 @@ export function PricingShell({
               <input
                 value={working}
                 onChange={(e) => setWorking(e.target.value)}
+                onBlur={() => { if (dirtyRate) applyWorking(); }}
                 onKeyDown={(e) => { if (e.key === "Enter" && dirtyRate) applyWorking(); }}
                 inputMode="decimal"
                 aria-label="Рабочий курс USD"
@@ -296,7 +303,7 @@ export function PricingShell({
               <Pencil className="h-4 w-4 text-ink-subtle" strokeWidth={1.75} aria-hidden />
             </div>
           </div>
-          {/* Кнопки в сетке 2×2 равной ширины: «Формула» — верхний ряд, над курсовыми. */}
+          {/* Курс сохраняется сам (при потере фокуса/Enter). «Пересчитать всё» применяет его к ценам. */}
           <div className="grid w-full grid-cols-2 gap-2 sm:w-[340px]">
             <AdminButton type="button" variant="outline" size="sm" onClick={() => setFormulaOpen(true)} className="w-full">
               <SlidersHorizontal className="h-4 w-4" strokeWidth={1.75} /> Формула
@@ -312,13 +319,12 @@ export function PricingShell({
                 </div>
               ) : null}
             </div>
-            <AdminButton type="button" variant="outline" size="sm" onClick={applyWorking} disabled={!dirtyRate} loading={busy} className="w-full">Сохранить курс</AdminButton>
-            <AdminButton type="button" size="sm" onClick={onRecalcAll} loading={busy} className="w-full"><RefreshCw className="h-4 w-4" strokeWidth={1.75} /> Пересчитать всё</AdminButton>
+            <AdminButton type="button" size="sm" onClick={onRecalcAll} loading={busy} className="col-span-2 w-full"><RefreshCw className="h-4 w-4" strokeWidth={1.75} /> Пересчитать всё</AdminButton>
           </div>
         </div>
         <p className="mt-3 text-[12px] text-ink-subtle">
           {settings.use_cbr_auto ? "Автообновление курса включено" : "Автообновление выключено"} · поправка +{settings.cbr_markup_percent}%
-          {dirtyRate ? " · курс изменён — сохраните и нажмите «Пересчитать всё»" : ""}
+          {dirtyRate ? " · курс изменён — нажмите «Пересчитать всё», чтобы применить к ценам" : " · курс сохраняется автоматически"}
         </p>
       </div>
 
