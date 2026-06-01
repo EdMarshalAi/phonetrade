@@ -34,20 +34,28 @@ export function RepairShell({ initialPhone, initialName }: { initialPhone?: stri
   return (
     <>
       {/* ── Hero ── */}
-      <section className="border-b border-border/60 bg-surface/40">
-        <div className="container-page grid items-center gap-8 py-14 md:py-20 lg:grid-cols-2">
-          <div>
+      <section className="relative overflow-hidden border-b border-border/60 bg-white">
+        {/* Цветные кляксы фона (как на рефе) */}
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="absolute -right-24 -top-28 size-[440px] rounded-full blur-3xl" style={{ background: "radial-gradient(circle, rgba(244,114,182,0.40), transparent 70%)" }} />
+          <div className="absolute right-24 top-8 size-[300px] rounded-full blur-3xl" style={{ background: "radial-gradient(circle, rgba(167,139,250,0.38), transparent 70%)" }} />
+          <div className="absolute -bottom-28 -left-20 size-[360px] rounded-full blur-3xl" style={{ background: "radial-gradient(circle, rgba(96,165,250,0.30), transparent 70%)" }} />
+          <div className="absolute bottom-0 left-1/3 size-[280px] rounded-full blur-3xl" style={{ background: "radial-gradient(circle, rgba(251,146,160,0.28), transparent 70%)" }} />
+        </div>
+
+        <div className="container-page relative grid items-center gap-6 py-10 md:gap-8 md:py-14 lg:grid-cols-[1.08fr_0.92fr]">
+          <div className="max-w-xl">
             <span className="inline-flex items-center gap-2 rounded-full bg-ink px-3 py-1 text-[12px] font-medium text-white">
               <Wrench className="size-3.5" /> Сервисный центр · Белгород
             </span>
-            <h1 className="mt-5 text-3xl font-semibold tracking-tight text-ink sm:text-4xl md:text-5xl">
+            <h1 className="mt-5 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
               Гарантийный ремонт<br className="hidden sm:block" /> iPhone, iPad и Mac
             </h1>
-            <p className="mt-5 max-w-xl text-[15px] leading-relaxed text-ink-muted md:text-[16px]">
-              Торгово-сервисный центр PhoneTrade в Белгороде чинит и обслуживает технику Apple
-              в день обращения, с гарантией и оригинальными запчастями. Бесплатная диагностика.
+            <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-ink-muted">
+              Сервисный центр PhoneTrade в Белгороде чинит технику Apple в день обращения —
+              с гарантией и оригинальными запчастями. Бесплатная диагностика.
             </p>
-            <div className="mt-7 flex flex-wrap items-center gap-3">
+            <div className="mt-6 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={scrollToDevices}
@@ -57,9 +65,9 @@ export function RepairShell({ initialPhone, initialName }: { initialPhone?: stri
               </button>
               <span className="text-[13px] text-ink-subtle">Узнайте за одну минуту</span>
             </div>
-            <div className="mt-10 grid gap-3 sm:grid-cols-3">
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
               {ADVANTAGES.map((a) => (
-                <div key={a.title} className="rounded-2xl border border-border/60 bg-white p-4">
+                <div key={a.title} className="rounded-2xl border border-border/60 bg-white/70 p-4 backdrop-blur-sm">
                   <a.icon className="size-5 text-ink" strokeWidth={1.75} />
                   <p className="mt-2.5 text-[14px] font-semibold text-ink">{a.title}</p>
                   <p className="mt-1 text-[12.5px] leading-snug text-ink-muted">{a.text}</p>
@@ -67,14 +75,30 @@ export function RepairShell({ initialPhone, initialName }: { initialPhone?: stri
               ))}
             </div>
           </div>
-          <div className="relative mx-auto w-full max-w-md lg:max-w-none">
+
+          <div className="relative mx-auto w-full max-w-[280px] sm:max-w-[320px]">
+            {/* Рисованная стрелочка к телефону (как на рефе) */}
+            <svg
+              aria-hidden
+              viewBox="0 0 90 80"
+              className="absolute -left-7 top-2 hidden w-16 sm:block lg:-left-10 lg:w-20"
+              style={{ color: "#ec4899" }}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M8 12C40 4 76 16 72 58" />
+              <path d="M58 46 72 62 84 44" />
+            </svg>
             <Image
               src={HERO_IMAGE}
               alt="Ремонт iPhone с разбитым экраном в Белгороде — сервисный центр PhoneTrade"
-              width={520}
-              height={620}
+              width={420}
+              height={500}
               priority
-              className="mx-auto h-auto w-full max-w-[440px] object-contain drop-shadow-2xl"
+              className="mx-auto h-auto w-full object-contain drop-shadow-2xl"
             />
           </div>
         </div>
