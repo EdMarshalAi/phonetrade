@@ -11,6 +11,8 @@ const newUserSchema = z.object({
   full_name: z.string().trim().min(1, "Укажите имя"),
   role: z.string().trim().min(1, "Выберите роль"),
   password: z.string().min(8, "Минимум 8 символов"),
+  // Телефон необязателен; если задан — админ сразу заводится и как клиент (профиль + customers).
+  phone: z.string().trim().optional().default(""),
 });
 
 export type NewUserInput = z.input<typeof newUserSchema>;
@@ -48,6 +50,27 @@ export async function createAdminUser(input: NewUserInput): Promise<{ error?: st
       await db.auth.admin.deleteUser(created.data.user.id);
       throw error;
     }
+
+    // Если указан телефон — сразу заводим этого же человека как клиента
+    // (единый аккаунт админ+покупатель): профиль ЛК + запись в customers.
+    const phone = parsed.data.phone?.trim();
+    if (phone && phone.replace(/\D/g, "").length >= 10) {
+      await db.from("profiles").upsert(
+        { id: created.data.user.id, name: parsed.data.full_name, phone, email: parsed.data.email },
+        { onConflict: "id" }
+      );
+      try {
+        await db.rpc("upsert_customer", {
+          p_phone: phone,
+          p_name: parsed.data.full_name,
+          p_email: parsed.data.email,
+          p_user_id: created.data.user.id,
+        });
+      } catch (e) {
+        console.error("[createAdminUser] upsert_customer:", e);
+      }
+    }
+
     await writeAudit({ userId: me.id, action: "create", entityType: "admin_user", entityId: created.data.user.id, changes: { email: parsed.data.email, role: parsed.data.role } });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Ошибка";

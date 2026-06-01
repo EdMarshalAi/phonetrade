@@ -283,7 +283,7 @@ export function Header({
                     className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-ink text-white hover:bg-ink/85 text-sm font-medium transition-colors shrink-0"
                   >
                     <Grid2x2 className="size-4" aria-hidden />
-                    Все категории
+                    {scrolled ? "Все" : "Все категории"}
                     <ChevronDown
                       className="size-3.5 opacity-70 group-data-[popup-open]:rotate-180 transition-transform"
                       aria-hidden
@@ -410,7 +410,8 @@ export function Header({
               aria-label="Основная навигация"
             >
               <ul className="flex items-center justify-between gap-1 overflow-x-auto scrollbar-hide">
-                {navPrimary.map((item) => (
+                {/* При скролле прячем «Новинки» (highlight) — освобождаем место под лого и иконки. */}
+                {(scrolled ? navPrimary.filter((i) => !i.highlight) : navPrimary).map((item) => (
                   <li key={item.href} className="shrink-0">
                     <a
                       href={item.href}

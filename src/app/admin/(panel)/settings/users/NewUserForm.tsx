@@ -10,7 +10,7 @@ import { createAdminUser, type NewUserInput } from "./actions";
 export function NewUserForm({ roles }: { roles: { key: string; label: string }[] }) {
   const [formError, setFormError] = React.useState<string | null>(null);
   const { register, handleSubmit, control, formState: { isSubmitting } } = useForm<NewUserInput>({
-    defaultValues: { email: "", full_name: "", role: roles[0]?.key ?? "manager", password: "" },
+    defaultValues: { email: "", full_name: "", role: roles[0]?.key ?? "manager", password: "", phone: "" },
   });
 
   const onSubmit = async (values: NewUserInput) => {
@@ -43,6 +43,9 @@ export function NewUserForm({ roles }: { roles: { key: string; label: string }[]
             <TextInput type="text" placeholder="временный пароль" {...register("password")} />
           </Field>
         </div>
+        <Field label="Телефон" hint="Необязательно. Если указать — сотрудник сразу заводится и как клиент (профиль + карточка клиента) на этот же аккаунт.">
+          <TextInput type="tel" placeholder="+7 919 282-01-67" {...register("phone")} />
+        </Field>
       </Panel>
       <div className="flex items-center gap-2">
         <AdminButton type="submit" loading={isSubmitting}>Создать пользователя</AdminButton>

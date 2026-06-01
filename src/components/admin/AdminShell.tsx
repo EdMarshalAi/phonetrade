@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { Toaster } from "sonner";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminTopbar } from "@/components/admin/AdminTopbar";
+import { cn } from "@/lib/utils/cn";
 import type { AdminRole } from "@/lib/admin/auth";
+
+// Страницы с плотными таблицами — на всю ширину контент-области (без max-w).
+const FULL_WIDTH_PATHS = ["/admin/catalog/pricing"];
 
 /**
  * Клиентский каркас админки: тёмный сайдбар + topbar + контентная область.
@@ -28,6 +33,8 @@ export function AdminShell({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const fullWidth = FULL_WIDTH_PATHS.some((p) => pathname?.startsWith(p));
 
   return (
     <div className="flex min-h-dvh bg-surface text-ink">
@@ -48,7 +55,7 @@ export function AdminShell({
             height={200}
             className="pointer-events-none absolute bottom-4 right-4 z-0 w-[160px] select-none opacity-10 lg:w-[200px]"
           />
-          <div className="relative z-10 mx-auto w-full max-w-[1200px] space-y-6">{children}</div>
+          <div className={cn("relative z-10 mx-auto w-full space-y-6", fullWidth ? "max-w-none" : "max-w-[1200px]")}>{children}</div>
         </main>
       </div>
       <Toaster
