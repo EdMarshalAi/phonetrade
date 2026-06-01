@@ -12,6 +12,31 @@ import { LEAD_TYPE, LEAD_STATUS, leadStatusTone } from "../labels";
 
 export const metadata: Metadata = { title: "Заявка" };
 
+// Человеческие названия полей заявки (вместо english-ключей payload).
+const PAYLOAD_LABELS: Record<string, string> = {
+  lead_number: "Номер заявки",
+  model: "Устройство",
+  device: "Устройство",
+  estimated_price_rub: "Предв. оценка",
+  external_label: "Внешний вид",
+  battery_label: "Аккумулятор",
+  icloud_label: "iCloud",
+  kit_label: "Комплект",
+  breakage: "Поломки / дефекты",
+  issues_text: "Что нужно починить",
+  comment: "Комментарий",
+};
+// Технические/дублирующие ключи не показываем.
+const HIDE_PAYLOAD_KEYS = new Set(["issues", "category", "ip_address", "user_agent"]);
+const moneyRub = (n: number) => `${new Intl.NumberFormat("ru-RU").format(Math.round(n))} ₽`;
+
+function fmtPayloadValue(k: string, v: unknown): string {
+  if (v == null || v === "") return "—";
+  if (k === "estimated_price_rub" && typeof v === "number") return moneyRub(v);
+  if (typeof v === "object") return JSON.stringify(v);
+  return String(v);
+}
+
 export default async function LeadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const db = createSupabaseAdminClient();
@@ -19,7 +44,9 @@ export default async function LeadPage({ params }: { params: Promise<{ id: strin
   if (!data) notFound();
 
   const payload = (data.payload ?? {}) as Record<string, unknown>;
-  const payloadRows = Object.entries(payload);
+  const payloadRows: [string, string][] = Object.entries(payload)
+    .filter(([k, v]) => !HIDE_PAYLOAD_KEYS.has(k) && v != null && v !== "")
+    .map(([k, v]) => [PAYLOAD_LABELS[k] ?? k, fmtPayloadValue(k, v)]);
   const created = new Date(data.created_at).toLocaleString("ru-RU", { timeZone: "Europe/Moscow" });
 
   // Кто оставил заявку: связанный клиент (зарегистрированный или по номеру) либо аноним.

@@ -37,15 +37,6 @@ export async function submitRepairRequest(input: RepairInput): Promise<RepairRes
     ua = h.get("user-agent") || null;
   } catch { /* ignore */ }
 
-  // Антиспам: не более 5 заявок-ремонтов с IP за час.
-  if (ip) {
-    try {
-      const since = new Date(Date.now() - 3600_000).toISOString();
-      const { count } = await db.from("leads").select("id", { count: "exact", head: true }).eq("type", "repair").eq("ip_address", ip).gte("created_at", since);
-      if ((count ?? 0) >= 5) return { error: "Слишком много заявок. Позвоните нам или попробуйте позже." };
-    } catch { /* ignore */ }
-  }
-
   const phone = digits(input.phone);
   const email = input.email?.trim() || null;
   const issuesText = input.issues.map((k) => issueLabel(input.category as DeviceCategoryKey, k)).join(", ") || "—";
@@ -67,14 +58,14 @@ export async function submitRepairRequest(input: RepairInput): Promise<RepairRes
       customer_id: customerId,
       status: "new",
       source_url: "/repair",
-      ip_address: ip,
-      user_agent: ua,
       payload: {
         device: input.device.trim(),
         category: input.category,
         issues: input.issues,
         issues_text: issuesText,
         comment: input.comment?.trim() || null,
+        ip_address: ip,
+        user_agent: ua,
       },
     }).select("id").single();
     if (error) throw error;

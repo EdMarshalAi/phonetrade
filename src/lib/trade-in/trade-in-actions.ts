@@ -4,7 +4,9 @@ import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getStorefrontUser } from "@/lib/auth/server-user";
 import { notifyTelegram } from "@/lib/admin/telegram";
-import type { TradeInModel } from "@/lib/trade-in/options";
+import { EXTERNAL_LABELS, BATTERY_LABELS, KIT_LABELS, type TradeInModel } from "@/lib/trade-in/options";
+
+const icloudLabel = (v: string) => (v === "unlinked" ? "Отвязан" : v === "linked" ? "Привязан" : v);
 
 const CONSENT_VERSION = "2026-01-15-v1";
 
@@ -155,7 +157,11 @@ export async function submitTradeInQuiz(input: QuizInput): Promise<QuizResult> {
         lead_number: lead.lead_number,
         model: `${input.modelTitle} ${input.memoryGb}GB`,
         estimated_price_rub: lead.estimated_price_rub,
-        breakage: input.hasBreakage ? input.breakageDescription?.trim() || "есть" : null,
+        external_label: EXTERNAL_LABELS[input.external] ?? input.external,
+        battery_label: BATTERY_LABELS[input.battery] ?? input.battery,
+        icloud_label: icloudLabel(input.icloud),
+        kit_label: KIT_LABELS[input.kit] ?? input.kit,
+        breakage: input.hasBreakage ? input.breakageDescription?.trim() || "есть" : "нет",
       },
     }).select("id").single();
     leadId = (leadRow?.id as string) ?? null;
@@ -187,8 +193,9 @@ export async function submitTradeInQuiz(input: QuizInput): Promise<QuizResult> {
         `📞 ${phone}\n` +
         (email ? `✉️ ${email}\n` : "") +
         `\n📱 ${input.modelTitle} ${input.memoryGb}GB\n` +
-        `Состояние: ${input.external}, аккумулятор ${input.battery}\n` +
-        `iCloud: ${input.icloud === "unlinked" ? "отвязан" : input.icloud}, комплект: ${input.kit}\n` +
+        `Внешний вид: ${EXTERNAL_LABELS[input.external] ?? input.external}\n` +
+        `Аккумулятор: ${BATTERY_LABELS[input.battery] ?? input.battery}\n` +
+        `iCloud: ${icloudLabel(input.icloud).toLowerCase()}, комплект: ${KIT_LABELS[input.kit] ?? input.kit}\n` +
         (input.hasBreakage ? `⚠️ Поломки: ${input.breakageDescription?.trim() || "есть"}\n` : "") +
         `\n💰 <b>Предв. оценка: ${new Intl.NumberFormat("ru-RU").format(lead.estimated_price_rub)} ₽</b>\n` +
         `\n🔗 ${link}`
