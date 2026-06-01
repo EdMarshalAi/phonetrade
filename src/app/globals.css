@@ -161,3 +161,9 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Плавное «парение» hero-картинки на странице /repair */
+@keyframes floatSoft {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-16px) rotate(-1deg); }
+}

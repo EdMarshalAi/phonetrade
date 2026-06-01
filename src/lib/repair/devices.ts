@@ -59,7 +59,7 @@ export const DEVICE_CATEGORIES: DeviceCategory[] = [
   },
 ];
 
-/** Типовые услуги/поломки (с pedant.ru) — БЕЗ ЦЕН. */
+/** Типовая услуга/поломка (с pedant.ru) — БЕЗ ЦЕН. */
 export interface RepairIssue {
   key: string;
   label: string;
@@ -67,22 +67,73 @@ export interface RepairIssue {
   free?: boolean;
 }
 
-export const REPAIR_ISSUES: RepairIssue[] = [
-  { key: "diagnostics", label: "Бесплатная диагностика", free: true },
-  { key: "screen", label: "Замена экрана / дисплея" },
-  { key: "glass", label: "Замена стекла" },
-  { key: "battery", label: "Замена аккумулятора" },
-  { key: "back", label: "Замена задней крышки" },
-  { key: "charge_port", label: "Не заряжается / разъём зарядки" },
-  { key: "camera", label: "Ремонт / замена камеры" },
-  { key: "audio", label: "Динамик, микрофон, звук" },
-  { key: "water", label: "Попадание влаги" },
-  { key: "no_power", label: "Не включается" },
-  { key: "buttons", label: "Кнопки (звук, питание, Home)" },
-  { key: "software", label: "Прошивка / ПО / зависает" },
-  { key: "other", label: "Другая проблема" },
-];
+/**
+ * Поломки СВОИ под каждый тип техники (iPhone/iPad/Mac/прочее) — собрано с
+ * pedant.ru. Ключи уникальны в пределах категории; для текста заявки берём
+ * label из соответствующей категории.
+ */
+export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
+  iphone: [
+    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
+    { key: "screen", label: "Замена экрана / дисплея" },
+    { key: "glass", label: "Замена стекла" },
+    { key: "battery", label: "Замена аккумулятора" },
+    { key: "back", label: "Замена задней крышки / корпуса" },
+    { key: "charge_port", label: "Не заряжается / разъём зарядки" },
+    { key: "camera", label: "Ремонт / замена камеры" },
+    { key: "faceid", label: "Face ID / Touch ID, датчики" },
+    { key: "audio", label: "Динамик, микрофон, звук" },
+    { key: "water", label: "Попадание влаги" },
+    { key: "no_power", label: "Не включается" },
+    { key: "buttons", label: "Кнопки (звук, питание)" },
+    { key: "software", label: "Прошивка / ПО / зависает" },
+    { key: "other", label: "Другая проблема" },
+  ],
+  ipad: [
+    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
+    { key: "screen", label: "Замена дисплея" },
+    { key: "glass", label: "Замена стекла (тачскрина)" },
+    { key: "battery", label: "Замена аккумулятора" },
+    { key: "charge_port", label: "Не заряжается / разъём зарядки" },
+    { key: "button", label: "Кнопки / Home / Touch ID" },
+    { key: "camera", label: "Ремонт / замена камеры" },
+    { key: "audio", label: "Динамик, микрофон" },
+    { key: "water", label: "Попадание влаги" },
+    { key: "no_power", label: "Не включается" },
+    { key: "software", label: "Прошивка / ПО" },
+    { key: "other", label: "Другая проблема" },
+  ],
+  mac: [
+    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
+    { key: "screen", label: "Замена матрицы / экрана" },
+    { key: "keyboard", label: "Замена клавиатуры" },
+    { key: "trackpad", label: "Замена тачпада" },
+    { key: "battery", label: "Замена аккумулятора" },
+    { key: "board", label: "Ремонт материнской платы" },
+    { key: "ssd", label: "Замена / увеличение SSD" },
+    { key: "water", label: "Залитие жидкостью" },
+    { key: "cooling", label: "Чистка от пыли, термопаста" },
+    { key: "ports", label: "Разъёмы (USB-C, зарядка)" },
+    { key: "no_power", label: "Не включается" },
+    { key: "software", label: "macOS / ПО / переустановка" },
+    { key: "other", label: "Другая проблема" },
+  ],
+  other: [
+    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
+    { key: "screen", label: "Экран / дисплей" },
+    { key: "battery", label: "Замена аккумулятора" },
+    { key: "charge_port", label: "Зарядка / разъём" },
+    { key: "audio", label: "Звук / динамики" },
+    { key: "water", label: "Попадание влаги" },
+    { key: "no_power", label: "Не включается" },
+    { key: "other", label: "Другая проблема" },
+  ],
+};
 
-export function issueLabel(key: string): string {
-  return REPAIR_ISSUES.find((i) => i.key === key)?.label ?? key;
+export function issuesFor(category: DeviceCategoryKey): RepairIssue[] {
+  return ISSUES_BY_CATEGORY[category] ?? ISSUES_BY_CATEGORY.other;
+}
+
+export function issueLabel(category: DeviceCategoryKey, key: string): string {
+  return issuesFor(category).find((i) => i.key === key)?.label ?? key;
 }

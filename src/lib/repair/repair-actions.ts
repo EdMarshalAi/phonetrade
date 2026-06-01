@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { notifyTelegram } from "@/lib/admin/telegram";
-import { issueLabel } from "@/lib/repair/devices";
+import { issueLabel, type DeviceCategoryKey } from "@/lib/repair/devices";
 
 const CONSENT_VERSION = "2026-01-15-v1";
 const digits = (s: string) => s.replace(/\D/g, "");
@@ -48,7 +48,7 @@ export async function submitRepairRequest(input: RepairInput): Promise<RepairRes
 
   const phone = digits(input.phone);
   const email = input.email?.trim() || null;
-  const issuesText = input.issues.map(issueLabel).join(", ") || "—";
+  const issuesText = input.issues.map((k) => issueLabel(input.category as DeviceCategoryKey, k)).join(", ") || "—";
 
   // Единый реестр клиентов.
   let customerId: string | null = null;

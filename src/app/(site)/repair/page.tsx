@@ -12,6 +12,6 @@ export const metadata: Metadata = {
 export default async function RepairPage() {
   const user = await getStorefrontUser();
   return (
-    <RepairShell initialName={user?.name ?? undefined} initialPhone={user?.phone ?? undefined} />
+    <RepairShell authed={!!user} initialName={user?.name ?? undefined} initialPhone={user?.phone ?? undefined} />
   );
 }
