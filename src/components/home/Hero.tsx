@@ -30,7 +30,7 @@ type Props = {
   autoplayMs?: number;
 };
 
-const AUTOPLAY_DEFAULT = 6000;
+const AUTOPLAY_DEFAULT = 5000;
 
 function bgClass(background: HeroSlide["background"]): string {
   if (background === "ink") return "bg-ink";
