@@ -46,7 +46,10 @@ export async function fetchCbrRates(): Promise<CbrRates> {
   return { usd, eur, date, prevUsd: null };
 }
 
-/** Тянет курс ЦБ и пишет в currency_rates. Возвращает курс + флаг резкого скачка (>5% за сутки). */
+/** Порог «резкого скачка» курса за сутки (для алёрта и паузы авто-обновления). */
+export const CBR_BIG_CHANGE_THRESHOLD = 0.02; // 2%
+
+/** Тянет курс ЦБ и пишет в currency_rates. Возвращает курс + флаг резкого скачка (>2% за сутки). */
 export async function refreshAndStoreCbr(): Promise<CbrRates & { bigChange: boolean }> {
   const rates = await fetchCbrRates();
   const db = createSupabaseAdminClient();
@@ -55,6 +58,6 @@ export async function refreshAndStoreCbr(): Promise<CbrRates & { bigChange: bool
     // fetched_at пишем всегда — чтобы «обновлён» отражал последнюю проверку ЦБ,
     // даже если курс за выходные не изменился (иначе время «зависало» на дне смены курса).
     .upsert({ date: rates.date, usd: rates.usd, eur: rates.eur, source: "cbr-xml-daily", fetched_at: new Date().toISOString() }, { onConflict: "date,source" });
-  const bigChange = rates.prevUsd ? Math.abs(rates.usd - rates.prevUsd) / rates.prevUsd > 0.05 : false;
+  const bigChange = rates.prevUsd ? Math.abs(rates.usd - rates.prevUsd) / rates.prevUsd > CBR_BIG_CHANGE_THRESHOLD : false;
   return { ...rates, bigChange };
 }

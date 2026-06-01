@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { phoneToEmail } from "@/lib/auth/phone-email";
+import { notifyTelegram } from "@/lib/admin/telegram";
 
 const CONSENT_VERSION = "2026-01-15-v1";
 
@@ -125,6 +126,17 @@ export async function registerStorefront(input: {
       });
     } catch (e) {
       console.error("[registerStorefront] upsert_customer:", e);
+    }
+
+    // Уведомление в Telegram/Email о новой регистрации (best-effort, не роняет регистрацию).
+    try {
+      const emailLine = input.email?.trim() ? `\n✉️ ${input.email.trim()}` : "";
+      await notifyTelegram(
+        "new_registration",
+        `🙋 Новая регистрация на сайте\n👤 ${input.name.trim()}\n📞 ${input.phone.trim()}${emailLine}`
+      );
+    } catch (e) {
+      console.error("[registerStorefront] notify:", e);
     }
 
     // 152-ФЗ: фиксируем согласия, данные при регистрации.

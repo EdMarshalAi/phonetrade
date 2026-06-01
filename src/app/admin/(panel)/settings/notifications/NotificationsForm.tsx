@@ -22,6 +22,9 @@ const GROUPS: { title: string; items: { key: NotificationTrigger; label: string;
     { key: "new_order", label: "Новый заказ", desc: "Покупатель оформил заказ на сайте" },
     { key: "order_cancelled", label: "Отмена заказа", desc: "Заказ переведён в статус «Отменён»" },
   ] },
+  { title: "Клиенты", items: [
+    { key: "new_registration", label: "Регистрация пользователя", desc: "Новый покупатель зарегистрировался на сайте" },
+  ] },
   { title: "Заявки", items: [
     { key: "new_lead_trade_in", label: "Заявка Trade-in", desc: "Отправлен квиз оценки устройства" },
     { key: "data_request_new", label: "Обращение по перс. данным", desc: "Запрос 152-ФЗ из личного кабинета" },
@@ -30,7 +33,7 @@ const GROUPS: { title: string; items: { key: NotificationTrigger; label: string;
     { key: "pricing_recalc_done", label: "Пересчёт прайса", desc: "Завершён пересчёт цен" },
     { key: "pricing_below_margin", label: "Маржа ниже минимума", desc: "Есть товары с маржой ниже порога категории" },
     { key: "pricing_import_done", label: "Импорт прайса", desc: "Загружен прайс из файла" },
-    { key: "cbr_rate_big_change", label: "Скачок курса ЦБ", desc: "Курс изменился более чем на 5% за сутки" },
+    { key: "cbr_rate_big_change", label: "Скачок курса ЦБ", desc: "Курс изменился на 2% и более за сутки" },
     { key: "cbr_rate_fetch_failed", label: "Сбой получения курса", desc: "Не удалось получить курс ЦБ" },
   ] },
 ];

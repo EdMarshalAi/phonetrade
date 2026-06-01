@@ -18,8 +18,8 @@ function secretMatches(provided: string | null, expected: string): boolean {
 /**
  * Ежечасное обновление курса ЦБ (вызывается внешним планировщиком — GitHub Actions).
  * Защита: заголовок `x-cron-secret` или `?secret=` должен совпасть с CRON_SECRET.
- * Если включён авто-курс (use_cbr_auto) и скачок ≤5% — обновляет рабочий курс и
- * пересчитывает цены. При скачке >5% — только сохраняет курс и шлёт алёрт.
+ * Если включён авто-курс (use_cbr_auto) и скачок ≤2% — обновляет рабочий курс и
+ * пересчитывает цены. При скачке >2% — только сохраняет курс и шлёт алёрт.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -47,9 +47,10 @@ export async function GET(req: Request) {
     if (settings?.use_cbr_auto) {
       if (rates.bigChange) {
         try {
+          const pct = rates.prevUsd ? Math.abs((rates.usd - rates.prevUsd) / rates.prevUsd) * 100 : 0;
           await notifyTelegram(
             "cbr_rate_big_change",
-            `📊 Курс ЦБ изменился более чем на 5% за сутки (был ${rates.prevUsd} → стал ${rates.usd}). ` +
+            `📊 Курс ЦБ изменился на ${pct.toFixed(1)}% за сутки (был ${rates.prevUsd} → стал ${rates.usd} ₽/$). ` +
               `Авто-обновление рабочего курса приостановлено — проверьте прайс вручную.`
           );
         } catch {}

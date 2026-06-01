@@ -8,6 +8,7 @@ import { sendTelegram } from "@/lib/admin/telegram";
 export type NotificationTrigger =
   | "new_order"
   | "order_cancelled"
+  | "new_registration"
   | "new_lead_trade_in"
   | "data_request_new"
   | "pricing_recalc_done"
