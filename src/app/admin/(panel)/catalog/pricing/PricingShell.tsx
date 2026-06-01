@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2, Check, ArrowUpRight, Download, Upload, Info, Pencil, ChevronLeft, ChevronRight, ChevronDown, Send, Rss, Copy } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2, Check, ArrowUpRight, Download, Upload, Info, Pencil, ChevronLeft, ChevronRight, ChevronDown, Send, Rss, Copy, Percent, Plus, RotateCcw, X, Banknote } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format-price";
 import { Modal } from "@/components/admin/Modal";
@@ -312,7 +312,7 @@ export function PricingShell({
   };
 
   return (
-    <div className="space-y-5">
+    <div className={cn("space-y-5", sel.size > 0 && "pb-20")}>
       {/* ── Единая плашка курса ── */}
       <div className="rounded-2xl border border-border/60 bg-white p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -402,18 +402,26 @@ export function PricingShell({
 
       {/* ── Плавающая bulk-плашка ── */}
       {sel.size > 0 ? (
-        <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
-          <div className="flex max-w-full flex-wrap items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-3 text-white shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
-            <span className="text-[13px] font-medium">Выбрано: {sel.size}</span>
-            <button type="button" onClick={() => setSel(new Set())} className="rounded-md p-1 text-white/70 hover:bg-white/10 hover:text-white" title="Снять выделение"><span aria-hidden>✕</span></button>
-            <span className="mx-1 h-5 w-px bg-white/20" />
-            <DarkBtn label="+ %" onClick={() => askBulk({ title: "Наценить закупку на %", label: "Процент", placeholder: "напр. 5", build: (v) => ({ type: "markup_pct", value: v }) })} />
-            <DarkBtn label="+ ₽" onClick={() => askBulk({ title: "Наценить закупку на ₽", label: "Сумма, ₽", placeholder: "напр. 1000", build: (v) => ({ type: "markup_rub", value: v }) })} />
-            <DarkBtn label="− %" onClick={() => askBulk({ title: "Скинуть с закупки %", label: "Процент", placeholder: "напр. 5", build: (v) => ({ type: "discount_pct", value: v }) })} />
-            <DarkBtn label="Курс закупа" onClick={() => askBulk({ title: "Курс закупа для выбранных", label: "Курс USD", placeholder: "напр. 90", build: (v) => ({ type: "set_rate", value: v }) })} />
-            <DarkBtn label="Сбросить к формуле" onClick={() => confirmBulk("Снять ручную фиксацию?", { type: "reset_formula" })} />
-            <DarkBtn label="Пересчитать" onClick={onRecalcSelected} />
-            <DarkBtn label="Экспорт выбранных" onClick={() => onExportIds([...sel])} />
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-ink/95 text-white shadow-[0_-8px_30px_rgba(0,0,0,0.28)] backdrop-blur">
+          <div className="container-page flex flex-wrap items-center gap-x-2 gap-y-2 py-2.5">
+            <span className="inline-flex items-center gap-2 text-[13px] font-medium">
+              <span className="rounded-full bg-white/15 px-2 py-0.5 text-[12px] tabular-nums">{sel.size}</span>
+              <span className="hidden sm:inline">{pluralTovar(sel.size)} выбрано</span>
+            </span>
+            <button type="button" onClick={() => setSel(new Set())} title="Снять выделение"
+              className="inline-flex size-7 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/10 hover:text-white">
+              <X className="h-4 w-4" />
+            </button>
+            <span className="mx-1 hidden h-6 w-px bg-white/15 sm:block" />
+            <div className="flex flex-1 flex-wrap items-center gap-1.5">
+              <BulkBtn icon={<Percent className="h-4 w-4" />} label="Наценка %" tip="Поднять закупку выбранных товаров на процент" onClick={() => askBulk({ title: "Наценить закупку на %", label: "Процент", placeholder: "напр. 5", build: (v) => ({ type: "markup_pct", value: v }) })} />
+              <BulkBtn icon={<Plus className="h-4 w-4" />} label="Наценка ₽" tip="Прибавить сумму в рублях к закупке выбранных" onClick={() => askBulk({ title: "Наценить закупку на ₽", label: "Сумма, ₽", placeholder: "напр. 1000", build: (v) => ({ type: "markup_rub", value: v }) })} />
+              <BulkBtn icon={<Minus className="h-4 w-4" />} label="Скидка %" tip="Снизить закупку выбранных на процент" onClick={() => askBulk({ title: "Скинуть с закупки %", label: "Процент", placeholder: "напр. 5", build: (v) => ({ type: "discount_pct", value: v }) })} />
+              <BulkBtn icon={<Banknote className="h-4 w-4" />} label="Курс закупа" tip="Задать курс закупа (USD) для выбранных товаров" onClick={() => askBulk({ title: "Курс закупа для выбранных", label: "Курс USD", placeholder: "напр. 90", build: (v) => ({ type: "set_rate", value: v }) })} />
+              <BulkBtn icon={<RotateCcw className="h-4 w-4" />} label="К формуле" tip="Снять ручную фиксацию цены — вернуть к расчёту по формуле" onClick={() => confirmBulk("Снять ручную фиксацию?", { type: "reset_formula" })} />
+              <BulkBtn icon={<RefreshCw className="h-4 w-4" />} label="Пересчитать" tip="Пересчитать цены выбранных товаров по текущей формуле и курсу" onClick={onRecalcSelected} />
+              <BulkBtn icon={<Download className="h-4 w-4" />} label="Экспорт" tip="Скачать выбранные товары в файл (XLSX)" onClick={() => onExportIds([...sel])} />
+            </div>
           </div>
         </div>
       ) : null}
@@ -657,8 +665,24 @@ function EditableNum({ value, onSave, step }: { value: number | null; onSave: (v
   );
 }
 
-function DarkBtn({ label, onClick }: { label: string; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className="inline-flex h-8 items-center rounded-md bg-white/10 px-3 text-[13px] text-white transition-colors hover:bg-white/20">{label}</button>;
+/** Кнопка панели массовых действий: иконка + подпись + подсказка при наведении. */
+function BulkBtn({ icon, label, tip, onClick }: { icon: React.ReactNode; label: string; tip: string; onClick: () => void }) {
+  return (
+    <span className="group/tip relative inline-flex">
+      <button
+        type="button"
+        onClick={onClick}
+        title={tip}
+        className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-white/10 px-2.5 text-[13px] font-medium text-white transition-colors hover:bg-white/20"
+      >
+        {icon}
+        <span className="hidden md:inline">{label}</span>
+      </button>
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-[80] mb-2 hidden w-max max-w-[240px] -translate-x-1/2 rounded-lg bg-black/90 px-2.5 py-1.5 text-[11px] font-normal leading-snug text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)] group-hover/tip:block">
+        {tip}
+      </span>
+    </span>
+  );
 }
 
 /** Подсказка при наведении (без зависимостей). */
