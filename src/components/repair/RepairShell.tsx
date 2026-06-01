@@ -189,8 +189,8 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {activeCat.models.map((m) => (
                 <button key={m} type="button" onClick={() => pickDevice(m)}
-                  className="group flex items-center justify-between gap-2 rounded-xl border border-border/70 bg-white px-3.5 py-3 text-left text-[13.5px] font-medium text-ink transition-colors hover:border-ink hover:bg-surface">
-                  <span className="truncate">{m}</span>
+                  className="group flex min-h-12 items-center justify-between gap-2 rounded-xl border border-border/70 bg-white px-3.5 py-3 text-left text-[13.5px] font-medium text-ink transition-colors hover:border-ink hover:bg-surface">
+                  <span className="leading-tight">{m}</span>
                   <ChevronRight className="size-4 shrink-0 text-ink-subtle transition-transform group-hover:translate-x-0.5 group-hover:text-ink" />
                 </button>
               ))}

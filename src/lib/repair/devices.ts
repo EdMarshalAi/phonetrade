@@ -4,7 +4,7 @@
  * из веб-ресёрча (pedant.ru и сервисные центры). ЦЕН НЕТ — только перечень работ.
  */
 
-export type DeviceCategoryKey = "iphone" | "ipad" | "mac" | "watch" | "airpods" | "other";
+export type DeviceCategoryKey = "iphone" | "ipad" | "mac" | "watch" | "airpods" | "phone" | "other";
 
 export interface DeviceCategory {
   key: DeviceCategoryKey;
@@ -65,6 +65,12 @@ export const DEVICE_CATEGORIES: DeviceCategory[] = [
     key: "airpods",
     title: "AirPods",
     models: ["AirPods Pro 2", "AirPods Pro", "AirPods 4", "AirPods 3", "AirPods 2", "AirPods", "AirPods Max"],
+  },
+  {
+    key: "phone",
+    title: "Другой смартфон",
+    freeInput: true,
+    models: ["Samsung", "Xiaomi", "Honor", "Huawei", "Realme", "OPPO", "vivo", "Google Pixel", "OnePlus", "Tecno", "Другой смартфон"],
   },
   {
     key: "other",
@@ -152,6 +158,21 @@ export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
     { key: "mic", label: "Не работает микрофон" },
     { key: "water", label: "Попадание влаги" },
     { key: "tips", label: "Замена амбушюр (Pro)" },
+    { key: "other", label: "Другая проблема" },
+  ],
+  phone: [
+    { key: "diagnostics", label: "Бесплатная диагностика", free: true },
+    { key: "screen", label: "Замена экрана / дисплея" },
+    { key: "glass", label: "Замена стекла" },
+    { key: "battery", label: "Замена аккумулятора" },
+    { key: "charge_port", label: "Не заряжается / разъём зарядки" },
+    { key: "camera", label: "Ремонт / замена камеры" },
+    { key: "audio", label: "Динамик, микрофон, звук" },
+    { key: "water", label: "Попадание влаги" },
+    { key: "no_power", label: "Не включается" },
+    { key: "buttons", label: "Кнопки" },
+    { key: "board", label: "Ремонт платы" },
+    { key: "software", label: "Прошивка / ПО" },
     { key: "other", label: "Другая проблема" },
   ],
   other: [

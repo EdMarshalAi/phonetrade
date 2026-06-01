@@ -246,7 +246,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
           `💰 <b>Итого: ${input.total.toLocaleString("ru-RU")} ₽</b>\n` +
           `💳 ${PAY[input.paymentMethod] ?? input.paymentMethod} · ${deliveryLabel}\n` +
           (input.deliveryAddress ? `📍 ${input.deliveryAddress}\n` : "") +
-          `\n🔗 ${adminBase}/admin/orders/${orderId}`
+          `\n👉 <a href="${adminBase}/admin/orders/${orderId}">Открыть заказ в админке</a>`
       );
     } catch {
       // Не критично

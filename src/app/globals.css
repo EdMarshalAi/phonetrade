@@ -167,3 +167,6 @@
   0%, 100% { transform: translateY(0) rotate(0deg); }
   50% { transform: translateY(-16px) rotate(-1deg); }
 }
+
+/* Вращение «радужного шарика» (nod к macOS beach ball) на странице 404 */
+@keyframes spinBall { to { transform: rotate(360deg); } }

@@ -94,16 +94,17 @@ export async function submitRepairRequest(input: RepairInput): Promise<RepairRes
   try {
     const adminBase = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");
     const link = leadId ? `${adminBase}/admin/leads/${leadId}` : `${adminBase}/admin/leads`;
+    const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     await notifyTelegram(
       "new_lead_repair",
       `🛠 <b>Заявка на ремонт</b>\n\n` +
-        `👤 ${input.name.trim()}\n` +
+        `👤 ${esc(input.name.trim())}\n` +
         `📞 ${phone}\n` +
-        (email ? `✉️ ${email}\n` : "") +
-        `\n📱 ${input.device.trim()}\n` +
-        `Что чинить: ${issuesText}\n` +
-        (input.comment?.trim() ? `Комментарий: ${input.comment.trim()}\n` : "") +
-        `\n🔗 ${link}`
+        (email ? `✉️ ${esc(email)}\n` : "") +
+        `\n📱 ${esc(input.device.trim())}\n` +
+        `Что чинить: ${esc(issuesText)}\n` +
+        (input.comment?.trim() ? `Комментарий: ${esc(input.comment.trim())}\n` : "") +
+        `\n👉 <a href="${link}">Открыть заявку в админке</a>`
     );
   } catch { /* ignore */ }
 

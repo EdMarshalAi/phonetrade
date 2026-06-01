@@ -162,7 +162,7 @@ export async function submitDataRequest(
         `✉️ ${email || "—"}\n` +
         (input.details?.trim() ? `\nКомментарий: ${input.details.trim()}\n` : "") +
         `\n⏱ Срок ответа: 30 дней (152-ФЗ)\n` +
-        `\n🔗 ${link}`
+        `\n👉 <a href="${link}">Открыть обращение в админке</a>`
     );
   } catch {
     /* ignore */

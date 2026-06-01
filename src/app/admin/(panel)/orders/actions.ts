@@ -63,7 +63,7 @@ export async function setOrderStatus(
         `👤 ${order.customer_name ?? "—"}\n` +
         `📞 ${order.phone ?? "—"}\n` +
         `💰 ${(order.total ?? 0).toLocaleString("ru-RU")} ₽\n` +
-        `\n🔗 ${adminBase}/admin/orders/${id}`
+        `\n👉 <a href="${adminBase}/admin/orders/${id}">Открыть заказ в админке</a>`
     );
   }
   return {};

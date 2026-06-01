@@ -198,7 +198,7 @@ export async function submitTradeInQuiz(input: QuizInput): Promise<QuizResult> {
         `iCloud: ${icloudLabel(input.icloud).toLowerCase()}, комплект: ${KIT_LABELS[input.kit] ?? input.kit}\n` +
         (input.hasBreakage ? `⚠️ Поломки: ${input.breakageDescription?.trim() || "есть"}\n` : "") +
         `\n💰 <b>Предв. оценка: ${new Intl.NumberFormat("ru-RU").format(lead.estimated_price_rub)} ₽</b>\n` +
-        `\n🔗 ${link}`
+        `\n👉 <a href="${link}">Открыть заявку в админке</a>`
     );
   } catch { /* ignore */ }
 
