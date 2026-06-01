@@ -63,6 +63,8 @@ const NAV_PRIMARY = [
   { href: "/category/watch", label: "Watch" },
   { href: "/category/airpods", label: "AirPods" },
   { href: "/category/accessories", label: "Аксессуары" },
+  { href: "/category/gaming-consoles", label: "Приставки" },
+  { href: "/category/dyson", label: "Дайсон" },
 ];
 
 type MobileSection = {

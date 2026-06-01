@@ -108,14 +108,15 @@ export interface CategoryMeta {
   available_filters: string[] | null;
   meta_title: string | null;
   meta_description: string | null;
+  default_sort: string | null;
 }
 
-/** Мета категории из БД (название, описание, иконка, SEO-текст, фильтры, SEO-мета). */
+/** Мета категории из БД (название, описание, иконка, SEO-текст, фильтры, SEO-мета, базовая сортировка). */
 export async function getCategoryMeta(slug: string): Promise<CategoryMeta | null> {
   if (!supabase) return null;
   const { data } = await supabase
     .from("categories")
-    .select("title,description,subtitle,icon_url,seo_text,available_filters,meta_title,meta_description")
+    .select("title,description,subtitle,icon_url,seo_text,available_filters,meta_title,meta_description,default_sort")
     .eq("slug", slug)
     .maybeSingle();
   if (!data) return null;
@@ -129,6 +130,7 @@ export async function getCategoryMeta(slug: string): Promise<CategoryMeta | null
     available_filters: Array.isArray(d.available_filters) ? (d.available_filters as string[]) : null,
     meta_title: (d.meta_title as string | null) ?? null,
     meta_description: (d.meta_description as string | null) ?? null,
+    default_sort: (d.default_sort as string | null) ?? null,
   };
 }
 

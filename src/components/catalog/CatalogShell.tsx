@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import type { CategoryConfig } from "@/lib/catalog/category-config";
+import type { CategoryConfig, SortKey } from "@/lib/catalog/category-config";
 import type { FacetOptions } from "@/lib/catalog/filters";
 import {
   applyFilters,
@@ -28,13 +28,15 @@ type Props = {
   tabs?: { label: string; href: string; active?: boolean; count?: number }[];
   /** Родитель для хлебных крошек (если текущая категория — подкатегория). */
   breadcrumbParent?: { title: string; href: string } | null;
+  /** Базовая сортировка категории (из админки). По умолчанию — дешёвые сначала. */
+  defaultSort?: SortKey;
 };
 
 const PAGE_SIZE = 12;
 
-export function CatalogShell({ config, products, facetOptions, seoHtml, tabs = [], breadcrumbParent = null }: Props) {
+export function CatalogShell({ config, products, facetOptions, seoHtml, tabs = [], breadcrumbParent = null, defaultSort = "price-asc" }: Props) {
   const { filters, sort, setSort, toggleValue, reset, setFilters } =
-    useCatalogFilters();
+    useCatalogFilters(defaultSort);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   // Pagination kept in component state so a page reload always shows the
   // first PAGE_SIZE products instead of all loaded ones from URL history.

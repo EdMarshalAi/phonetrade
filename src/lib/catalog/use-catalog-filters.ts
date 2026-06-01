@@ -34,7 +34,7 @@ export function parseFilters(sp: URLSearchParams): CatalogFilters {
   };
 }
 
-export function parseSort(sp: URLSearchParams): SortKey {
+export function parseSort(sp: URLSearchParams, fallback: SortKey = "popular"): SortKey {
   const v = sp.get("sort");
   if (
     v === "price-asc" ||
@@ -44,7 +44,7 @@ export function parseSort(sp: URLSearchParams): SortKey {
     v === "popular"
   )
     return v;
-  return "popular";
+  return fallback;
 }
 
 function writeFiltersToParams(
@@ -81,7 +81,7 @@ function writeFiltersToParams(
   return sp;
 }
 
-export function useCatalogFilters() {
+export function useCatalogFilters(defaultSort: SortKey = "popular") {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -91,8 +91,8 @@ export function useCatalogFilters() {
     [searchParams]
   );
   const sort = React.useMemo(
-    () => parseSort(new URLSearchParams(searchParams.toString())),
-    [searchParams]
+    () => parseSort(new URLSearchParams(searchParams.toString()), defaultSort),
+    [searchParams, defaultSort]
   );
 
   const replaceUrl = React.useCallback(
@@ -117,12 +117,12 @@ export function useCatalogFilters() {
   const setSort = React.useCallback(
     (next: SortKey) => {
       const sp = new URLSearchParams(searchParams.toString());
-      if (next === "popular") sp.delete("sort");
+      if (next === defaultSort) sp.delete("sort"); // дефолт категории — без параметра в URL
       else sp.set("sort", next);
       sp.delete("page");
       replaceUrl(sp);
     },
-    [searchParams, replaceUrl]
+    [searchParams, replaceUrl, defaultSort]
   );
 
   const toggleValue = React.useCallback(

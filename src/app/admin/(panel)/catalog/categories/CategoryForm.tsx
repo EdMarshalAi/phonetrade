@@ -38,6 +38,7 @@ export interface CategoryValue {
   show_on_home: boolean;
   home_limit: number;
   available_filters: string[] | null;
+  default_sort: string | null;
   is_published: boolean;
 }
 
@@ -79,6 +80,7 @@ export function CategoryForm({
       show_on_home: category?.show_on_home ?? false,
       home_limit: category?.home_limit ?? 8,
       available_filters: category?.available_filters ?? [],
+      default_sort: (category?.default_sort as CategoryInput["default_sort"]) ?? "price-asc",
       is_published: category?.is_published ?? true,
     },
   });
@@ -157,6 +159,22 @@ export function CategoryForm({
             <TextInput type="number" min={0} {...register("sort")} />
           </Field>
         </div>
+
+        <Field label="Базовая сортировка" hint="Как сортировать товары при заходе в категорию (пока покупатель не выбрал другое)">
+          <Controller
+            control={control}
+            name="default_sort"
+            render={({ field }) => (
+              <Select value={field.value ?? "price-asc"} onChange={field.onChange}>
+                <option value="price-asc">Сначала дешёвые</option>
+                <option value="price-desc">Сначала дорогие</option>
+                <option value="new">Сначала новые</option>
+                <option value="popular">По популярности</option>
+                <option value="battery-desc">По аккумулятору (для Б/У)</option>
+              </Select>
+            )}
+          />
+        </Field>
 
         <Field label="Подзаголовок" hint="Короткая строка под названием в bento">
           <TextInput placeholder="MacBook Air и Pro на Apple Silicon" {...register("subtitle")} />

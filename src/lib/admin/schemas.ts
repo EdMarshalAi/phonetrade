@@ -42,6 +42,7 @@ export const categorySchema = z.object({
   show_on_home: z.boolean().default(false),
   home_limit: z.coerce.number().int().min(1).max(24).default(8),
   available_filters: z.array(z.string()).default([]),
+  default_sort: z.enum(["price-asc", "price-desc", "new", "popular", "battery-desc"]).default("price-asc"),
   is_published: z.boolean().default(true),
 });
 export type CategoryInput = z.infer<typeof categorySchema>;

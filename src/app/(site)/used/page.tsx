@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { FilterFacet, CategoryConfig } from "@/lib/catalog/category-config";
+import type { FilterFacet, CategoryConfig, SortKey } from "@/lib/catalog/category-config";
 import { extractFacetOptions } from "@/lib/catalog/filters";
 import { getProductsByCategory, getCategories, getProductCountsByCategory } from "@/lib/products";
 import { getCategoryMeta } from "@/lib/content";
@@ -81,6 +81,7 @@ export default async function UsedPage() {
         facetOptions={facetOptions}
         seoHtml={meta?.seo_text ? sanitizeRichHtml(meta.seo_text) : null}
         tabs={tabs}
+        defaultSort={(meta?.default_sort as SortKey) ?? "price-asc"}
       />
     </>
   );
