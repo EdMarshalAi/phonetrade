@@ -163,19 +163,6 @@ const TEMPLATES: Tpl[] = [
     extra: `<div style="margin:6px 0 8px;">{{cart.items}}</div>`,
   },
   {
-    slug: "abandoned_cart_3", name: "Брошенная корзина 3 — промокод", category: "trigger",
-    subject: "Промокод на 1000 ₽ — последний шанс",
-    preview_text: "Дарим 1000 ₽ на ваш заказ. Промокод внутри, успейте применить.",
-    variables: ["customer.first_name", "promo.code", "cart.url"],
-    content: {
-      heading: "Небольшой бонус, чтобы решиться",
-      body: "{{customer.first_name}}, дарим 1000 ₽ на заказ из вашей корзины.",
-      cta_text: "Применить и оформить", cta_url: "{{cart.url}}",
-    },
-    extra: `<div style="margin:12px 0;padding:16px;border:1px dashed ${INK};border-radius:12px;text-align:center;">
-<span style="font-size:13px;color:${MUTED};">Промокод</span><br><span style="font-size:22px;font-weight:700;letter-spacing:0.06em;color:${SALE};">{{promo.code}}</span></div>`,
-  },
-  {
     slug: "review_request", name: "Запрос отзыва", category: "trigger",
     subject: "Как вам покупка, {{customer.first_name}}?",
     preview_text: "Пара слов от вас помогут другим — и нам стать лучше.",
@@ -197,19 +184,6 @@ const TEMPLATES: Tpl[] = [
       cta_text: "Смотреть аксессуары", cta_url: "/category/accessories",
     },
     showProducts: true, productsLabel: "Заодно присмотритесь",
-  },
-  {
-    slug: "birthday", name: "День рождения", category: "trigger",
-    subject: "С днём рождения, {{customer.first_name}}! 🎁",
-    preview_text: "Подарок от PhoneTrade — промокод на вашу следующую покупку.",
-    variables: ["customer.first_name", "promo.code"],
-    content: {
-      heading: "С днём рождения!",
-      body: "{{customer.first_name}}, команда PhoneTrade поздравляет вас! Держите подарок — промокод на скидку:",
-      cta_text: "Выбрать подарок себе", cta_url: "/catalog",
-    },
-    extra: `<div style="margin:12px 0;padding:16px;border:1px dashed ${INK};border-radius:12px;text-align:center;">
-<span style="font-size:22px;font-weight:700;letter-spacing:0.06em;color:${SALE};">{{promo.code}}</span></div>`,
   },
   {
     slug: "campaign_promo", name: "Кампания — промо", category: "marketing",
