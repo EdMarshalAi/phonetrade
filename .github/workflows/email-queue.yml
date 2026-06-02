@@ -1,0 +1,33 @@
+name: Process email queue
+
+# Обработка очереди отложенных писем (welcome 2/5д, отзыв, cross-sell).
+# Транзакционные письма (заказ/статус/welcome_1) шлются синхронно, не тут.
+# Секрет читаем из shop_settings.cron_secret через service-role — без новых
+# GitHub-секретов. GitHub cron: минимум 5 мин, бывают задержки — для писем
+# с дневными отсрочками этого достаточно.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: email-queue
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger email queue processor
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          SECRET=$(curl -s "$SUPABASE_URL/rest/v1/shop_settings?key=eq.cron_secret&select=value" \
+            -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" | jq -r '.[0].value // empty')
+          if [ -z "$SECRET" ]; then echo "cron_secret not found in shop_settings"; exit 1; fi
+          CODE=$(curl -fsS "https://phonetrade31.ru/api/cron/process-email-queue" \
+            -H "x-cron-secret: $SECRET" -w "%{http_code}" -o /tmp/resp.json || true)
+          echo "HTTP $CODE"; cat /tmp/resp.json || true
