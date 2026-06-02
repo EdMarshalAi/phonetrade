@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { processEmailQueue } from "@/lib/email/process-queue";
+import { processScheduledCampaigns } from "@/lib/email/send-campaign";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,8 @@ export async function GET(req: Request) {
 
   try {
     const res = await processEmailQueue(25);
-    return NextResponse.json({ ok: true, ...res });
+    const camp = await processScheduledCampaigns();
+    return NextResponse.json({ ok: true, ...res, campaigns: camp.processed });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "queue processing failed" }, { status: 500 });
   }
