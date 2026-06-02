@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { rowToProduct, type ProductRow } from "@/lib/supabase/types";
 import { MAX_QTY } from "./constants";
 import type { CartItem } from "./types";
@@ -61,6 +62,20 @@ async function ensureCart(db: Db): Promise<string> {
   return data.id as string;
 }
 
+/** Привязывает корзину к залогиненному клиенту (для брошенных корзин). Best-effort. */
+async function linkCart(db: Db, cartId: string): Promise<void> {
+  try {
+    const supa = await createSupabaseServerClient();
+    const { data } = await supa.auth.getUser();
+    const userId = data.user?.id;
+    if (!userId) return;
+    const { data: cust } = await db.from("customers").select("id,email").eq("user_id", userId).maybeSingle();
+    await db.from("carts").update({ user_id: userId, customer_id: cust?.id ?? null, email: cust?.email ?? null, status: "active" }).eq("id", cartId);
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function getCart(): Promise<CartItem[]> {
   const id = await readCartId();
   if (!id) return [];
@@ -81,7 +96,8 @@ export async function addToCart(productId: string, qty = 1): Promise<CartItem[]>
     .from("cart_items")
     .upsert({ cart_id: cartId, product_id: productId, qty: nextQty }, { onConflict: "cart_id,product_id" });
   if (error) throw error;
-  await db.from("carts").update({ updated_at: new Date().toISOString() }).eq("id", cartId);
+  await db.from("carts").update({ updated_at: new Date().toISOString(), status: "active", abandoned_at: null }).eq("id", cartId);
+  await linkCart(db, cartId);
   return itemsFor(db, cartId);
 }
 

@@ -8,6 +8,8 @@ import { sendMail } from "@/lib/admin/mailer";
 import { orderConfirmationEmail } from "@/lib/email/templates";
 import { clientIp, rateLimited } from "@/lib/utils/rate-limit";
 import { normalizePhone as normalizeRuPhone } from "@/lib/validation/phone";
+import { cookies } from "next/headers";
+import { cancelQueuedByDedupPrefix } from "@/lib/email/queue";
 
 const CONSENT_VERSION = "2026-01-15-v1";
 
@@ -294,6 +296,18 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       } catch (e) {
         console.error("[placeOrder] customer email:", e);
       }
+    }
+
+    // Корзина оформлена: помечаем, очищаем и снимаем письма брошенной корзины.
+    try {
+      const cartId = (await cookies()).get("pt_cart")?.value;
+      if (cartId) {
+        await db.from("carts").update({ status: "ordered" }).eq("id", cartId);
+        await db.from("cart_items").delete().eq("cart_id", cartId);
+        await cancelQueuedByDedupPrefix(`cart:${cartId}:`);
+      }
+    } catch (e) {
+      console.error("[placeOrder] cart cleanup:", e);
     }
 
     return { ok: true, orderNumber };

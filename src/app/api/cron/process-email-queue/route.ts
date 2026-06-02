@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { processEmailQueue } from "@/lib/email/process-queue";
 import { processScheduledCampaigns } from "@/lib/email/send-campaign";
+import { detectAbandonedCarts } from "@/lib/email/abandoned-carts";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +35,10 @@ export async function GET(req: Request) {
   if (!secretMatches(provided, expected)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   try {
+    const carts = await detectAbandonedCarts();
     const res = await processEmailQueue(25);
     const camp = await processScheduledCampaigns();
-    return NextResponse.json({ ok: true, ...res, campaigns: camp.processed });
+    return NextResponse.json({ ok: true, ...res, campaigns: camp.processed, abandonedCarts: carts.detected });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "queue processing failed" }, { status: 500 });
   }

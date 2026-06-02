@@ -14,6 +14,7 @@ export const SEGMENT_VIEWS: Record<string, string> = {
   dormant: "segment_dormant",
   newcomers: "segment_newcomers",
   iphone: "segment_iphone_owners",
+  cart_abandoners: "segment_cart_abandoners",
 };
 
 export const SEGMENT_LABELS: Record<string, string> = {
@@ -23,6 +24,7 @@ export const SEGMENT_LABELS: Record<string, string> = {
   dormant: "Спящие",
   newcomers: "Новички",
   iphone: "Владельцы iPhone",
+  cart_abandoners: "Брошенные корзины",
 };
 
 export type SegmentRecipient = { id: string; email: string; name: string | null };
