@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { BarChart3, Send, Mail, Code2, Plus, Loader2, Trash2, X, Sparkles } from "lucide-react";
 import { Field, TextInput, Textarea, Switch, Select, AdminButton } from "@/components/admin/form";
 import { cn } from "@/lib/utils/cn";
-import { saveIntegration, createCustomIntegration, deleteIntegration, type IntegrationRow } from "./actions";
+import { saveIntegration, createCustomIntegration, deleteIntegration, sendTestEmail, type IntegrationRow } from "./actions";
 
 type FieldDef = { name: string; label: string; type?: string; placeholder?: string; hint?: string; multiline?: boolean; rows?: number };
 type Builtin = { key: string; title: string; desc: string; icon: typeof BarChart3; fields: FieldDef[] };
@@ -218,12 +218,46 @@ function SettingsModal({ intKey, builtin, entry, onClose, onSaved, onDeleted }: 
             </Field>
           </>
         )}
+        {intKey === "smtp" ? <TestEmailBlock cfg={cfg} /> : null}
         <div className="flex items-center gap-2 pt-1">
           <AdminButton type="button" onClick={save} loading={saving}>Сохранить</AdminButton>
           {isCustom ? <AdminButton type="button" variant="ghost" onClick={remove}><Trash2 className="size-4" /> Удалить</AdminButton> : null}
         </div>
       </div>
     </Modal>
+  );
+}
+
+function TestEmailBlock({ cfg }: { cfg: Record<string, unknown> }) {
+  const [to, setTo] = React.useState("");
+  const [sending, setSending] = React.useState(false);
+  const send = async () => {
+    const email = to.trim();
+    if (!email) return;
+    setSending(true);
+    const res = await sendTestEmail(email, cfg);
+    setSending(false);
+    if (res.error) { toast.error(res.error); return; }
+    toast.success("Письмо отправлено — проверьте ящик (и папку «Спам»)");
+  };
+  return (
+    <div className="rounded-xl border border-border/60 bg-surface/40 p-3">
+      <p className="text-[13px] font-medium text-ink">Тестовое письмо</p>
+      <p className="mb-2 text-[12px] text-ink-subtle">
+        Отправит проверочное письмо текущими настройками — можно до сохранения.
+      </p>
+      <div className="flex items-center gap-2">
+        <TextInput
+          type="email"
+          placeholder="куда отправить, напр. you@mail.ru"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+        />
+        <AdminButton type="button" variant="outline" onClick={send} loading={sending} disabled={!to.trim()}>
+          Отправить
+        </AdminButton>
+      </div>
+    </div>
   );
 }
 
