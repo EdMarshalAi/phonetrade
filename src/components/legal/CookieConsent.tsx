@@ -89,9 +89,8 @@ export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }
               <Link href="/privacy" className="text-ink underline underline-offset-2 hover:opacity-70">политике конфиденциальности</Link>.
             </p>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <button type="button" onClick={() => setDrawer(true)} className="rounded-full border border-border px-4 py-2 text-[13px] font-medium text-ink hover:bg-surface">Настроить</button>
-              <button type="button" onClick={onlyNecessary} className="rounded-full border border-border px-4 py-2 text-[13px] font-medium text-ink hover:bg-surface">Только необходимые</button>
-              <button type="button" onClick={acceptAll} className="rounded-full bg-ink px-4 py-2 text-[13px] font-medium text-white hover:bg-ink/90">Принять все</button>
+              <button type="button" onClick={() => setDrawer(true)} className="px-3 py-2 text-[13px] font-medium text-ink-muted hover:text-ink">Настроить</button>
+              <button type="button" onClick={acceptAll} className="rounded-full bg-ink px-6 py-2.5 text-[14px] font-semibold text-white hover:bg-ink/90">Принять все</button>
             </div>
           </div>
         </div>
@@ -110,7 +109,7 @@ export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }
               <CookieRow title="Маркетинговые" desc="Ремаркетинг и персональные предложения" checked={cats.marketing} onChange={(v) => setCats((c) => ({ ...c, marketing: v }))} />
             </div>
             <div className="mt-6 flex items-center justify-end gap-2">
-              <button type="button" onClick={() => persist({ analytics: false, advertising: false, marketing: false })} className="rounded-full border border-border px-4 py-2 text-[13px] font-medium text-ink hover:bg-surface">Только необходимые</button>
+              <button type="button" onClick={onlyNecessary} className="rounded-full border border-border px-4 py-2 text-[13px] font-medium text-ink hover:bg-surface">Только необходимые</button>
               <button type="button" onClick={() => persist(cats)} className="rounded-full bg-ink px-4 py-2 text-[13px] font-medium text-white hover:bg-ink/90">Сохранить настройки</button>
             </div>
           </div>
