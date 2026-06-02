@@ -56,6 +56,14 @@ export async function setOrderStatus(
     return { error: e instanceof Error ? e.message : "Ошибка" };
   }
 
+  // Аналитика промокода: статус применения по статусу заказа (для воронки).
+  try {
+    const useStatus = toStatus === "cancelled" ? "cancelled" : (toStatus === "new" || toStatus === "placed") ? "new" : "paid";
+    await db.from("promo_code_usages").update({ order_status_at_use: useStatus }).eq("order_id", id);
+  } catch (e) {
+    console.error("[setOrderStatus] promo usage status:", e);
+  }
+
   // Уведомление в Telegram при отмене (best-effort).
   if (toStatus === "cancelled") {
     const adminBase = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");

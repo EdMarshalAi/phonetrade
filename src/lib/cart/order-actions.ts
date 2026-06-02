@@ -135,13 +135,30 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       return { error: "Не удалось создать заказ. Попробуйте ещё раз." };
     }
 
-    // Счётчик использований промокода (best-effort).
-    if (input.promoCode) {
+    // Счётчик использований промокода + запись в лог аналитики (best-effort).
+    if (input.promoCode && (input.promoDiscount ?? 0) > 0) {
       try {
-        const { data: pc } = await db.from("promo_codes").select("used_count").eq("code", input.promoCode).maybeSingle();
-        if (pc) await db.from("promo_codes").update({ used_count: (pc.used_count ?? 0) + 1 }).eq("code", input.promoCode);
-      } catch {
-        /* ignore */
+        const { data: pc } = await db.from("promo_codes").select("id,used_count,discount_type,discount_value").eq("code", input.promoCode).is("deleted_at", null).maybeSingle();
+        if (pc) {
+          await db.from("promo_codes").update({ used_count: (pc.used_count ?? 0) + 1 }).eq("id", pc.id);
+          await db.from("promo_code_usages").insert({
+            promo_code_id: pc.id,
+            promo_code_snapshot: input.promoCode,
+            promo_type_snapshot: pc.discount_type ?? null,
+            promo_value_snapshot: pc.discount_value ?? null,
+            order_id: orderId,
+            order_number_snapshot: orderNumber,
+            customer_id: customerId,
+            customer_email_snapshot: input.email ?? null,
+            cart_subtotal_rub: input.subtotal,
+            discount_amount_rub: input.promoDiscount ?? 0,
+            final_amount_rub: input.total,
+            source: "checkout",
+            order_status_at_use: "new",
+          });
+        }
+      } catch (e) {
+        console.error("[placeOrder] promo usage:", e);
       }
     }
 

@@ -69,6 +69,8 @@ export async function updatePromo(id: string, input: PromoInput): Promise<{ erro
   redirect("/admin/promotions/promo-codes");
 }
 
+/** Soft-delete: промокод исчезает из активных, но аналитика и связь с заказами
+ *  сохраняются. Перестаёт работать в чекауте (validatePromoCode фильтрует deleted_at). */
 export async function deletePromo(id: string): Promise<{ error?: string }> {
   try {
     await adminMutation({
@@ -77,7 +79,26 @@ export async function deletePromo(id: string): Promise<{ error?: string }> {
       entityType: "promo_code",
       entityId: id,
       run: async (db) => {
-        const { error } = await db.from("promo_codes").delete().eq("id", id);
+        const { error } = await db.from("promo_codes").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+        if (error) throw error;
+      },
+    });
+    return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Ошибка" };
+  }
+}
+
+/** Восстановить удалённый промокод (deleted_at = null). */
+export async function restorePromo(id: string): Promise<{ error?: string }> {
+  try {
+    await adminMutation({
+      roles: [...STAFF],
+      action: "update",
+      entityType: "promo_code",
+      entityId: id,
+      run: async (db) => {
+        const { error } = await db.from("promo_codes").update({ deleted_at: null }).eq("id", id);
         if (error) throw error;
       },
     });

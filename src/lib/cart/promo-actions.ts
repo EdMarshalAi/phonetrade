@@ -15,6 +15,7 @@ export async function validatePromoCode(code: string): Promise<ValidatePromoResu
     .from("promo_codes")
     .select("code,discount_type,discount_value,min_order_amount,starts_at,expires_at,total_limit,used_count,is_active,applies_to,applies_to_ids")
     .eq("code", c)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (!data) return { error: "Промокод не найден" };
