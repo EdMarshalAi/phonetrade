@@ -37,6 +37,12 @@ async function hasMarketingConsent(db: ReturnType<typeof createSupabaseAdminClie
   return (data?.length ?? 0) > 0;
 }
 
+/** Отказ от сервисных писем (активная запись service_optout). Default — НЕ отказ. */
+async function serviceOptedOut(db: ReturnType<typeof createSupabaseAdminClient>, customerId: string): Promise<boolean> {
+  const { data } = await db.from("data_consents").select("id").eq("customer_id", customerId).eq("consent_type", "service_optout").is("revoked_at", null).limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
 export async function processEmailQueue(limit = 25): Promise<{ processed: number; sent: number; errors: number }> {
   const db = createSupabaseAdminClient();
   const now = new Date();
@@ -56,24 +62,34 @@ export async function processEmailQueue(limit = 25): Promise<{ processed: number
   for (const item of pending as QueueRow[]) {
     await db.from("email_queue").update({ status: "processing" }).eq("id", item.id);
     try {
-      const { data: tpl } = await db.from("email_templates").select("slug,category,subject,html_content,text_content,content,is_active").eq("id", item.template_id).maybeSingle();
+      const { data: tpl } = await db.from("email_templates").select("slug,category,legal_category,subject,html_content,text_content,content,is_active").eq("id", item.template_id).maybeSingle();
       if (!tpl || tpl.is_active === false) { await cancel(db, item.id, "Шаблон не найден/выключен"); continue; }
 
-      const isMarketing = tpl.category === "marketing" || tpl.category === "trigger";
+      // Юридическая категория письма определяет правила (см.
+      // docs/promo-analytics-phone-validation.md addon): transactional — всегда;
+      // service — всем кроме явной полной отписки; marketing — только с согласием.
+      const legal = (tpl.legal_category ?? "marketing") as "transactional" | "service" | "marketing";
 
-      // Тихие часы (для не-транзакционных, если триггер их не разрешает).
+      // Тихие часы 22-08 — ТОЛЬКО для маркетинга (если триггер их не разрешает).
       let allowQuiet = false;
       if (item.trigger_id) {
         const { data: tr } = await db.from("email_triggers").select("send_in_quiet_hours").eq("id", item.trigger_id).maybeSingle();
         allowQuiet = !!tr?.send_in_quiet_hours;
       }
-      if (isMarketing && !allowQuiet && inQuietHours(now)) { await reschedule(db, item.id, nextMorning(now)); continue; }
+      if (legal === "marketing" && !allowQuiet && inQuietHours(now)) { await reschedule(db, item.id, nextMorning(now)); continue; }
 
-      // Согласие + недельный лимит (только marketing/trigger с известным клиентом).
-      if (isMarketing && item.customer_id) {
-        if (!(await hasMarketingConsent(db, item.customer_id))) { await cancel(db, item.id, "Нет согласия на маркетинг"); continue; }
-        const { data: underCap } = await db.rpc("can_send_marketing_email", { p_customer_id: item.customer_id });
-        if (underCap === false) { await reschedule(db, item.id, addHours(now, 24)); continue; }
+      // Согласие по категории.
+      if (item.customer_id) {
+        if (legal === "marketing") {
+          if (!(await hasMarketingConsent(db, item.customer_id))) { await cancel(db, item.id, "Нет согласия на маркетинг"); continue; }
+        } else if (legal === "service") {
+          if (await serviceOptedOut(db, item.customer_id)) { await cancel(db, item.id, "Отказ от сервисных писем"); continue; }
+        }
+        // Недельный лимит — для service и marketing (не для транзакционных).
+        if (legal !== "transactional") {
+          const { data: underCap } = await db.rpc("can_send_marketing_email", { p_customer_id: item.customer_id });
+          if (underCap === false) { await reschedule(db, item.id, addHours(now, 24)); continue; }
+        }
       }
 
       // Слой контента ({{c.*}}) → витрина товаров ({{products}}) → рантайм-переменные.

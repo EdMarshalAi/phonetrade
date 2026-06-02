@@ -5,15 +5,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, Send } from "lucide-react";
 import { Switch, TextInput, AdminButton } from "@/components/admin/form";
-import { StatusBadge } from "@/components/admin/ui";
+import { LEGAL_LABEL, legalColor } from "@/lib/email/legal";
 import { toggleTrigger, testSendTemplate } from "../actions";
 
 export type TriggerRow = {
   slug: string; name: string; description: string | null;
-  isActive: boolean; delay: string; templateSlug: string | null; category: string | null;
+  isActive: boolean; delay: string; templateSlug: string | null; legalCategory: string | null;
 };
-
-const CAT_LABEL: Record<string, string> = { transactional: "Транзакционное", marketing: "Маркетинг", trigger: "Триггер" };
 
 export function TriggersClient({ rows }: { rows: TriggerRow[] }) {
   const router = useRouter();
@@ -48,9 +46,11 @@ export function TriggersClient({ rows }: { rows: TriggerRow[] }) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h3 className="text-[14px] font-semibold leading-snug text-ink">{t.name}</h3>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                {t.category ? <StatusBadge>{CAT_LABEL[t.category] ?? t.category}</StatusBadge> : null}
-                <span className="text-[12px] text-ink-subtle">{t.delay}</span>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-ink-muted">
+                {t.legalCategory ? (
+                  <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2 rounded-full" style={{ backgroundColor: legalColor(t.legalCategory) }} />{LEGAL_LABEL[t.legalCategory] ?? t.legalCategory}</span>
+                ) : null}
+                <span className="text-ink-subtle">· {t.delay}</span>
               </div>
             </div>
             {busy === t.slug ? <Loader2 className="size-4 shrink-0 animate-spin text-ink-subtle" /> : <Switch checked={t.isActive} onChange={(v) => onToggle(t.slug, v)} />}

@@ -22,6 +22,14 @@ const SALE = "#e30000";
 const ADDRESS = "Белгород, ул. Попова, 36 (Универмаг Белгород, 1 этаж)";
 const PHONE = "+7 (904) 098-88-77";
 
+// Юридическая категория (consent-правила). transactional — всегда; service —
+// без согласия маркетинга, но с отпиской; marketing — только с согласием.
+function legalCategory(slug: string): "transactional" | "service" | "marketing" {
+  if (slug === "order_confirmation" || slug === "order_shipped") return "transactional";
+  if (slug === "abandoned_cart_1" || slug === "review_request") return "service";
+  return "marketing";
+}
+
 function headerKey(slug: string): string {
   if (slug.startsWith("welcome")) return "welcome";
   if (slug.startsWith("order")) return "order";
@@ -295,6 +303,7 @@ async function seed() {
       slug: t.slug, name: t.name, category: t.category, subject: t.subject,
       preview_text: t.preview_text, html_content: layout(t), text_content: toText(t),
       content: fullContent(t), variables: t.variables, is_system: true, is_active: true,
+      legal_category: legalCategory(t.slug),
       thumbnail_url: `${HEADER_BASE}${headerKey(t.slug)}.png?v=2`, updated_at: new Date().toISOString(),
     }, { onConflict: "slug" });
     console.log(error ? `✗ ${t.slug}: ${error.message}` : `✓ ${t.slug}`);

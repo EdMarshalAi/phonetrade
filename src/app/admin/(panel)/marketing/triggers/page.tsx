@@ -16,7 +16,7 @@ export default async function TriggersPage() {
   const db = createSupabaseAdminClient();
   const { data } = await db
     .from("email_triggers")
-    .select("slug,name,description,event_type,delay_minutes,is_active,template_id,email_templates(slug,category)")
+    .select("slug,name,description,event_type,delay_minutes,is_active,template_id,email_templates(slug,legal_category)")
     .order("event_type")
     .order("step_in_chain");
 
@@ -26,7 +26,7 @@ export default async function TriggersPage() {
       slug: t.slug, name: t.name, description: t.description, isActive: t.is_active,
       delay: humanDelay(t.delay_minutes ?? 0),
       templateSlug: (tpl as { slug?: string } | null)?.slug ?? null,
-      category: (tpl as { category?: string } | null)?.category ?? null,
+      legalCategory: (tpl as { legal_category?: string } | null)?.legal_category ?? null,
     };
   });
 

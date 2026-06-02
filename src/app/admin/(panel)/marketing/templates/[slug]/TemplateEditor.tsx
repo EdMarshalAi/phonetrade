@@ -9,6 +9,7 @@ import { Field, TextInput, Textarea, Switch, AdminButton } from "@/components/ad
 import { PageHeader } from "@/components/admin/ui";
 import { applyContent } from "@/lib/email/content";
 import { renderProductCards, renderItemRows } from "@/lib/email/product-cards";
+import { LEGAL_LABEL, LEGAL_HINT, LEGAL_WARNING, legalColor, type LegalCategory } from "@/lib/email/legal";
 import { updateTemplate, testSendTemplate } from "../../actions";
 
 const SITE = "https://phonetrade31.ru";
@@ -37,13 +38,14 @@ function render(html: string, vars: Record<string, unknown>): string {
 }
 
 type C = { heading: string; body: string; cta_text: string; cta_url: string; header_image: string };
-type Tpl = { slug: string; name: string; category: string; subject: string; previewText: string; html: string; isActive: boolean; content: C };
+type Tpl = { slug: string; name: string; category: string; legalCategory: string; subject: string; previewText: string; html: string; isActive: boolean; content: C };
 
 export function TemplateEditor({ template }: { template: Tpl }) {
   const router = useRouter();
   const [subject, setSubject] = React.useState(template.subject);
   const [previewText, setPreviewText] = React.useState(template.previewText);
   const [c, setC] = React.useState<C>(template.content);
+  const [legal, setLegal] = React.useState<LegalCategory>(template.legalCategory as LegalCategory);
   const [isActive, setIsActive] = React.useState(template.isActive);
   const [device, setDevice] = React.useState<"desktop" | "mobile">("desktop");
   const [saving, setSaving] = React.useState(false);
@@ -55,7 +57,7 @@ export function TemplateEditor({ template }: { template: Tpl }) {
 
   const save = async () => {
     setSaving(true);
-    const res = await updateTemplate(template.slug, { subject, preview_text: previewText, content: c, is_active: isActive });
+    const res = await updateTemplate(template.slug, { subject, preview_text: previewText, content: c, is_active: isActive, legal_category: legal });
     setSaving(false);
     if (res.error) { toast.error(res.error); return; }
     toast.success("Шаблон сохранён");
@@ -65,7 +67,7 @@ export function TemplateEditor({ template }: { template: Tpl }) {
     if (!testEmail.trim()) return;
     setSending(true);
     // сохраняем перед тестом, чтобы письмо ушло с текущими правками
-    await updateTemplate(template.slug, { subject, preview_text: previewText, content: c, is_active: isActive });
+    await updateTemplate(template.slug, { subject, preview_text: previewText, content: c, is_active: isActive, legal_category: legal });
     const res = await testSendTemplate(template.slug, testEmail.trim());
     setSending(false);
     if (res.error) { toast.error(res.error); return; }
@@ -90,6 +92,25 @@ export function TemplateEditor({ template }: { template: Tpl }) {
           <Switch checked={isActive} onChange={setIsActive} label="Активен" />
           <Field label="Тема письма"><TextInput value={subject} onChange={(e) => setSubject(e.target.value)} /></Field>
           <Field label="Превью-текст" hint="Виден в почтовике под темой"><TextInput value={previewText} onChange={(e) => setPreviewText(e.target.value)} /></Field>
+
+          <div>
+            <p className="mb-1.5 text-[13px] font-medium text-ink">Юридическая категория</p>
+            <div className="space-y-1.5">
+              {(["transactional", "service", "marketing"] as LegalCategory[]).map((k) => (
+                <label key={k} className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border px-3 py-2 text-[13px] has-[:checked]:border-ink has-[:checked]:bg-surface">
+                  <input type="radio" name="legal" checked={legal === k} onChange={() => setLegal(k)} className="mt-0.5 size-4 accent-[var(--color-ink)]" />
+                  <span>
+                    <span className="flex items-center gap-1.5 font-medium text-ink"><span className="inline-block size-2 rounded-full" style={{ backgroundColor: legalColor(k) }} />{LEGAL_LABEL[k]}</span>
+                    <span className="mt-0.5 block text-[12px] leading-snug text-ink-muted">{LEGAL_HINT[k]}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {legal !== template.legalCategory ? (
+              <p className="mt-2 rounded-lg border border-sale/25 bg-sale/5 px-3 py-2 text-[12px] leading-snug text-sale">{LEGAL_WARNING}</p>
+            ) : null}
+          </div>
+
           <div className="h-px bg-border/60" />
           <Field label="Заголовок"><TextInput value={c.heading} onChange={(e) => set("heading", e.target.value)} /></Field>
           <Field label="Текст" hint="Каждая строка — отдельный абзац. {{customer.first_name}} подставит имя."><Textarea rows={5} value={c.body} onChange={(e) => set("body", e.target.value)} /></Field>

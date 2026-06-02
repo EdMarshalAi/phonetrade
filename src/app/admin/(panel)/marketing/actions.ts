@@ -66,7 +66,7 @@ export async function testSendTemplate(slug: string, email: string): Promise<{ o
 /** Сохранить редактируемые поля шаблона. */
 export async function updateTemplate(
   slug: string,
-  patch: { subject?: string; preview_text?: string; content?: Record<string, string>; is_active?: boolean }
+  patch: { subject?: string; preview_text?: string; content?: Record<string, string>; is_active?: boolean; legal_category?: string }
 ): Promise<{ error?: string }> {
   const admin = await requireAdmin([...STAFF]);
   try {
@@ -76,6 +76,7 @@ export async function updateTemplate(
     if (patch.preview_text !== undefined) row.preview_text = patch.preview_text.trim() || null;
     if (patch.content !== undefined) row.content = patch.content;
     if (patch.is_active !== undefined) row.is_active = patch.is_active;
+    if (patch.legal_category !== undefined) row.legal_category = patch.legal_category;
     const { error } = await db.from("email_templates").update(row).eq("slug", slug);
     if (error) return { error: error.message };
     revalidatePath("/admin/marketing/templates");
