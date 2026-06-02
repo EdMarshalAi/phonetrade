@@ -17,7 +17,7 @@ export async function setOrderStatus(
   comment?: string
 ): Promise<{ error?: string }> {
   const db = createSupabaseAdminClient();
-  const { data: order } = await db.from("orders").select("status,order_number,customer_name,customer_email,phone,total").eq("id", id).maybeSingle();
+  const { data: order } = await db.from("orders").select("status,order_number,customer_id,customer_name,customer_email,phone,total").eq("id", id).maybeSingle();
   if (!order) return { error: "Заказ не найден" };
 
   // Менеджер может выставить ЛЮБОЙ статус из настроенного списка (без жёсткой
@@ -82,6 +82,31 @@ export async function setOrderStatus(
       await sendMail({ to: order.customer_email, subject: mail.subject, html: mail.html, text: mail.text });
     } catch (e) {
       console.error("[setOrderStatus] customer email:", e);
+    }
+  }
+
+  // При доставке — отложенные триггеры: запрос отзыва (+7д) и cross-sell для
+  // покупателей iPhone (+5д). Шлются при согласии на маркетинг (проверит очередь).
+  if (toStatus === "delivered" && order.customer_email) {
+    try {
+      const { enqueueTrigger } = await import("@/lib/email/queue");
+      const firstName = (order.customer_name ?? "").split(/\s+/)[0] || "";
+      const vars = { customer: { first_name: firstName, name: order.customer_name ?? "" } };
+      const now = Date.now();
+      await enqueueTrigger({ triggerSlug: "review_request", customerId: order.customer_id ?? null, recipientEmail: order.customer_email, variables: vars, scheduledAt: new Date(now + 7 * 86400_000), dedupKey: `review:${id}` });
+      // cross-sell только если в заказе есть iPhone (два простых запроса, без embed).
+      const { data: items } = await db.from("order_items").select("product_id").eq("order_id", id);
+      const ids = (items ?? []).map((i) => i.product_id).filter(Boolean) as string[];
+      let hasIphone = false;
+      if (ids.length) {
+        const { data: prods } = await db.from("products").select("id").in("id", ids).like("category_slug", "iphone%").limit(1);
+        hasIphone = (prods?.length ?? 0) > 0;
+      }
+      if (hasIphone) {
+        await enqueueTrigger({ triggerSlug: "cross_sell_iphone", customerId: order.customer_id ?? null, recipientEmail: order.customer_email, variables: vars, scheduledAt: new Date(now + 5 * 86400_000), dedupKey: `crosssell:${id}` });
+      }
+    } catch (e) {
+      console.error("[setOrderStatus] delivered triggers:", e);
     }
   }
   return {};

@@ -123,15 +123,31 @@ export async function registerStorefront(input: {
     }
 
     // Единый реестр «Клиенты»: регистрация = клиент (связь по user_id).
+    let customerId: string | null = null;
     try {
-      await db.rpc("upsert_customer", {
+      const { data: cid } = await db.rpc("upsert_customer", {
         p_phone: input.phone,
         p_name: input.name.trim(),
         p_email: input.email?.trim() || null,
         p_user_id: created.data.user.id,
       });
+      customerId = typeof cid === "string" ? cid : null;
     } catch (e) {
       console.error("[registerStorefront] upsert_customer:", e);
+    }
+
+    // Welcome-серия: 2-е и 3-е письма откладываем в очередь (+2д / +5д). 1-е
+    // шлём синхронно ниже. Шлются только при согласии на маркетинг (проверяет
+    // процессор очереди). dedup_key — чтобы не задвоить при повторной отправке.
+    try {
+      const { enqueueTrigger } = await import("@/lib/email/queue");
+      const firstName = input.name.trim().split(/\s+/)[0] || "";
+      const vars = { customer: { first_name: firstName, name: input.name.trim() } };
+      const now = Date.now();
+      await enqueueTrigger({ triggerSlug: "welcome_2", customerId, recipientEmail: emailTrim, variables: vars, scheduledAt: new Date(now + 2 * 86400_000), dedupKey: `welcome:${created.data.user.id}:2` });
+      await enqueueTrigger({ triggerSlug: "welcome_3", customerId, recipientEmail: emailTrim, variables: vars, scheduledAt: new Date(now + 5 * 86400_000), dedupKey: `welcome:${created.data.user.id}:3` });
+    } catch (e) {
+      console.error("[registerStorefront] welcome queue:", e);
     }
 
     // Уведомление в Telegram/Email о новой регистрации (best-effort, не роняет регистрацию).
