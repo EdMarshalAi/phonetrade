@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import { IMaskInput } from "react-imask";
 import { useAuth, normalizePhone, type AuthUser } from "@/components/providers/AuthProvider";
 import { cn } from "@/lib/utils/cn";
 
@@ -198,10 +199,11 @@ export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | nul
                   id="auth-phone"
                   label="Телефон"
                   required
+                  mask
                   type="tel"
                   inputMode="tel"
                   autoComplete="tel"
-                  placeholder="+7 ___ ___-__-__"
+                  placeholder="+7 (___) ___-__-__"
                   value={phone}
                   onChange={setPhone}
                 />
@@ -313,6 +315,7 @@ function AuthField({
   type = "text",
   inputMode,
   autoComplete,
+  mask,
 }: {
   id: string;
   label: string;
@@ -324,7 +327,9 @@ function AuthField({
   type?: string;
   inputMode?: "text" | "tel" | "email" | "numeric";
   autoComplete?: string;
+  mask?: boolean;
 }) {
+  const cls = "w-full h-12 px-4 rounded-xl bg-surface text-[15px] text-ink placeholder:text-ink-subtle outline-none focus:bg-white focus:ring-2 focus:ring-ink/15 transition-colors";
   return (
     <label htmlFor={id} className="block">
       <span className="flex items-center justify-between text-[11px] uppercase tracking-[0.14em] text-ink-subtle mb-1.5">
@@ -334,16 +339,30 @@ function AuthField({
         </span>
         {optional && <span className="normal-case tracking-normal">необязательно</span>}
       </span>
-      <input
-        id={id}
-        type={type}
-        inputMode={inputMode}
-        autoComplete={autoComplete}
-        placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full h-12 px-4 rounded-xl bg-surface text-[15px] text-ink placeholder:text-ink-subtle outline-none focus:bg-white focus:ring-2 focus:ring-ink/15 transition-colors"
-      />
+      {mask ? (
+        <IMaskInput
+          id={id}
+          mask="+7 (000) 000-00-00"
+          type="tel"
+          inputMode="tel"
+          autoComplete={autoComplete}
+          placeholder={placeholder}
+          value={value}
+          onAccept={(v) => onChange(v as string)}
+          className={cls}
+        />
+      ) : (
+        <input
+          id={id}
+          type={type}
+          inputMode={inputMode}
+          autoComplete={autoComplete}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={cls}
+        />
+      )}
     </label>
   );
 }

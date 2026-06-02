@@ -4,9 +4,9 @@ import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { notifyTelegram } from "@/lib/admin/telegram";
 import { issueLabel, type DeviceCategoryKey } from "@/lib/repair/devices";
+import { normalizePhone as normalizeRuPhone } from "@/lib/validation/phone";
 
 const CONSENT_VERSION = "2026-01-15-v1";
-const digits = (s: string) => s.replace(/\D/g, "");
 
 export type RepairInput = {
   device: string;        // напр. "iPhone 13 Pro" или свободный ввод
@@ -24,7 +24,8 @@ export type RepairResult = { ok?: boolean; error?: string };
 export async function submitRepairRequest(input: RepairInput): Promise<RepairResult> {
   if (!input.device?.trim()) return { error: "Выберите устройство" };
   if (!input.name.trim()) return { error: "Укажите имя" };
-  if (digits(input.phone).length < 11) return { error: "Укажите корректный телефон" };
+  const phone = normalizeRuPhone(input.phone);
+  if (!phone) return { error: "Укажите корректный мобильный номер РФ: +7 (9XX) XXX-XX-XX" };
   if (!input.issues.length && !input.comment?.trim()) return { error: "Выберите, что нужно починить" };
 
   const db = createSupabaseAdminClient();
@@ -37,14 +38,13 @@ export async function submitRepairRequest(input: RepairInput): Promise<RepairRes
     ua = h.get("user-agent") || null;
   } catch { /* ignore */ }
 
-  const phone = digits(input.phone);
   const email = input.email?.trim() || null;
   const issuesText = input.issues.map((k) => issueLabel(input.category as DeviceCategoryKey, k)).join(", ") || "—";
 
   // Единый реестр клиентов.
   let customerId: string | null = null;
   try {
-    const { data: cid } = await db.rpc("upsert_customer", { p_phone: input.phone, p_name: input.name.trim(), p_email: email });
+    const { data: cid } = await db.rpc("upsert_customer", { p_phone: phone, p_name: input.name.trim(), p_email: email });
     customerId = typeof cid === "string" ? cid : null;
   } catch { /* ignore */ }
 

@@ -7,6 +7,7 @@ import { phoneToEmail } from "@/lib/auth/phone-email";
 import { notifyTelegram } from "@/lib/admin/telegram";
 import { sendMail } from "@/lib/admin/mailer";
 import { welcomeEmail } from "@/lib/email/templates";
+import { normalizePhone } from "@/lib/validation/phone";
 
 const CONSENT_VERSION = "2026-01-15-v1";
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -51,7 +52,11 @@ export async function updateStorefrontProfile(patch: {
 
   const row: Record<string, string | null> = {};
   if (patch.name !== undefined) row.name = patch.name.trim();
-  if (patch.phone !== undefined) row.phone = patch.phone.trim();
+  if (patch.phone !== undefined) {
+    const n = normalizePhone(patch.phone);
+    if (!n) return { error: "Укажите корректный мобильный номер РФ: +7 (9XX) XXX-XX-XX" };
+    row.phone = n;
+  }
   if (patch.email !== undefined) row.email = patch.email.trim() || null;
   if (patch.address !== undefined) row.address = patch.address.trim() || null;
   if (Object.keys(row).length === 0) return {};
@@ -87,8 +92,8 @@ export async function registerStorefront(input: {
   email?: string;
   consentMarketing?: boolean;
 }): Promise<{ error?: string }> {
-  const digits = input.phone.replace(/\D/g, "");
-  if (digits.length < 11) return { error: "Укажите корректный номер телефона" };
+  const ruPhone = normalizePhone(input.phone);
+  if (!ruPhone) return { error: "Укажите корректный мобильный номер РФ: +7 (9XX) XXX-XX-XX" };
   if (!input.name.trim()) return { error: "Укажите имя" };
   // Email обязателен — нужен для восстановления пароля и писем покупателю.
   const emailTrim = input.email?.trim() || "";
@@ -98,7 +103,7 @@ export async function registerStorefront(input: {
   const db = createSupabaseAdminClient();
   try {
     const created = await db.auth.admin.createUser({
-      email: phoneToEmail(input.phone),
+      email: phoneToEmail(ruPhone),
       password: input.password,
       email_confirm: true,
       user_metadata: { name: input.name.trim(), phone: input.phone.trim() },
@@ -112,7 +117,7 @@ export async function registerStorefront(input: {
       {
         id: created.data.user.id,
         name: input.name.trim(),
-        phone: input.phone.trim(),
+        phone: ruPhone,
         email: input.email?.trim() || null,
       },
       { onConflict: "id" }
@@ -126,7 +131,7 @@ export async function registerStorefront(input: {
     let customerId: string | null = null;
     try {
       const { data: cid } = await db.rpc("upsert_customer", {
-        p_phone: input.phone,
+        p_phone: ruPhone,
         p_name: input.name.trim(),
         p_email: input.email?.trim() || null,
         p_user_id: created.data.user.id,

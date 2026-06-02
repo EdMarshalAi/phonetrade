@@ -5,6 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getStorefrontUser } from "@/lib/auth/server-user";
 import { notifyTelegram } from "@/lib/admin/telegram";
 import { EXTERNAL_LABELS, BATTERY_LABELS, KIT_LABELS, type TradeInModel } from "@/lib/trade-in/options";
+import { normalizePhone as normalizeRuPhone } from "@/lib/validation/phone";
 
 const icloudLabel = (v: string) => (v === "unlinked" ? "Отвязан" : v === "linked" ? "Привязан" : v);
 
@@ -97,7 +98,8 @@ export async function submitTradeInQuiz(input: QuizInput): Promise<QuizResult> {
   }
   const result = calc as { final_price: number; coefficients: Record<string, number> };
 
-  const phone = digits(input.phone);
+  const phone = normalizeRuPhone(input.phone);
+  if (!phone) return { error: "Укажите корректный мобильный номер РФ: +7 (9XX) XXX-XX-XX" };
   const email = input.email?.trim() || null;
 
   // Клиент в едином реестре: создаём по телефону, если ещё нет (любой, кто
@@ -105,7 +107,7 @@ export async function submitTradeInQuiz(input: QuizInput): Promise<QuizResult> {
   let customerId: string | null = null;
   try {
     const { data: cid } = await db.rpc("upsert_customer", {
-      p_phone: input.phone, p_name: input.name.trim(), p_email: email,
+      p_phone: phone, p_name: input.name.trim(), p_email: email,
     });
     customerId = (typeof cid === "string" ? cid : null);
   } catch { /* ignore */ }

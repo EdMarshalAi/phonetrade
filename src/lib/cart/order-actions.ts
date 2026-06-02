@@ -7,6 +7,7 @@ import { notifyTelegram } from "@/lib/admin/telegram";
 import { sendMail } from "@/lib/admin/mailer";
 import { orderConfirmationEmail } from "@/lib/email/templates";
 import { clientIp, rateLimited } from "@/lib/utils/rate-limit";
+import { normalizePhone as normalizeRuPhone } from "@/lib/validation/phone";
 
 const CONSENT_VERSION = "2026-01-15-v1";
 
@@ -60,6 +61,10 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     return { error: "Слишком много заказов подряд. Попробуйте через несколько минут." };
   }
 
+  // Телефон РФ: нормализуем и отклоняем мусор/городские/иностранные.
+  const ruPhone = normalizeRuPhone(input.phone);
+  if (!ruPhone) return { error: "Укажите корректный мобильный номер РФ: +7 (9XX) XXX-XX-XX" };
+
   try {
     const year = new Date().getFullYear();
     const orderId = crypto.randomUUID();
@@ -95,7 +100,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     let customerId: string | null = null;
     try {
       const { data: cid } = await db.rpc("upsert_customer", {
-        p_phone: input.phone,
+        p_phone: ruPhone,
         p_name: input.name,
         p_email: input.email ?? null,
         p_user_id: userId,
@@ -115,7 +120,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       customer_type: input.customerType,
       customer_name: input.name,
       customer_email: input.email ?? null,
-      phone: phoneDigits,
+      phone: ruPhone,
       delivery_method: input.deliveryMethod,
       delivery_address: input.deliveryAddress ?? null,
       delivery_cost: input.deliveryMethod === "courier" ? 0 : 0,
