@@ -12,6 +12,11 @@ import {
   Newspaper,
   FileText,
   Ticket,
+  Megaphone,
+  Send,
+  Zap,
+  LayoutTemplate,
+  Mail,
   Users,
   Store,
   Menu,
@@ -83,6 +88,17 @@ export const ADMIN_NAV: NavGroup[] = [
     label: "Промо",
     items: [
       { label: "Промокоды", href: "/admin/promotions/promo-codes", icon: Ticket, roles: STAFF },
+    ],
+  },
+  {
+    label: "Рассылки",
+    items: [
+      { label: "Обзор", href: "/admin/marketing/overview", icon: Megaphone, roles: STAFF },
+      { label: "Кампании", href: "/admin/marketing/campaigns", icon: Send, roles: STAFF },
+      { label: "Триггеры", href: "/admin/marketing/triggers", icon: Zap, roles: STAFF },
+      { label: "Шаблоны", href: "/admin/marketing/templates", icon: LayoutTemplate, roles: STAFF },
+      { label: "Подписчики", href: "/admin/marketing/subscribers", icon: Mail, roles: STAFF },
+      { label: "Аналитика", href: "/admin/marketing/analytics", icon: BarChart3, roles: STAFF },
     ],
   },
   {
