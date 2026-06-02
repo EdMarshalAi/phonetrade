@@ -1,6 +1,8 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getEmailSender, type EmailSender } from "./sender";
 import { renderTemplate, addUtm } from "./render";
+import { applyContent, type TemplateContent } from "./content";
+import { getFeaturedCardsHtml } from "./featured";
 
 /**
  * Обработчик очереди писем (docs/email-marketing.md §10.1). Дёргается cron-ом
@@ -54,7 +56,7 @@ export async function processEmailQueue(limit = 25): Promise<{ processed: number
   for (const item of pending as QueueRow[]) {
     await db.from("email_queue").update({ status: "processing" }).eq("id", item.id);
     try {
-      const { data: tpl } = await db.from("email_templates").select("slug,category,subject,html_content,text_content,is_active").eq("id", item.template_id).maybeSingle();
+      const { data: tpl } = await db.from("email_templates").select("slug,category,subject,html_content,text_content,content,is_active").eq("id", item.template_id).maybeSingle();
       if (!tpl || tpl.is_active === false) { await cancel(db, item.id, "Шаблон не найден/выключен"); continue; }
 
       const isMarketing = tpl.category === "marketing" || tpl.category === "trigger";
@@ -74,9 +76,12 @@ export async function processEmailQueue(limit = 25): Promise<{ processed: number
         if (underCap === false) { await reschedule(db, item.id, addHours(now, 24)); continue; }
       }
 
-      const vars = { ...(item.variables ?? {}), unsubscribe_url: `${SITE}/unsubscribe${item.customer_id ? `?c=${item.customer_id}` : ""}` };
-      const subject = renderTemplate(tpl.subject, vars);
-      const html = addUtm(renderTemplate(tpl.html_content, vars), tpl.slug);
+      // Слой контента ({{c.*}}) → витрина товаров ({{products}}) → рантайм-переменные.
+      const contentHtml = applyContent(tpl.html_content, (tpl.content ?? {}) as TemplateContent);
+      const vars: Record<string, unknown> = { ...(item.variables ?? {}), unsubscribe_url: `${SITE}/unsubscribe${item.customer_id ? `?c=${item.customer_id}` : ""}` };
+      if (contentHtml.includes("{{products}}")) vars.products = await getFeaturedCardsHtml({ categoryPrefix: "iphone", limit: 4 });
+      const subject = renderTemplate(applyContent(tpl.subject, (tpl.content ?? {}) as TemplateContent), vars);
+      const html = addUtm(renderTemplate(contentHtml, vars), tpl.slug);
       const text = tpl.text_content ? renderTemplate(tpl.text_content, vars) : undefined;
 
       const { data: log } = await db.from("email_sends_log").insert({

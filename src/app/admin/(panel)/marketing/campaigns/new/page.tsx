@@ -17,12 +17,13 @@ export default async function NewCampaignPage() {
 
   const { data: tpls } = await db
     .from("email_templates")
-    .select("slug,name,subject,html_content,thumbnail_url")
+    .select("slug,name,subject,html_content,thumbnail_url,content")
     .eq("category", "marketing")
     .eq("is_active", true)
     .order("name");
   const templates: WizardTemplate[] = (tpls ?? []).map((t) => ({
     slug: t.slug, name: t.name, subject: t.subject, html: t.html_content, thumbnail: t.thumbnail_url ?? null,
+    header: ((t.content ?? {}) as { header_image?: string }).header_image ?? "",
   }));
 
   return (

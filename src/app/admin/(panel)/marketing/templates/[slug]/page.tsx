@@ -8,15 +8,20 @@ export const metadata: Metadata = { title: "Шаблон письма" };
 export default async function TemplatePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const db = createSupabaseAdminClient();
-  const { data } = await db.from("email_templates").select("slug,name,category,subject,preview_text,html_content,variables,is_active").eq("slug", slug).maybeSingle();
+  const { data } = await db.from("email_templates").select("slug,name,category,subject,preview_text,html_content,content,is_active").eq("slug", slug).maybeSingle();
   if (!data) notFound();
+  const c = (data.content ?? {}) as Record<string, string>;
 
   return (
     <TemplateEditor
       template={{
         slug: data.slug, name: data.name, category: data.category,
         subject: data.subject, previewText: data.preview_text ?? "",
-        html: data.html_content, variables: (data.variables ?? []) as string[], isActive: data.is_active,
+        html: data.html_content, isActive: data.is_active,
+        content: {
+          heading: c.heading ?? "", body: c.body ?? "", cta_text: c.cta_text ?? "",
+          cta_url: c.cta_url ?? "", header_image: c.header_image ?? "",
+        },
       }}
     />
   );

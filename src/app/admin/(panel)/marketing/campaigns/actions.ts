@@ -5,6 +5,8 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendMail } from "@/lib/admin/mailer";
 import { renderTemplate, addUtm } from "@/lib/email/render";
+import { applyContent, type TemplateContent } from "@/lib/email/content";
+import { getFeaturedCardsHtml } from "@/lib/email/featured";
 import { getSegmentSize } from "@/lib/email/queue";
 import { sendCampaignNow } from "@/lib/email/send-campaign";
 
@@ -29,12 +31,13 @@ export async function getSegmentSizeAction(slug: string): Promise<number> {
   return getSegmentSize(slug);
 }
 
-function buildVars(input: { subjectOverride?: string; previewOverride?: string; overrides?: Record<string, string> }, customer: { first_name: string; name: string }) {
-  return {
-    campaign: { ...(input.overrides ?? {}), subject: input.subjectOverride ?? "", preview: input.previewOverride ?? "" },
-    customer,
-    unsubscribe_url: `${SITE}/unsubscribe?token=demo`,
-  };
+function mergeContent(base: TemplateContent, overrides?: Record<string, string>): TemplateContent {
+  const o: Record<string, string> = {};
+  for (const k of ["heading", "body", "cta_text", "cta_url", "header_image"]) {
+    const v = overrides?.[k];
+    if (typeof v === "string" && v.trim()) o[k] = v;
+  }
+  return { ...base, ...o };
 }
 
 /** Тест-отправка кампании (с текущими настройками) на email. */
@@ -44,12 +47,18 @@ export async function testCampaign(input: CampaignInput & { email: string }): Pr
   if (!EMAIL_RE.test(to)) return { error: "Укажите корректный e-mail" };
   try {
     const db = createSupabaseAdminClient();
-    const { data: tpl } = await db.from("email_templates").select("subject,html_content,text_content").eq("slug", input.templateSlug).maybeSingle();
+    const { data: tpl } = await db.from("email_templates").select("subject,html_content,text_content,content").eq("slug", input.templateSlug).maybeSingle();
     if (!tpl) return { error: "Шаблон не найден" };
-    const vars = buildVars(input, { first_name: "Денис", name: "Денис Астахов" });
-    const subjectTpl = input.subjectOverride || tpl.subject;
-    const subject = `[ТЕСТ] ${renderTemplate(subjectTpl, vars)}`;
-    const html = addUtm(renderTemplate(tpl.html_content, vars), `campaign:${input.templateSlug}`);
+    const content = mergeContent((tpl.content ?? {}) as TemplateContent, input.overrides);
+    const contentHtml = applyContent(tpl.html_content, content);
+    const vars: Record<string, unknown> = {
+      customer: { first_name: "Денис", name: "Денис Астахов" },
+      products: contentHtml.includes("{{products}}") ? await getFeaturedCardsHtml({ categoryPrefix: "iphone", limit: 4 }) : "",
+      unsubscribe_url: `${SITE}/unsubscribe?token=demo`,
+    };
+    const subjectRaw = input.subjectOverride || tpl.subject;
+    const subject = `[ТЕСТ] ${renderTemplate(applyContent(subjectRaw, content), vars)}`;
+    const html = addUtm(renderTemplate(contentHtml, vars), `campaign:${input.templateSlug}`);
     const text = tpl.text_content ? renderTemplate(tpl.text_content, vars) : undefined;
     const res = await sendMail({ to, subject, html, text });
     if (!res.ok) return { error: res.error || "Не удалось отправить" };

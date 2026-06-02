@@ -18,7 +18,7 @@ export default async function TemplatesPage() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {rows.map((t) => (
           <Link key={t.slug} href={`/admin/marketing/templates/${t.slug}`} className="group rounded-2xl border border-border/60 bg-white p-3 shadow-[0_1px_3px_rgba(29,29,31,0.04)] transition-colors hover:border-ink/20">
-            <div className="mb-3 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-surface">
+            <div className="mb-3 flex aspect-[16/9] items-center justify-center overflow-hidden rounded-xl bg-surface">
               {t.thumbnail_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={t.thumbnail_url} alt="" className="h-full w-full object-cover" />

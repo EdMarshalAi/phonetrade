@@ -21,14 +21,17 @@ export default async function MarketingOverview() {
   const db = createSupabaseAdminClient();
   const since = daysAgoISO(30);
 
-  const [subs, sentRes, openedRes, clickedRes, triggers, campaigns] = await Promise.all([
+  const [subs, sentRes, openedRes, clickedRes, triggers, campaigns, recent] = await Promise.all([
     db.from("segment_all_subscribers").select("id", { count: "exact", head: true }),
     db.from("email_sends_log").select("id", { count: "exact", head: true }).gte("created_at", since).in("status", ["sent", "delivered", "opened", "clicked"]),
     db.from("email_sends_log").select("id", { count: "exact", head: true }).gte("created_at", since).in("status", ["opened", "clicked"]),
     db.from("email_sends_log").select("id", { count: "exact", head: true }).gte("created_at", since).eq("status", "clicked"),
     db.from("email_triggers").select("slug,name,description,is_active").order("step_in_chain"),
     db.from("email_campaigns").select("id,name,status,recipient_count,sent_at").order("created_at", { ascending: false }).limit(5),
+    db.from("email_sends_log").select("recipient_email,subject,status,created_at").order("created_at", { ascending: false }).limit(12),
   ]);
+  const recentSends = (recent.data ?? []) as { recipient_email: string; subject: string; status: string; created_at: string }[];
+  const STATUS_LABEL: Record<string, string> = { sent: "Отправлено", delivered: "Доставлено", opened: "Открыто", clicked: "Клик", bounced: "Отказ", failed: "Ошибка", queued: "В очереди", sending: "Отправка" };
 
   const subsN = subs.count ?? 0;
   const sentN = sentRes.count ?? 0;
@@ -100,6 +103,26 @@ export default async function MarketingOverview() {
           )}
         </section>
       </div>
+
+      <section className="mt-8 rounded-2xl border border-border/60 bg-white p-5">
+        <h2 className="mb-3 text-[15px] font-semibold text-ink">Последние отправки</h2>
+        {recentSends.length === 0 ? (
+          <p className="py-4 text-center text-[13px] text-ink-muted">Писем пока не отправлялось.</p>
+        ) : (
+          <table className="w-full text-[13px]">
+            <tbody className="divide-y divide-border/60">
+              {recentSends.map((r, i) => (
+                <tr key={i}>
+                  <td className="py-2 pr-3 text-ink-muted">{r.recipient_email}</td>
+                  <td className="py-2 pr-3 font-medium text-ink">{r.subject}</td>
+                  <td className="py-2 pr-3 text-ink-muted">{STATUS_LABEL[r.status] ?? r.status}</td>
+                  <td className="whitespace-nowrap py-2 text-right text-ink-subtle">{new Date(r.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
     </>
   );
 }

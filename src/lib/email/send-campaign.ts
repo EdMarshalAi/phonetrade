@@ -1,7 +1,18 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getEmailSender, type SendOptions } from "./sender";
 import { renderTemplate, addUtm } from "./render";
+import { applyContent, type TemplateContent } from "./content";
+import { getFeaturedCardsHtml } from "./featured";
 import { getSegmentRecipients } from "./queue";
+
+function mergeContent(base: TemplateContent, overrides: Record<string, unknown>): TemplateContent {
+  const o: Record<string, string> = {};
+  for (const k of ["heading", "body", "cta_text", "cta_url", "header_image"]) {
+    const v = overrides[k];
+    if (typeof v === "string" && v.trim()) o[k] = v;
+  }
+  return { ...base, ...o };
+}
 
 /**
  * Отправка ручной кампании по сегменту (docs/email-marketing.md §7.3). Рендерит
@@ -24,14 +35,19 @@ export async function sendCampaignNow(campaignId: string): Promise<{ sent: numbe
   if (!c) return { sent: 0, failed: 0, total: 0, error: "Кампания не найдена" };
   if (c.status === "sent" || c.status === "sending") return { sent: 0, failed: 0, total: 0, error: "Кампания уже отправляется/отправлена" };
 
-  const { data: tpl } = await db.from("email_templates").select("slug,subject,html_content,text_content").eq("id", c.template_id).maybeSingle();
+  const { data: tpl } = await db.from("email_templates").select("slug,subject,html_content,text_content,content").eq("id", c.template_id).maybeSingle();
   if (!tpl) return { sent: 0, failed: 0, total: 0, error: "Шаблон не найден" };
 
   await db.from("email_campaigns").update({ status: "sending", updated_at: new Date().toISOString() }).eq("id", campaignId);
 
   const recipients = (await getSegmentRecipients(c.segment_slug ?? "all")).slice(0, MAX_RECIPIENTS);
-  const overrides = (c.content_overrides ?? {}) as Record<string, unknown>;
-  const subjectTpl = (c.subject_override as string) || tpl.subject;
+
+  // Контент кампании (overrides поверх дефолта шаблона) → витрина товаров.
+  const content = mergeContent((tpl.content ?? {}) as TemplateContent, (c.content_overrides ?? {}) as Record<string, unknown>);
+  const contentHtml = applyContent(tpl.html_content, content);
+  const featured = contentHtml.includes("{{products}}") ? await getFeaturedCardsHtml({ categoryPrefix: "iphone", limit: 4 }) : "";
+  const subjectRaw = (c.subject_override as string) || tpl.subject;
+  const subjectContent = applyContent(subjectRaw, content);
 
   const options: SendOptions[] = [];
   const meta: { customerId: string; email: string; subject: string; html: string }[] = [];
@@ -39,12 +55,12 @@ export async function sendCampaignNow(campaignId: string): Promise<{ sent: numbe
     if (!r.email) continue;
     const firstName = (r.name ?? "").split(/\s+/)[0] || "";
     const vars = {
-      campaign: { ...overrides, subject: subjectTpl, preview: (c.preview_text_override as string) || "" },
+      products: featured,
       customer: { first_name: firstName, name: r.name ?? "" },
       unsubscribe_url: `${SITE}/unsubscribe?c=${r.id}`,
     };
-    const subject = renderTemplate(subjectTpl, vars);
-    const html = addUtm(renderTemplate(tpl.html_content, vars), `campaign:${tpl.slug}`);
+    const subject = renderTemplate(subjectContent, vars);
+    const html = addUtm(renderTemplate(contentHtml, vars), `campaign:${tpl.slug}`);
     options.push({ to: r.email, subject, html, text: tpl.text_content ? renderTemplate(tpl.text_content, vars) : undefined });
     meta.push({ customerId: r.id, email: r.email, subject, html });
   }
