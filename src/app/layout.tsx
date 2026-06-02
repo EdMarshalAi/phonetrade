@@ -10,6 +10,10 @@ const inter = Inter({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru";
 
+// OG-превью для соцсетей — фото магазина со страницы «О компании».
+const OG_IMAGE =
+  "https://giwehapapi.beget.app/storage/v1/object/public/product-images/content/store-belgorod.jpg";
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
@@ -32,12 +36,16 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ru_RU",
     siteName: "PhoneTrade",
-    // og:image — из файловой конвенции src/app/opengraph-image.tsx (баннер 1200×630).
+    // Реальное фото магазина (страница «О компании») — лучше заходит в соцсетях
+    // (Telegram/ВК), чем сгенерированный баннер. Ссылаемся явно, иначе тег
+    // og:image не подхватывается из-за route-группы (site).
+    images: [{ url: OG_IMAGE, width: 1400, height: 1400, alt: "PhoneTrade — магазин техники Apple в Белгороде, ул. Попова, 36" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "PhoneTrade — Магазин техники Apple в Белгороде",
     description: "Оригинальная техника Apple с гарантией, Trade-in и сервисом. Белгород, ул. Попова, 36.",
+    images: [OG_IMAGE],
   },
 };
 
