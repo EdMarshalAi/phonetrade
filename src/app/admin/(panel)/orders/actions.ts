@@ -5,6 +5,8 @@ import { adminMutation } from "@/lib/admin/mutations";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getAdminUser } from "@/lib/admin/auth";
 import { notifyTelegram } from "@/lib/admin/telegram";
+import { sendMail } from "@/lib/admin/mailer";
+import { orderStatusEmail } from "@/lib/email/templates";
 import { getOrderStatusConfig } from "@/lib/orders/status-config";
 
 const STAFF = ["admin", "manager"] as const;
@@ -15,7 +17,7 @@ export async function setOrderStatus(
   comment?: string
 ): Promise<{ error?: string }> {
   const db = createSupabaseAdminClient();
-  const { data: order } = await db.from("orders").select("status,order_number,customer_name,phone,total").eq("id", id).maybeSingle();
+  const { data: order } = await db.from("orders").select("status,order_number,customer_name,customer_email,phone,total").eq("id", id).maybeSingle();
   if (!order) return { error: "Заказ не найден" };
 
   // Менеджер может выставить ЛЮБОЙ статус из настроенного списка (без жёсткой
@@ -65,6 +67,22 @@ export async function setOrderStatus(
         `💰 ${(order.total ?? 0).toLocaleString("ru-RU")} ₽\n` +
         `\n👉 <a href="${adminBase}/admin/orders/${id}">Открыть заказ в админке</a>`
     );
+  }
+
+  // Письмо покупателю о новом статусе (если есть email; best-effort).
+  if (order.customer_email) {
+    try {
+      const st = statuses.find((s) => s.key === toStatus);
+      const mail = orderStatusEmail({
+        name: order.customer_name ?? "",
+        orderNumber: order.order_number ?? id,
+        statusLabel: st?.customerLabel || st?.label || toStatus,
+        statusColor: st?.color,
+      });
+      await sendMail({ to: order.customer_email, subject: mail.subject, html: mail.html, text: mail.text });
+    } catch (e) {
+      console.error("[setOrderStatus] customer email:", e);
+    }
   }
   return {};
 }

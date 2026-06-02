@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Loader2, Lock, Mail } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { loginSchema, type LoginInput } from "@/lib/admin/schemas";
@@ -100,6 +101,12 @@ export function LoginForm() {
         {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         {pending ? "Вход…" : "Войти"}
       </button>
+
+      <p className="text-center text-[13px] text-ink-muted">
+        <Link href="/admin/forgot" className="font-medium text-ink underline-offset-4 hover:underline">
+          Забыли пароль?
+        </Link>
+      </p>
     </form>
   );
 }

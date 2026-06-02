@@ -61,6 +61,10 @@ export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | nul
       setError("Пароль — минимум 6 символов");
       return;
     }
+    if (mode === "register" && !email.trim()) {
+      setError("Укажите e-mail — он нужен для восстановления пароля");
+      return;
+    }
     if (email.trim() && !EMAIL_RE.test(email.trim())) {
       setError("Проверьте формат e-mail");
       return;
@@ -205,7 +209,7 @@ export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | nul
                   <AuthField
                     id="auth-email"
                     label="E-mail"
-                    optional
+                    required
                     type="email"
                     inputMode="email"
                     autoComplete="email"
@@ -224,6 +228,14 @@ export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | nul
                   value={password}
                   onChange={setPassword}
                 />
+
+                {mode === "login" && (
+                  <div className="-mt-1 text-right">
+                    <Link href="/auth/forgot" className="text-[12.5px] text-ink-muted underline-offset-4 hover:text-ink hover:underline">
+                      Забыли пароль?
+                    </Link>
+                  </div>
+                )}
 
                 {mode === "register" && (
                   <div className="space-y-2 pt-1">

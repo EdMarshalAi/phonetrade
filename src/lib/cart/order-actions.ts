@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyTelegram } from "@/lib/admin/telegram";
+import { sendMail } from "@/lib/admin/mailer";
+import { orderConfirmationEmail } from "@/lib/email/templates";
 import { clientIp, rateLimited } from "@/lib/utils/rate-limit";
 
 const CONSENT_VERSION = "2026-01-15-v1";
@@ -250,6 +252,26 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       );
     } catch {
       // Не критично
+    }
+
+    // Письмо-подтверждение покупателю (если оставил email; best-effort).
+    if (input.email?.trim()) {
+      try {
+        const PAY: Record<string, string> = { sbp: "СБП", card: "Карта", on_delivery: "При получении", cash: "Наличные", installment: "Рассрочка", credit: "Кредит" };
+        const deliveryLabel = input.deliveryMethod === "courier" ? "Курьер по Белгороду" : "Самовывоз (ул. Попова, 36)";
+        const mail = orderConfirmationEmail({
+          name: input.name,
+          orderNumber,
+          items: input.items.map((i) => ({ title: i.title, qty: i.qty, price: i.priceCash })),
+          total: input.total,
+          paymentLabel: PAY[input.paymentMethod] ?? input.paymentMethod,
+          deliveryLabel,
+          address: input.deliveryAddress || undefined,
+        });
+        await sendMail({ to: input.email.trim(), subject: mail.subject, html: mail.html, text: mail.text });
+      } catch (e) {
+        console.error("[placeOrder] customer email:", e);
+      }
     }
 
     return { ok: true, orderNumber };

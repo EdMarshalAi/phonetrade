@@ -5,8 +5,11 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { phoneToEmail } from "@/lib/auth/phone-email";
 import { notifyTelegram } from "@/lib/admin/telegram";
+import { sendMail } from "@/lib/admin/mailer";
+import { welcomeEmail } from "@/lib/email/templates";
 
 const CONSENT_VERSION = "2026-01-15-v1";
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 /**
  * Телефон → email аккаунта для входа. Большинство покупателей входят по
@@ -87,6 +90,9 @@ export async function registerStorefront(input: {
   const digits = input.phone.replace(/\D/g, "");
   if (digits.length < 11) return { error: "Укажите корректный номер телефона" };
   if (!input.name.trim()) return { error: "Укажите имя" };
+  // Email обязателен — нужен для восстановления пароля и писем покупателю.
+  const emailTrim = input.email?.trim() || "";
+  if (!emailTrim || !EMAIL_RE.test(emailTrim)) return { error: "Укажите корректный e-mail" };
   if (input.password.length < 6) return { error: "Пароль — минимум 6 символов" };
 
   const db = createSupabaseAdminClient();
@@ -170,6 +176,14 @@ export async function registerStorefront(input: {
       await db.from("data_consents").insert(rows);
     } catch (e) {
       console.error("[registerStorefront] consents:", e);
+    }
+
+    // Приветственное письмо покупателю (best-effort, не роняет регистрацию).
+    try {
+      const w = welcomeEmail(input.name.trim());
+      await sendMail({ to: emailTrim, subject: w.subject, html: w.html, text: w.text });
+    } catch (e) {
+      console.error("[registerStorefront] welcome email:", e);
     }
     return {};
   } catch (e) {
