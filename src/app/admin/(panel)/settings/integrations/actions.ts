@@ -2,7 +2,7 @@
 
 import { adminMutation } from "@/lib/admin/mutations";
 
-/** Ключ интеграции: встроенные (telegram/metrika/yandex_maps/smtp) или кастомные `custom_*`. */
+/** Ключ интеграции: встроенные (telegram/metrika/smtp/openai) или кастомные `custom_*`. */
 export type IntegrationKey = string;
 
 export interface IntegrationRow {

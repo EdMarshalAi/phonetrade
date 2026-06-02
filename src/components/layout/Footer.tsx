@@ -12,11 +12,12 @@ const LEGAL = [
   { href: "/offer", label: "Публичная оферта" },
 ];
 
+// Виджет нашей организации в Яндекс.Бизнес (oid). Размеры — через контейнер
+// (width/height 100%), фиксированные 560×400 из кода Яндекса не используем.
 const MAP_SRC =
-  "https://yandex.ru/map-widget/v1/?ll=36.594843%2C50.595414&z=17&mode=search&text=%D0%91%D0%B5%D0%BB%D0%B3%D0%BE%D1%80%D0%BE%D0%B4%2C%20%D1%83%D0%BB.%20%D0%9F%D0%BE%D0%BF%D0%BE%D0%B2%D0%B0%2C%2036";
+  "https://yandex.ru/map-widget/v1/?z=16&ol=biz&oid=68859755553";
 
-const MAP_LINK =
-  "https://yandex.ru/maps/?text=%D0%91%D0%B5%D0%BB%D0%B3%D0%BE%D1%80%D0%BE%D0%B4%2C%20%D1%83%D0%BB.%20%D0%9F%D0%BE%D0%BF%D0%BE%D0%B2%D0%B0%2C%2036";
+const MAP_LINK = "https://yandex.ru/maps/org/68859755553";
 
 import type { ShopContacts, MenuLink } from "@/lib/content";
 
@@ -119,6 +120,17 @@ export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | nul
                 className="flex items-center gap-2.5"
                 itemClassName="inline-flex size-10 items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-onDark hover:text-white"
                 iconClassName="size-[15px]"
+              />
+
+              {/* Рейтинг организации из Яндекс.Бизнес (виджет, фикс. 150×50) */}
+              <iframe
+                src="https://yandex.ru/sprav/widget/rating-badge/68859755553?type=rating"
+                title="Рейтинг PhoneTrade на Яндекс.Картах"
+                width="150"
+                height="50"
+                loading="lazy"
+                className="block rounded-xl border-0 bg-white/95"
+                style={{ width: 150, height: 50 }}
               />
             </div>
           </div>

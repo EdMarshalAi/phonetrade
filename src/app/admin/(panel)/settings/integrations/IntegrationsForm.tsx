@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { BarChart3, Send, MapPin, Mail, Code2, Plus, Loader2, Trash2, X, Sparkles } from "lucide-react";
+import { BarChart3, Send, Mail, Code2, Plus, Loader2, Trash2, X, Sparkles } from "lucide-react";
 import { Field, TextInput, Textarea, Switch, Select, AdminButton } from "@/components/admin/form";
 import { cn } from "@/lib/utils/cn";
 import { saveIntegration, createCustomIntegration, deleteIntegration, type IntegrationRow } from "./actions";
@@ -19,8 +19,6 @@ const BUILTIN: Builtin[] = [
       { name: "bot_token", label: "Bot Token", type: "password", placeholder: "1234567890:AA…", hint: "Получите у @BotFather" },
       { name: "chat_ids", label: "Chat IDs", placeholder: "-1001234567890, -1009876543210", hint: "Через запятую" },
     ] },
-  { key: "yandex_maps", title: "Яндекс.Карты", desc: "Карта на странице контактов", icon: MapPin,
-    fields: [{ name: "api_key", label: "API-ключ", placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" }] },
   { key: "smtp", title: "SMTP (почта)", desc: "Отправка писем покупателям", icon: Mail,
     fields: [
       { name: "host", label: "Хост", placeholder: "smtp.yandex.ru" },
