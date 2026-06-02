@@ -61,8 +61,8 @@ function layout(t: Tpl): string {
 <tr><td style="padding:22px 30px;border-bottom:1px solid ${BORDER};">
 <span style="font-size:19px;font-weight:700;letter-spacing:-0.02em;color:${INK};">PhoneTrade</span>
 <span style="font-size:12px;color:${MUTED};"> · Apple в Белгороде</span></td></tr>
-<tr><td style="padding:0;background:#f5f5f7;text-align:center;border-bottom:1px solid ${BORDER};">
-<img src="${HEADER_BASE}${headerKey(t.slug)}.png" alt="" width="300" style="display:inline-block;width:300px;max-width:100%;height:auto;border:0;"></td></tr>
+<tr><td style="padding:0;border-bottom:1px solid ${BORDER};">
+<img src="${HEADER_BASE}${headerKey(t.slug)}.png?v=2" alt="" width="560" style="display:block;width:100%;max-width:560px;height:auto;border:0;"></td></tr>
 <tr><td style="padding:30px;">${t.body}</td></tr>
 <tr><td style="padding:20px 30px;border-top:1px solid ${BORDER};color:${MUTED};font-size:12px;line-height:1.6;">
 ${ADDRESS}<br>${PHONE} · <a href="${SITE}" style="color:${INK};text-decoration:none;">phonetrade31.ru</a>
@@ -280,7 +280,7 @@ async function seed() {
       slug: t.slug, name: t.name, category: t.category, subject: t.subject,
       preview_text: t.preview_text, html_content: html, text_content: toText(t.body),
       variables: t.variables, is_system: true, is_active: true,
-      thumbnail_url: `${HEADER_BASE}${headerKey(t.slug)}.png`, updated_at: new Date().toISOString(),
+      thumbnail_url: `${HEADER_BASE}${headerKey(t.slug)}.png?v=2`, updated_at: new Date().toISOString(),
     }, { onConflict: "slug" });
     console.log(error ? `✗ ${t.slug}: ${error.message}` : `✓ ${t.slug}`);
   }

@@ -94,11 +94,20 @@ create or replace function public.can_send_marketing_email(p_customer_id uuid) r
 $fn$;
 
 -- Сегменты (6 из 7; cart_abandoners — после персистентной корзины).
+-- Подписчики: согласие на маркетинг + email. Email берём из customers ИЛИ из
+-- самой записи согласия (исторически часть согласий без customer_id/email клиента).
 create or replace view public.segment_all_subscribers as
-  select distinct c.id, c.email, c.name from public.customers c
-  join public.data_consents dc on dc.customer_id = c.id
-  where dc.consent_type = 'marketing' and dc.revoked_at is null
-    and c.email is not null and coalesce(c.is_bounced,false) = false;
+  select distinct on (lower(email)) id, email, name from (
+    select coalesce(c.id, dc.customer_id) as id,
+           coalesce(c.email, dc.user_email) as email,
+           coalesce(nullif(c.name,''), '') as name,
+           coalesce(c.is_bounced, false) as bounced
+    from public.data_consents dc
+    left join public.customers c on c.id = dc.customer_id
+    where dc.consent_type = 'marketing' and dc.revoked_at is null
+  ) s
+  where email is not null and bounced = false
+  order by lower(email);
 
 create or replace view public.segment_active_buyers as
   select distinct c.id, c.email, c.name from public.customers c

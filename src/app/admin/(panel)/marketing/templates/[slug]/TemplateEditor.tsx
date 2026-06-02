@@ -105,6 +105,9 @@ export function TemplateEditor({ template }: { template: Tpl }) {
             <button type="button" onClick={() => setDevice("desktop")} className={device === "desktop" ? "inline-flex items-center gap-1.5 rounded-sm bg-ink px-3 py-1.5 text-[13px] font-medium text-white" : "inline-flex items-center gap-1.5 rounded-sm border border-border px-3 py-1.5 text-[13px] text-ink-muted"}><Monitor className="size-4" /> Десктоп</button>
             <button type="button" onClick={() => setDevice("mobile")} className={device === "mobile" ? "inline-flex items-center gap-1.5 rounded-sm bg-ink px-3 py-1.5 text-[13px] font-medium text-white" : "inline-flex items-center gap-1.5 rounded-sm border border-border px-3 py-1.5 text-[13px] text-ink-muted"}><Smartphone className="size-4" /> Мобайл</button>
           </div>
+          <p className="mb-2 text-[12px] text-ink-muted">
+            Превью с <b>тестовыми данными</b> (Денис Астахов, заказ PT-2026-0042). Переменные <code className="rounded bg-surface px-1">{`{{…}}`}</code> подставляются реальными значениями при отправке.
+          </p>
           <div className="rounded-2xl border border-border/60 bg-surface p-3">
             <iframe title="Превью письма" srcDoc={preview} className="mx-auto block h-[640px] w-full rounded-lg border border-border/60 bg-white" style={{ maxWidth: device === "mobile" ? 380 : "100%" }} />
           </div>

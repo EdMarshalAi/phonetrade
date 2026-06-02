@@ -173,6 +173,7 @@ export async function registerStorefront(input: {
         /* ignore */
       }
       const base = {
+        customer_id: customerId, // линкуем согласие к клиенту (нужно для сегментов рассылок)
         user_email: input.email?.trim() || null,
         user_phone: input.phone.replace(/\D/g, "") || null,
         consent_version: CONSENT_VERSION,

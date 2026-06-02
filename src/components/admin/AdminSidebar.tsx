@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils/cn";
 import { navForAccess } from "@/lib/admin/nav";
 
 const COLLAPSE_KEY = "admin-nav-collapsed";
+/** Группы, свёрнутые по умолчанию (однократно; дальше — выбор пользователя). */
+const DEFAULT_COLLAPSED = ["Рассылки"];
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/admin") return pathname === "/admin";
@@ -39,7 +41,19 @@ export function AdminSidebar({
   React.useEffect(() => {
     try {
       const raw = localStorage.getItem(COLLAPSE_KEY);
-      if (raw) setCollapsed(new Set(JSON.parse(raw) as string[]));
+      const stored = new Set<string>(raw ? (JSON.parse(raw) as string[]) : []);
+      const appliedRaw = localStorage.getItem(COLLAPSE_KEY + "-defaults");
+      const applied = new Set<string>(appliedRaw ? (JSON.parse(appliedRaw) as string[]) : []);
+      let changed = false;
+      for (const d of DEFAULT_COLLAPSED) {
+        if (!applied.has(d)) { stored.add(d); applied.add(d); changed = true; }
+      }
+      if (changed) {
+        localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...stored]));
+        localStorage.setItem(COLLAPSE_KEY + "-defaults", JSON.stringify([...applied]));
+      }
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- гидрация из localStorage (недоступен при SSR)
+      setCollapsed(stored);
     } catch { /* ignore */ }
   }, []);
   const toggleGroup = (label: string) => {
