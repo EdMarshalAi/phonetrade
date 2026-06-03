@@ -281,7 +281,7 @@ function render(html: string, vars: Record<string, unknown>): string {
 }
 
 function fullContent(t: Tpl): Content {
-  return { ...t.content, header_image: `${HEADER_BASE}${headerKey(t.slug)}.png?v=2` };
+  return { ...t.content, header_image: `${HEADER_BASE}${headerKey(t.slug)}.png?v=3` };
 }
 
 function buildPreview() {
@@ -304,7 +304,7 @@ async function seed() {
       preview_text: t.preview_text, html_content: layout(t), text_content: toText(t),
       content: fullContent(t), variables: t.variables, is_system: true, is_active: true,
       legal_category: legalCategory(t.slug),
-      thumbnail_url: `${HEADER_BASE}${headerKey(t.slug)}.png?v=2`, updated_at: new Date().toISOString(),
+      thumbnail_url: `${HEADER_BASE}${headerKey(t.slug)}.png?v=3`, updated_at: new Date().toISOString(),
     }, { onConflict: "slug" });
     console.log(error ? `✗ ${t.slug}: ${error.message}` : `✓ ${t.slug}`);
   }
