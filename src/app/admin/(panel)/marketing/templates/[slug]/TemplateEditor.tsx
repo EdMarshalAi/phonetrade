@@ -7,9 +7,11 @@ import { toast } from "sonner";
 import { ChevronLeft, Monitor, Smartphone } from "lucide-react";
 import { Field, TextInput, Textarea, Switch, AdminButton } from "@/components/admin/form";
 import { PageHeader } from "@/components/admin/ui";
+import { ImageField } from "@/components/admin/ImageField";
 import { applyContent } from "@/lib/email/content";
 import { renderProductCards, renderItemRows } from "@/lib/email/product-cards";
 import { LEGAL_LABEL, LEGAL_HINT, LEGAL_WARNING, legalColor, type LegalCategory } from "@/lib/email/legal";
+import { VariablesButton } from "../../_components/VariablesButton";
 import { updateTemplate, testSendTemplate } from "../../actions";
 
 const SITE = "https://phonetrade31.ru";
@@ -51,6 +53,7 @@ export function TemplateEditor({ template }: { template: Tpl }) {
   const [saving, setSaving] = React.useState(false);
   const [testEmail, setTestEmail] = React.useState("");
   const [sending, setSending] = React.useState(false);
+  const bodyRef = React.useRef<HTMLTextAreaElement>(null);
   const set = (k: keyof C, v: string) => setC((p) => ({ ...p, [k]: v }));
 
   const preview = React.useMemo(() => render(applyContent(template.html, c), { ...SAMPLE, c }), [template.html, c]);
@@ -113,13 +116,18 @@ export function TemplateEditor({ template }: { template: Tpl }) {
 
           <div className="h-px bg-border/60" />
           <Field label="Заголовок"><TextInput value={c.heading} onChange={(e) => set("heading", e.target.value)} /></Field>
-          <Field label="Текст" hint="Каждая строка — отдельный абзац. {{customer.first_name}} подставит имя."><Textarea rows={5} value={c.body} onChange={(e) => set("body", e.target.value)} /></Field>
+          <Field label="Текст" hint="Каждая строка — отдельный абзац.">
+            <Textarea ref={bodyRef} rows={5} value={c.body} onChange={(e) => set("body", e.target.value)} />
+            <div className="mt-1.5">
+              <VariablesButton targetRef={bodyRef} value={c.body} onChange={(v) => set("body", v)} scope="template" />
+            </div>
+          </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Кнопка — текст"><TextInput value={c.cta_text} onChange={(e) => set("cta_text", e.target.value)} /></Field>
             <Field label="Кнопка — ссылка"><TextInput value={c.cta_url} onChange={(e) => set("cta_url", e.target.value)} /></Field>
           </div>
-          <Field label="Картинка-хедер (URL)" hint="Баннер 16:9 сверху письма">
-            <TextInput value={c.header_image} onChange={(e) => set("header_image", e.target.value)} />
+          <Field label="Картинка-хедер" hint="Баннер 16:9 сверху письма — загрузите файл или вставьте ссылку">
+            <ImageField value={c.header_image || null} onChange={(url) => set("header_image", url ?? "")} bucket="product-images" folder="email/headers" aspect="wide" />
           </Field>
           <div className="flex flex-wrap items-center gap-2 pt-1">
             <AdminButton onClick={save} loading={saving}>Сохранить</AdminButton>

@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils/cn";
 import { Field, TextInput, Textarea, AdminButton } from "@/components/admin/form";
+import { ImageField } from "@/components/admin/ImageField";
 import { applyContent } from "@/lib/email/content";
 import { renderProductCards } from "@/lib/email/product-cards";
+import { VariablesButton } from "../../_components/VariablesButton";
 import { createCampaign, testCampaign } from "../actions";
 
 export type WizardSegment = { slug: string; label: string; size: number };
@@ -48,6 +50,7 @@ export function CampaignWizard({ segments, templates }: { segments: WizardSegmen
 
   const segment = segments.find((s) => s.slug === segmentSlug);
   const template = templates.find((t) => t.slug === templateSlug);
+  const bodyRef = React.useRef<HTMLTextAreaElement>(null);
   const set = (k: keyof Ov, v: string) => setOv((p) => ({ ...p, [k]: v }));
 
   const overrides = (): Record<string, string> => {
@@ -148,8 +151,15 @@ export function CampaignWizard({ segments, templates }: { segments: WizardSegmen
             <Field label="Тема письма"><TextInput value={subject} placeholder={template?.subject} onChange={(e) => setSubject(e.target.value)} /></Field>
             <Field label="Превью-текст"><TextInput value={preview} onChange={(e) => setPreview(e.target.value)} /></Field>
             <Field label="Заголовок"><TextInput value={ov.heading} onChange={(e) => set("heading", e.target.value)} /></Field>
-            <Field label="Текст" hint="Каждая строка — абзац"><Textarea rows={3} value={ov.body} onChange={(e) => set("body", e.target.value)} /></Field>
-            <Field label="Картинка-хедер (URL)" hint="Пусто → баннер шаблона"><TextInput value={ov.header_image} onChange={(e) => set("header_image", e.target.value)} /></Field>
+            <Field label="Текст" hint="Каждая строка — абзац">
+              <Textarea ref={bodyRef} rows={3} value={ov.body} onChange={(e) => set("body", e.target.value)} />
+              <div className="mt-1.5">
+                <VariablesButton targetRef={bodyRef} value={ov.body} onChange={(v) => set("body", v)} scope="campaign" />
+              </div>
+            </Field>
+            <Field label="Картинка-хедер" hint="Пусто → баннер шаблона. Загрузите файл или вставьте ссылку">
+              <ImageField value={ov.header_image || null} onChange={(url) => set("header_image", url ?? "")} bucket="product-images" folder="email/headers" aspect="wide" />
+            </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Кнопка — текст"><TextInput value={ov.cta_text} onChange={(e) => set("cta_text", e.target.value)} /></Field>
               <Field label="Кнопка — ссылка"><TextInput value={ov.cta_url} onChange={(e) => set("cta_url", e.target.value)} /></Field>
