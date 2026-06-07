@@ -100,6 +100,7 @@ npm run seed     # залить каталог из моков в Supabase (tsx 
 - **Фильтры, описания, мета категорий — строго из админки/БД.** Никаких хардкод-конфигов и мок-данных на витрине.
 - **Бенто: приоритет `custom_image_url`**, порядок не менять туда-обратно.
 - **SEO-тексты писать через SEO-скилы** (`seo-content-writer`, `seo-meta-optimizer`, `seo-keyword-strategist`, `seo-schema`, `seo-fundamentals`; локальный SEO Белгород: купить/заказать/цена/гарантия/доставка/самовывоз). **Конкурентов в текстах не упоминать.** Цель — топ-1 по Белгороду. Заполнено у всех 317: `short_description`, `meta_title`(≤60), `meta_description`(≤160), `description_html` (модельная копия + уникальный per-unit лид). Категории — meta+seo_text 100%. SEO-аудит C1–C8 закрыт (см. «Контент-страницы, поиск, SEO»).
+- **Дизайн-правки — прогонять все дизайн-скилы обоймы по очереди.** Полная карта (20 скилов: что есть и для чего) — `docs/design-skills.md`. Базовые для нашей Apple-эстетики: `minimalist-ui`, `high-end-visual-design`, `tailwind-design-system`, `ui-ux-pro-max`, `uxui-principles`, `ux-heuristics`, `web-design-guidelines`. Скилы лежат вне гита (`.agents/skills` симлинки) — список фиксируется в доке.
 
 ## Не реализовано
 
