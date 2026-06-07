@@ -587,16 +587,20 @@ CRUD для контентных страниц:
 
 Для каждого: название, иконка, описание, статус, провайдер, ключи API (зашифровано).
 
-### 3.22. SEO (`/admin/settings/seo`)
+### 3.22. SEO (`/admin/settings/seo`) — ❌ УДАЛЕНО (07.06.2026)
 
-- Шаблон title (`%page% | PhoneTrade — Apple в Белгороде`)
-- Дефолтное description
-- Default OG image
-- Sitemap.xml — авто-генерация (триггеры: новый товар/категория/пост → пересборка)
-- Robots.txt — редактор
-- Schema.org (организация: название, лого, адрес, телефон, часы — для rich snippets)
-- 301-редиректы (старый URL → новый)
-- 404-страница (что показывать)
+Этот раздел **удалён** (пункт меню `nav.ts` + роут `settings/seo`): форма писала в
+таблицу `seo_settings`, которую витрина нигде не читала. Настоящий SEO задаётся в коде/БД,
+а не здесь:
+
+- **Title/description** — `generateMetadata` в layout + `meta_title`/`meta_description`
+  товаров и категорий (заполнено 100%, SEO-аудит C1–C8 закрыт).
+- **OG-image** — файл-конвенция `src/app/opengraph-image.tsx` (баннер 1200×630).
+- **Sitemap.xml** — `src/app/sitemap.ts` (ISR, авто-сборка из БД).
+- **Robots.txt** — статический `src/app/robots.txt` (Allow/Disallow + `Clean-param` + `Host` + `Sitemap`).
+- **Schema.org** — `Store`/`LocalBusiness` JSON-LD из `shop_settings` в `(site)/layout.tsx`.
+
+Пункт не воссоздавать.
 
 ### 3.23. Уведомления и Telegram-бот (`/admin/settings/notifications`)
 

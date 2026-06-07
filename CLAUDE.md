@@ -103,7 +103,7 @@ npm run seed     # залить каталог из моков в Supabase (tsx 
 
 ## Не реализовано
 
-Персистентность корзины между сессиями. **Сделано (31.05.2026):** домен + HTTPS (`https://phonetrade31.ru`), реальный Supabase Auth + единый аккаунт владельца, запись заказов из корзины в БД, поиск. Детальный статус — в `README.md` → «Статус реализации».
+Open/click-tracking писем, double opt-in рассылок. **Сделано (31.05–07.06.2026):** домен + HTTPS (`https://phonetrade31.ru`), реальный Supabase Auth + единый аккаунт владельца, запись заказов из корзины в БД, поиск, **персистентная корзина** (`carts`+`cart_items` по httpOnly-куке `pt_cart`), **модуль email-рассылок** (см. «Email-маркетинг»). Детальный статус — в `README.md` → «Статус реализации».
 
 ## CRM, статусы заказов, режим тех.работ (сессия 31.05.2026 — важно)
 
@@ -113,4 +113,18 @@ npm run seed     # залить каталог из моков в Supabase (tsx 
 
 **Режим тех.работ.** `shop_settings.general.maintenance`: посетители видят заглушку, вошедший админ (по `getAdminUser()` в `(site)/layout.tsx`) — обычный сайт + красная плашка сверху «закрыт для посетителей» со ссылкой выключить.
 
-**Навигация админки:** «Бренды» — в разделе «Контент» (бегущая строка); «Скидки и акции» убраны из «Промо»; «Статусы заказов» в сайдбаре настроек НЕ дублируются.
+**Навигация админки:** «Бренды» — в разделе «Контент» (бегущая строка); «Скидки и акции» убраны из «Промо»; «Статусы заказов» в сайдбаре настроек НЕ дублируются. **«Настройки → SEO» удалены** (пункт `nav.ts` + роут `settings/seo`): форма писала в `seo_settings`, которую витрина нигде не читала — настоящий SEO живёт в `robots.txt` (статик), `sitemap.ts`, `generateMetadata` + `meta_title/meta_description` товаров/категорий, `LocalBusiness` JSON-LD из `shop_settings` в `(site)/layout.tsx`, `opengraph-image.tsx`. Пункт не воссоздавать.
+
+## Email-маркетинг (сессия 02–07.06.2026 — важно)
+
+**Модуль рассылок — `/admin/marketing`** (Обзор · Кампании · Триггеры · Шаблоны · Подписчики). Полная спека — `docs/email-marketing.md` (разделы 0–13 — исходный промт, **раздел 14 — что реально в проде**). БД: `email_templates` (slug, `content` jsonb с правимыми полями `{heading,body,cta_text,cta_url,header_image}`, `html_content` с плейсхолдерами, `legal_category`), очередь `email_queue` (триггерные/отложенные, `dedup_key`), лог `email_sends_log`, кампании `email_campaigns`, сегменты — SQL-вьюхи `segment_*` (реестр в `src/lib/email/queue.ts`). Отправка — `EmailSender` (nodemailer SMTP, `src/lib/email/sender.ts`); cron `/api/cron/process-email-queue` (cron-job.org, защита `CRON_SECRET` из env или `shop_settings.cron_secret`) на каждый тик: `detectAbandonedCarts` → `processEmailQueue` → `processScheduledCampaigns`.
+
+**Рендер письма — 3 слоя (не путать):** `applyContent(html, content)` подставляет правимые `{{c.*}}` → инъекция `{{products}}` (витрина топ-iPhone, `getFeaturedCardsHtml`) → `renderTemplate(html, vars)` подставляет РАНТАЙМ-переменные `{{customer.first_name}}`, `{{order.*}}`, `{{cart.*}}`, `{{promo.code}}`, `{{unsubscribe_url}}`. **Реальные имена подставляются на рантайме из данных получателя** (welcome — `input.name`; кампания — `r.name` каждого получателя в `sendCampaignNow`). **Демо-значение «Денис» есть ТОЛЬКО в тест-отправке/превью** (`sampleVars` в `marketing/actions.ts` + SAMPLE в редакторах) — тест шлёт на один адрес с темой `[ТЕСТ]` и НЕ пишется в лог; реальному получателю «Денис» прийти не может.
+
+**Юр.категории писем (`email_templates.legal_category`):** `transactional` (всегда, без согласия и отписки — часть услуги по 152-ФЗ) · `service` (всем, кроме явного `service_optout`) · `marketing` (только с согласием `data_consents.marketing` + тихие часы 22–08 МSK + недельный лимит). Логику применяет `process-queue.ts`. Управление подписками — `/account/email-preferences`.
+
+**Триггеры — что реально в проде** (спека местами аспирационна): **«День рождения» и «Брошенная корзина 72ч» УДАЛЕНЫ** по требованию владельца. Брошенная корзина двухшаговая (`abandoned_cart_1h` service + `abandoned_cart_24h` marketing, детект `src/lib/email/abandoned-carts.ts` по персистентной корзине `carts`+`cart_items`). Welcome — 3 письма (1-е синхронно при регистрации через `welcomeEmail(input.name)`, 2/3 в очереди +2д/+5д). **Удалённые триггеры не воссоздавать.**
+
+**Редактор шаблона (`marketing/templates/[slug]`) и мастер кампаний (`campaigns/new`):** поле «Картинка-хедер» — компонент `ImageField` (**загрузка файлом ИЛИ по ссылке**, превью 16:9, бакет `product-images`, папка `email/headers`), НЕ голый URL-input. Под полем «Текст» — кнопка **«Переменные»** (`marketing/_components/VariablesButton`, реестр `src/lib/email/variables.ts`): модалка со списком подстановок, вставка `{{…}}` в позицию курсора; в кампаниях список сужен до доступных в массовой рассылке (клиент/промо/служебные).
+
+**Шапки писем — баннеры в Storage `email/headers/{welcome,order,cart,review,crosssell,campaign}.png`:** сгенерированы под Apple-эстетику (iPhone 17/Pro, Cosmic Orange) через higgsfield nano-banana + наложены логотип PT и русский заголовок (ImageMagick, шрифт SF). Кэш-бастер `?v=N` в `scripts/seed-email-templates.ts` (текущий `v4`) — при замене картинок бампить и пере-сеять (`npx tsx scripts/seed-email-templates.ts`).
