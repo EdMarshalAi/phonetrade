@@ -139,6 +139,7 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
   const [name, setName] = React.useState(initialName ?? "");
   const [phone, setPhone] = React.useState(initialPhone ?? "");
   const [marketing, setMarketing] = React.useState(false);
+  const [cRules, setCRules] = React.useState(false);
   const [cOffer, setCOffer] = React.useState(false);
   const [cPd, setCPd] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
@@ -157,6 +158,7 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
     setError(null);
     if (phone.replace(/\D/g, "").length < 11) { setError("Укажите корректный телефон"); return; }
     if (!name.trim()) { setError("Укажите имя"); return; }
+    if (!cRules) { setError("Подтвердите, что ознакомились с правилами ремонтных работ"); return; }
     if (!authed && (!cOffer || !cPd)) { setError("Подтвердите согласия, чтобы отправить заявку"); return; }
     setBusy(true);
     const res = await submitRepairRequest({ device: device!, category: cat, issues, comment, name, phone, consentMarketing: marketing });
@@ -270,28 +272,34 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
               <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="+7 (___) ___-__-__" className="h-11 w-full rounded-xl border border-border bg-white px-3.5 text-[14px] text-ink outline-none placeholder:text-ink-subtle focus:border-ink/40" />
             </div>
 
-            {!authed ? (
-              <div className="mt-4 space-y-2.5">
-                <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-muted">
-                  <input type="checkbox" checked={cOffer} onChange={(e) => setCOffer(e.target.checked)} className="mt-0.5 size-4" />
-                  <span>Принимаю <a href="/offer" target="_blank" className="text-ink underline">оферту</a> и <a href="/privacy" target="_blank" className="text-ink underline">политику конфиденциальности</a></span>
-                </label>
-                <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-muted">
-                  <input type="checkbox" checked={cPd} onChange={(e) => setCPd(e.target.checked)} className="mt-0.5 size-4" />
-                  <span>Даю <a href="/consent" target="_blank" className="text-ink underline">согласие на обработку персональных данных</a></span>
-                </label>
-                <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-muted">
-                  <input type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} className="mt-0.5 size-4" />
-                  <span>Хочу получать акции и выгодные предложения (необязательно)</span>
-                </label>
-              </div>
-            ) : null}
+            <div className="mt-4 space-y-2.5">
+              <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-muted">
+                <input type="checkbox" checked={cRules} onChange={(e) => setCRules(e.target.checked)} className="mt-0.5 size-4" />
+                <span>Ознакомлен(а) с <a href="/service-rules" target="_blank" className="text-ink underline">правилами ремонтных работ</a></span>
+              </label>
+              {!authed ? (
+                <>
+                  <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-muted">
+                    <input type="checkbox" checked={cOffer} onChange={(e) => setCOffer(e.target.checked)} className="mt-0.5 size-4" />
+                    <span>Принимаю <a href="/offer" target="_blank" className="text-ink underline">оферту</a> и <a href="/privacy" target="_blank" className="text-ink underline">политику конфиденциальности</a></span>
+                  </label>
+                  <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-muted">
+                    <input type="checkbox" checked={cPd} onChange={(e) => setCPd(e.target.checked)} className="mt-0.5 size-4" />
+                    <span>Даю <a href="/consent" target="_blank" className="text-ink underline">согласие на обработку персональных данных</a></span>
+                  </label>
+                  <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-muted">
+                    <input type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} className="mt-0.5 size-4" />
+                    <span>Хочу получать акции и выгодные предложения (необязательно)</span>
+                  </label>
+                </>
+              ) : null}
+            </div>
 
             {error ? <p className="mt-3 rounded-lg border border-sale/25 bg-sale/5 px-3 py-2 text-[13px] text-sale">{error}</p> : null}
 
             <div className="mt-5 flex items-center justify-between gap-3">
               <button type="button" onClick={() => setStep(2)} className="inline-flex h-11 items-center gap-1.5 rounded-full px-5 text-[14px] font-medium text-ink-muted hover:text-ink"><ChevronLeft className="size-4" /> Назад</button>
-              <button type="button" onClick={submit} disabled={busy} className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-ink px-8 text-[15px] font-medium text-white transition-colors hover:bg-ink/85 disabled:opacity-60">
+              <button type="button" onClick={submit} disabled={busy || !cRules || (!authed && (!cOffer || !cPd))} className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-ink px-8 text-[15px] font-medium text-white transition-colors hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-60">
                 {busy ? <Loader2 className="size-5 animate-spin" /> : <Phone className="size-[18px]" />} Оставить заявку
               </button>
             </div>
