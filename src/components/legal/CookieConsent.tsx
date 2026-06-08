@@ -85,14 +85,13 @@ export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }
         <div className="fixed inset-x-0 bottom-0 z-[70] border-t border-border/60 bg-white/95 backdrop-blur-md">
           <div className="container-page flex flex-col gap-3.5 py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
             <p className="text-[13px] leading-relaxed text-ink-muted lg:max-w-2xl">
-              Мы используем файлы cookie. Технические cookie необходимы для работы сайта.
-              Аналитические cookie (Яндекс.Метрика) помогают улучшать сайт — используются
-              только с вашего согласия.{" "}
-              <Link href="/privacy" className="text-ink underline underline-offset-2 hover:opacity-70">Политика конфиденциальности</Link>.
+              Мы используем cookie для аналитики (Яндекс.Метрика), чтобы находить ошибки
+              и улучшать сайт для вас. Подробнее — в{" "}
+              <Link href="/privacy" className="text-ink underline underline-offset-2 hover:opacity-70">политике конфиденциальности</Link>.
             </p>
             <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
               <button type="button" onClick={acceptAll} className="rounded-full bg-ink px-6 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-ink/90">Принять все</button>
-              <button type="button" onClick={onlyNecessary} className="rounded-full border-[1.5px] border-ink bg-white px-5 py-2.5 text-center text-[14px] font-semibold text-ink hover:bg-surface">Принять только необходимые</button>
+              <button type="button" onClick={onlyNecessary} className="rounded-full border-[1.5px] border-ink bg-white px-5 py-2.5 text-center text-[14px] font-semibold text-ink hover:bg-surface">Только необходимые</button>
               <button type="button" onClick={() => setDrawer(true)} className="px-3 py-2 text-center text-[13px] font-medium text-ink-muted underline-offset-2 hover:text-ink hover:underline">Настроить</button>
             </div>
           </div>
