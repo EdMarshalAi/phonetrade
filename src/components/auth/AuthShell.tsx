@@ -284,18 +284,6 @@ export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | nul
                   {mode === "login" ? "Зарегистрироваться" : "Войти"}
                 </button>
               </p>
-
-              <p className="mt-6 text-center text-[12px] text-ink-subtle leading-relaxed">
-                Продолжая, вы соглашаетесь с{" "}
-                <Link href="/offer" className="underline underline-offset-4">
-                  офертой
-                </Link>{" "}
-                и{" "}
-                <Link href="/privacy" className="underline underline-offset-4">
-                  политикой данных
-                </Link>
-                .
-              </p>
             </div>
           </div>
         </div>
