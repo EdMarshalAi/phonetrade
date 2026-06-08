@@ -92,8 +92,8 @@ export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }
             </p>
             <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
               <button type="button" onClick={acceptAll} className="rounded-full bg-ink px-6 py-2.5 text-center text-[14px] font-semibold text-white hover:bg-ink/90">Принять все</button>
-              <button type="button" onClick={onlyNecessary} className="rounded-full border border-border bg-white px-5 py-2.5 text-center text-[14px] font-medium text-ink hover:bg-surface">Принять только необходимые</button>
-              <button type="button" onClick={() => setDrawer(true)} className="px-3 py-2 text-center text-[13px] font-medium text-ink-muted hover:text-ink">Настроить</button>
+              <button type="button" onClick={onlyNecessary} className="rounded-full border-[1.5px] border-ink bg-white px-5 py-2.5 text-center text-[14px] font-semibold text-ink hover:bg-surface">Принять только необходимые</button>
+              <button type="button" onClick={() => setDrawer(true)} className="px-3 py-2 text-center text-[13px] font-medium text-ink-muted underline-offset-2 hover:text-ink hover:underline">Настроить</button>
             </div>
           </div>
         </div>
