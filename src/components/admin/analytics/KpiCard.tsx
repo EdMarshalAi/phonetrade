@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatDelta } from "@/lib/analytics/format";
 import { METRICS } from "@/lib/analytics/glossary";
@@ -46,29 +46,27 @@ export function KpiCard({
 
   return (
     <div className="flex flex-col rounded-2xl border border-border/70 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      <div className="flex items-start justify-between gap-1.5">
-        <span className="inline-flex min-w-0 flex-1 items-center gap-1 text-[11.5px] font-semibold uppercase leading-tight tracking-[0.04em] text-ink-subtle">
-          <span className="min-w-0">{title}</span>
-          {metric ? <MetricTooltip metric={metric} /> : null}
-        </span>
+      {/* Ярлык — отдельной строкой, ни с чем не конкурирует (может переноситься) */}
+      <div className="flex items-start gap-1 text-[11px] font-semibold uppercase leading-tight tracking-[0.04em] text-ink-subtle">
+        <span className="min-w-0">{title}</span>
+        {metric ? <span className="shrink-0"><MetricTooltip metric={metric} /></span> : null}
+      </div>
+
+      {/* Значение + дельта-чип на одной базовой линии (дельта рядом с числом) */}
+      <div className="mt-2 flex items-baseline gap-2">
+        <p className="min-w-0 flex-1 truncate text-[24px] font-semibold leading-none tracking-tight text-ink tabular-nums">{value}</p>
         {showDelta ? (
           <span
             className={cn(
-              "inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap text-[12px] font-semibold tabular-nums",
-              good ? "text-[#0a7d3e]" : "text-[#c01818]"
+              "inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none tabular-nums",
+              good ? "bg-[#0a7d3e]/10 text-[#0a7d3e]" : "bg-[#c01818]/10 text-[#c01818]"
             )}
           >
-            {delta!.direction === "up" ? <ArrowUpRight className="size-3.5 shrink-0" strokeWidth={2.5} /> : <ArrowDownRight className="size-3.5 shrink-0" strokeWidth={2.5} />}
+            {delta!.direction === "up" ? <ArrowUpRight className="size-3 shrink-0" strokeWidth={2.75} /> : <ArrowDownRight className="size-3 shrink-0" strokeWidth={2.75} />}
             {delta!.percent.toFixed(1).replace(".", ",")}%
           </span>
-        ) : delta && previous !== undefined ? (
-          <span className="inline-flex shrink-0 items-center text-[12px] text-ink-subtle"><Minus className="size-3.5" /></span>
-        ) : (
-          <span className="shrink-0 text-[12px] text-ink-subtle">—</span>
-        )}
+        ) : null}
       </div>
-
-      <p className="mt-1.5 text-[26px] font-semibold leading-none tracking-tight text-ink tabular-nums">{value}</p>
 
       {spark && spark.length > 1 ? (
         <div className="mt-3">
