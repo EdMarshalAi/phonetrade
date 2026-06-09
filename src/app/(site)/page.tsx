@@ -129,7 +129,7 @@ export default async function HomePage() {
           id: p.id,
           title: p.title,
           date: p.published_at ? new Date(p.published_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) : "",
-          views: 0,
+          views: p.views ?? 0,
           category: p.category ?? "Гаджеты",
           image: p.cover_url ?? `https://picsum.photos/seed/${p.slug}/1200/800`,
           href: `/blog/${p.slug}`,

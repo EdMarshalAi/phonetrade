@@ -43,7 +43,7 @@ export function BackToTop() {
       onClick={scrollToTop}
       className={cn(
         "fixed bottom-5 right-5 z-40 inline-flex size-11 items-center justify-center rounded-full",
-        "bg-ink text-white shadow-lg shadow-ink/20",
+        "border border-white/40 bg-ink text-white shadow-lg shadow-ink/20",
         "transition-[opacity,transform] duration-300 ease-[var(--ease-apple)]",
         "hover:scale-105 active:scale-95",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 focus-visible:ring-offset-2",

@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Eye } from "lucide-react";
 import { getBlogPost } from "@/lib/content";
 import { jsonLdScript } from "@/lib/utils/json-ld";
 import { sanitizeRichHtml } from "@/lib/utils/sanitize-html";
+import { BlogViewPing } from "@/components/blog/BlogViewPing";
 
 // ISR: новая статья доступна без редеплоя.
 export const revalidate = 300;
@@ -58,9 +59,14 @@ export default async function BlogPostPage({
           <ArrowLeft className="h-4 w-4" strokeWidth={1.75} /> Все статьи
         </Link>
         <h1 className="mt-5 text-3xl font-semibold tracking-tight text-ink md:text-4xl">{post.title}</h1>
-        {post.published_at ? (
-          <p className="mt-2 text-[13px] text-ink-subtle">{new Date(post.published_at).toLocaleDateString("ru-RU")}</p>
-        ) : null}
+        <div className="mt-2 flex items-center gap-3 text-[13px] text-ink-subtle">
+          {post.published_at ? <span>{new Date(post.published_at).toLocaleDateString("ru-RU")}</span> : null}
+          <span className="inline-flex items-center gap-1.5">
+            <Eye className="size-3.5" aria-hidden />
+            <span className="tabular-nums">{(post.views ?? 0).toLocaleString("ru-RU")}</span>
+          </span>
+        </div>
+        <BlogViewPing slug={slug} />
         {post.cover_url ? (
           <div className="relative mt-8 aspect-[16/9] overflow-hidden rounded-2xl bg-surface">
             <Image src={post.cover_url} alt={post.title} fill className="object-cover" sizes="(max-width:768px) 100vw, 768px" />

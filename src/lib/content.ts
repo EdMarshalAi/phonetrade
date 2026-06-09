@@ -494,13 +494,14 @@ export interface BlogPostCard {
   content?: string | null;
   category_id?: string | null;
   category?: string | null;
+  views?: number;
 }
 
 export async function getBlogPosts(limit?: number): Promise<BlogPostCard[]> {
   if (!supabase) return [];
   let q = supabase
     .from("blog_posts")
-    .select("id,slug,title,excerpt,cover_url,published_at,blog_categories(title)")
+    .select("id,slug,title,excerpt,cover_url,published_at,views_count,blog_categories(title)")
     .eq("status", "published")
     .order("published_at", { ascending: false, nullsFirst: false });
   if (limit) q = q.limit(limit);
@@ -513,6 +514,7 @@ export async function getBlogPosts(limit?: number): Promise<BlogPostCard[]> {
     excerpt: (r.excerpt as string) ?? null,
     cover_url: (r.cover_url as string) ?? null,
     published_at: (r.published_at as string) ?? null,
+    views: (r.views_count as number) ?? 0,
     category: (r.blog_categories as { title?: string } | null)?.title ?? null,
   }));
 }
@@ -521,11 +523,13 @@ export async function getBlogPost(slug: string): Promise<BlogPostCard | null> {
   if (!supabase) return null;
   const { data } = await supabase
     .from("blog_posts")
-    .select("id,slug,title,excerpt,cover_url,published_at,content,category_id")
+    .select("id,slug,title,excerpt,cover_url,published_at,content,category_id,views_count")
     .eq("slug", slug)
     .eq("status", "published")
     .maybeSingle();
-  return (data as BlogPostCard) ?? null;
+  if (!data) return null;
+  const r = data as Record<string, unknown>;
+  return { ...(data as BlogPostCard), views: (r.views_count as number) ?? 0 };
 }
 
 /** Управляемая контакт-ссылка (иконка пресет/загруженная, где показывать). */
