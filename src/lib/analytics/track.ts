@@ -68,6 +68,13 @@ export function getSessionId(): string {
   }
 }
 
+/** Грубая клиентская детекция ботов/автоматизации (webdriver + UA-кейворды). */
+function isLikelyBot(): boolean {
+  if (typeof navigator === "undefined") return false;
+  if ((navigator as Navigator & { webdriver?: boolean }).webdriver) return true;
+  return /bot|crawl|spider|slurp|headless|phantom|playwright|puppeteer|lighthouse|ahrefs|semrush|bytespider|petalbot|dataforseo/i.test(navigator.userAgent || "");
+}
+
 export function deviceType(): "desktop" | "mobile" | "tablet" {
   if (typeof navigator === "undefined") return "desktop";
   const ua = navigator.userAgent;
@@ -99,10 +106,12 @@ function osName(ua: string): string {
 export function trackPageView(path: string): void {
   if (!supabase) return;
   const consent = readConsent();
+  const bot = isLikelyBot();
   const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
 
   // Уровень 0 — обезличенные поля (бакеты browser/os считаются из UA, но сам UA
-  // не сохраняется; идентификатор — только эфемерная сессия).
+  // не сохраняется; идентификатор — только эфемерная сессия). is_bot — чтобы
+  // дашборд исключал автоматизацию из «живой» статистики.
   const row: Record<string, unknown> = {
     path,
     referrer: typeof document !== "undefined" ? document.referrer || null : null,
@@ -110,6 +119,7 @@ export function trackPageView(path: string): void {
     device_type: deviceType(),
     browser: browserName(ua),
     os: osName(ua),
+    is_bot: bot,
   };
 
   // Уровень 1 — идентификация только при согласии на аналитику.
@@ -122,6 +132,8 @@ export function trackPageView(path: string): void {
 
   void supabase.from("page_views").insert(row).then(() => {});
 
+  // Боты в воронку/поиск не пишем — они засоряют конверсию.
+  if (bot) return;
   trackFunnel("view_page", { path });
   const m = path.match(/^\/product\/([^/?#]+)/);
   if (m) trackFunnel("view_product", { product_id: m[1] });
@@ -143,7 +155,7 @@ const FUNNEL_TYPES = [
 export type FunnelEventType = (typeof FUNNEL_TYPES)[number];
 
 export function trackFunnel(eventType: FunnelEventType, payload?: Record<string, unknown>): void {
-  if (!supabase) return;
+  if (!supabase || isLikelyBot()) return;
   const row: Record<string, unknown> = { session_id: getSessionId(), event_type: eventType, payload: payload ?? null };
   if (readConsent().analytics) row.visitor_id = getVisitorId().id;
   void supabase.from("funnel_events").insert(row).then(() => {});
@@ -162,7 +174,7 @@ export function trackHero(slideId: string, eventType: "view" | "click"): void {
 
 /** Поисковый запрос с сайта. visitor_id — только при согласии (Уровень 1). */
 export function trackSearch(query: string, resultsCount: number): void {
-  if (!supabase || !query.trim()) return;
+  if (!supabase || !query.trim() || isLikelyBot()) return;
   const row: Record<string, unknown> = {
     query: query.trim(),
     normalized_query: query.trim().toLowerCase(),

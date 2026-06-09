@@ -46,25 +46,25 @@ export function KpiCard({
 
   return (
     <div className="flex flex-col rounded-2xl border border-border/70 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
-      <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold uppercase tracking-[0.04em] text-ink-subtle">
-          {title}
+      <div className="flex items-start justify-between gap-1.5">
+        <span className="inline-flex min-w-0 flex-1 items-center gap-1 text-[11.5px] font-semibold uppercase leading-tight tracking-[0.04em] text-ink-subtle">
+          <span className="min-w-0">{title}</span>
           {metric ? <MetricTooltip metric={metric} /> : null}
         </span>
         {showDelta ? (
           <span
             className={cn(
-              "inline-flex items-center gap-0.5 text-[12px] font-semibold tabular-nums",
+              "inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap text-[12px] font-semibold tabular-nums",
               good ? "text-[#0a7d3e]" : "text-[#c01818]"
             )}
           >
-            {delta!.direction === "up" ? <ArrowUpRight className="size-3.5" strokeWidth={2.5} /> : <ArrowDownRight className="size-3.5" strokeWidth={2.5} />}
+            {delta!.direction === "up" ? <ArrowUpRight className="size-3.5 shrink-0" strokeWidth={2.5} /> : <ArrowDownRight className="size-3.5 shrink-0" strokeWidth={2.5} />}
             {delta!.percent.toFixed(1).replace(".", ",")}%
           </span>
         ) : delta && previous !== undefined ? (
-          <span className="inline-flex items-center text-[12px] text-ink-subtle"><Minus className="size-3.5" /></span>
+          <span className="inline-flex shrink-0 items-center text-[12px] text-ink-subtle"><Minus className="size-3.5" /></span>
         ) : (
-          <span className="text-[12px] text-ink-subtle">—</span>
+          <span className="shrink-0 text-[12px] text-ink-subtle">—</span>
         )}
       </div>
 
