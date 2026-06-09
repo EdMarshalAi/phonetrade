@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Wrench, ShieldCheck, BadgeCheck, Clock, Check, Phone, ChevronLeft, ChevronRight, Loader2, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { ymReachGoal } from "@/lib/analytics/metrika";
+import { useCookieConsent } from "@/components/legal/CookieConsent";
 import { DEVICE_CATEGORIES, issuesFor, deviceImage, type DeviceCategoryKey } from "@/lib/repair/devices";
 import { submitRepairRequest } from "@/lib/repair/repair-actions";
 
@@ -130,6 +131,7 @@ function DeviceTile({ label, image, onClick }: { label: string; image: string | 
 
 // ── Пошаговый квиз ───────────────────────────────────────────────────────────
 function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; initialName?: string; initialPhone?: string }) {
+  const { applyAll } = useCookieConsent();
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
   const [cat, setCat] = React.useState<DeviceCategoryKey>("iphone");
   const [seriesKey, setSeriesKey] = React.useState<string | null>(null);
@@ -163,6 +165,7 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
     const res = await submitRepairRequest({ device: device!, category: cat, issues, comment, name, phone, consentMarketing: marketing });
     setBusy(false);
     if (res.error) { setError(res.error); return; }
+    applyAll(); // дал согласие на ПДн → применяем все cookie (вкл. аналитику)
     ymReachGoal("repair_submit");
     setDone(true);
   };

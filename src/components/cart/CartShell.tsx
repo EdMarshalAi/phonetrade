@@ -19,6 +19,7 @@ import { computePromoDiscount, type ValidatedPromo } from "@/lib/cart/promo";
 import { trackFunnel } from "@/lib/analytics/track";
 import { useCart } from "@/components/providers/CartProvider";
 import { useAuth } from "@/components/providers/AuthProvider";
+import { useCookieConsent } from "@/components/legal/CookieConsent";
 import type { CartSettings, InfoBlock } from "@/lib/content";
 
 export function CartShell({
@@ -43,6 +44,7 @@ export function CartShell({
     agreement: true,
   });
   const { user, ready: authReady, updateProfile } = useAuth();
+  const { applyAll } = useCookieConsent();
   const [attempted, setAttempted] = React.useState(false);
   const [order, setOrder] = React.useState<{ id: string } | null>(null);
   const [submitPending, setSubmitPending] = React.useState(false);
@@ -187,6 +189,7 @@ export function CartShell({
         setSubmitError(result.error);
         return;
       }
+      applyAll(); // дал согласие на ПДн при оформлении → применяем все cookie (вкл. аналитику)
       // Номер из БД (заказ уже сохранён в БД через placeOrder) или fallback.
       const displayId = result.orderNumber ?? `PT-${Date.now().toString().slice(-6)}`;
 

@@ -27,8 +27,8 @@ function writeConsent(c: Consent) {
   document.cookie = `${KEY}=${encodeURIComponent(JSON.stringify(c))}; path=/; max-age=${MAX_AGE}; samesite=lax`;
 }
 
-type Ctx = { openSettings: () => void };
-const CookieCtx = React.createContext<Ctx>({ openSettings: () => {} });
+type Ctx = { openSettings: () => void; applyAll: () => void };
+const CookieCtx = React.createContext<Ctx>({ openSettings: () => {}, applyAll: () => {} });
 export const useCookieConsent = () => React.useContext(CookieCtx);
 
 export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }: { children: React.ReactNode; metrikaId?: string | null; codeSnippets?: CodeSnippet[] }) {
@@ -59,8 +59,17 @@ export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }
 
   const showBanner = mounted && !decided && !drawer;
 
+  // Даёт согласие на ВСЕ cookie (вкл. аналитику). Зовётся формами, когда человек
+  // дал согласие на обработку ПДн (регистрация/заказ/любая заявка) — чтобы
+  // cookie-согласие применилось автоматически и не дублировать вопрос баннером.
+  const applyAll = () => {
+    const cur = readConsent();
+    if (cur && cur.analytics && cur.advertising && cur.marketing) return; // уже всё включено
+    acceptAll();
+  };
+
   return (
-    <CookieCtx.Provider value={{ openSettings: () => setDrawer(true) }}>
+    <CookieCtx.Provider value={{ openSettings: () => setDrawer(true), applyAll }}>
       {children}
 
       {/* Я.Метрика — только при согласии на аналитику */}

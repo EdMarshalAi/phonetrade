@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Check, ChevronDown, RotateCcw } from "lucide-rea
 import { submitTradeInQuiz } from "@/lib/trade-in/trade-in-actions";
 import { EXTERNAL_OPTIONS, BATTERY_OPTIONS, KIT_OPTIONS, type TradeInModel } from "@/lib/trade-in/options";
 import { useAuth, type AuthUser } from "@/components/providers/AuthProvider";
+import { useCookieConsent } from "@/components/legal/CookieConsent";
 import { ymReachGoal } from "@/lib/analytics/metrika";
 import { cn } from "@/lib/utils/cn";
 
@@ -37,6 +38,7 @@ export function TradeInQuiz({ models, initialUser = null }: { models: TradeInMod
   const router = useRouter();
   const reduce = useReducedMotion();
   const { user: clientUser, updateProfile } = useAuth();
+  const { applyAll } = useCookieConsent();
   // Сервер уже знает об авторизации (cookie-сессия) — используем сразу, не дожидаясь
   // клиентского getSession(). Иначе авторизованному показывалась бы гостевая форма с телефоном.
   const user = clientUser ?? initialUser;
@@ -108,6 +110,7 @@ export function TradeInQuiz({ models, initialUser = null }: { models: TradeInMod
       name: d.name, phone: d.phone, email: d.email || undefined, consentMarketing: consent.marketing,
     });
     if (res.error) { setPending(false); setError(res.error); return; }
+    applyAll(); // дал согласие на ПДн → применяем все cookie (вкл. аналитику)
     // Я.Метрика: цель «заявка trade-in».
     ymReachGoal("trade_in");
     // Авторизованный ввёл недостающие контакты — сохраним в профиль (без блокировки перехода).

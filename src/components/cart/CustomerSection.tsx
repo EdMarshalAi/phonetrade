@@ -7,6 +7,7 @@ import type { CheckoutState } from "@/lib/cart/types";
 import type { CheckoutErrors } from "@/lib/cart/validate";
 import type { Consent } from "@/components/cart/OrderSummary";
 import { useAuth, normalizePhone } from "@/components/providers/AuthProvider";
+import { useCookieConsent } from "@/components/legal/CookieConsent";
 import { cn } from "@/lib/utils/cn";
 
 type Props = {
@@ -108,6 +109,7 @@ function AuthPanel({
   const [consent, setConsent] = React.useState({ oferta: false, pd: false, marketing: false });
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
+  const { applyAll } = useCookieConsent();
 
   const submit = async () => {
     setError(null);
@@ -120,6 +122,7 @@ function AuthPanel({
     try {
       if (mode === "register") await register({ name, phone, email, password, consentMarketing: consent.marketing });
       else await login(phone, password);
+      applyAll(); // согласие на ПДн / вход → применяем все cookie (вкл. аналитику)
       // успех → провайдер обновит user, секция перерисуется в «Вы вошли…»
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось войти");

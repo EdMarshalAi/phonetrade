@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { IMaskInput } from "react-imask";
 import { useAuth, normalizePhone, type AuthUser } from "@/components/providers/AuthProvider";
+import { useCookieConsent } from "@/components/legal/CookieConsent";
 import { cn } from "@/lib/utils/cn";
 
 type Mode = "login" | "register";
@@ -28,6 +29,7 @@ export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | nul
   const router = useRouter();
   const params = useSearchParams();
   const { login, register, user: clientUser, ready } = useAuth();
+  const { applyAll } = useCookieConsent();
 
   const returnTo = params.get("returnTo") || "/account";
 
@@ -86,6 +88,7 @@ export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | nul
       } else {
         await login(phone, password);
       }
+      applyAll(); // дал согласие на ПДн / вошёл в аккаунт → применяем все cookie (вкл. аналитику)
       router.push(returnTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Что-то пошло не так");
