@@ -82,12 +82,15 @@ export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }
       ) : null}
 
       {showBanner ? (
-        <div className="fixed inset-x-0 bottom-0 z-[70] border-t border-border/60 bg-white/95 backdrop-blur-md">
+        <>
+          {/* Лёгкое затемнение сайта — акцент на плашке согласия. Не блокирует
+              взаимодействие (pointer-events-none) — это не cookie-wall. */}
+          <div aria-hidden className="pointer-events-none fixed inset-0 z-[60] bg-ink/20 duration-500 animate-in fade-in" />
+          <div className="fixed inset-x-0 bottom-0 z-[70] border-t border-border/60 bg-white/95 shadow-[0_-8px_30px_-12px_rgba(0,0,0,0.18)] backdrop-blur-md duration-500 animate-in fade-in slide-in-from-bottom-4">
           <div className="container-page flex flex-col gap-3.5 py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
             <p className="text-[13px] leading-relaxed text-ink-muted lg:max-w-2xl">
-              Для работы сайта мы собираем обезличенную статистику посещений (без идентификации).
-              Аналитические cookie (Яндекс.Метрика) и расширенная аналитика подключаются только
-              с вашего согласия. Подробнее — в{" "}
+              Мы используем cookie для аналитики (Яндекс.Метрика), чтобы находить ошибки
+              и улучшать сайт для вас. Подробнее — в{" "}
               <Link href="/privacy" className="text-ink underline underline-offset-2 hover:opacity-70">политике конфиденциальности</Link>.
             </p>
             <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
@@ -97,6 +100,7 @@ export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }
             </div>
           </div>
         </div>
+        </>
       ) : null}
 
       {drawer ? (
