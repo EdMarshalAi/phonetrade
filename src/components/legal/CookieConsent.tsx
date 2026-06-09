@@ -85,8 +85,9 @@ export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }
         <div className="fixed inset-x-0 bottom-0 z-[70] border-t border-border/60 bg-white/95 backdrop-blur-md">
           <div className="container-page flex flex-col gap-3.5 py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
             <p className="text-[13px] leading-relaxed text-ink-muted lg:max-w-2xl">
-              Мы используем cookie для аналитики (Яндекс.Метрика), чтобы находить ошибки
-              и улучшать сайт для вас. Подробнее — в{" "}
+              Для работы сайта мы собираем обезличенную статистику посещений (без идентификации).
+              Аналитические cookie (Яндекс.Метрика) и расширенная аналитика подключаются только
+              с вашего согласия. Подробнее — в{" "}
               <Link href="/privacy" className="text-ink underline underline-offset-2 hover:opacity-70">политике конфиденциальности</Link>.
             </p>
             <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
@@ -105,8 +106,8 @@ export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }
             <h2 className="text-lg font-semibold tracking-tight text-ink">Настройки cookie</h2>
             <p className="mt-1 text-[13px] text-ink-muted">Выберите, какие cookie разрешить. Необходимые нужны для работы сайта и корзины.</p>
             <div className="mt-5 space-y-2.5">
-              <CookieRow title="Необходимые" desc="Работа сайта, корзина, авторизация" checked disabled />
-              <CookieRow title="Аналитические" desc="Яндекс.Метрика — улучшение сайта" checked={cats.analytics} onChange={(v) => setCats((c) => ({ ...c, analytics: v }))} />
+              <CookieRow title="Необходимые" desc="Работа сайта, корзина, авторизация + обезличенная статистика (без идентификации)" checked disabled />
+              <CookieRow title="Аналитические" desc="Яндекс.Метрика, узнавание новых/вернувшихся — улучшение сайта" checked={cats.analytics} onChange={(v) => setCats((c) => ({ ...c, analytics: v }))} />
               <CookieRow title="Рекламные" desc="Пиксели для рекламы" checked={cats.advertising} onChange={(v) => setCats((c) => ({ ...c, advertising: v }))} />
               <CookieRow title="Маркетинговые" desc="Ремаркетинг и персональные предложения" checked={cats.marketing} onChange={(v) => setCats((c) => ({ ...c, marketing: v }))} />
             </div>

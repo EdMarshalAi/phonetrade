@@ -6,12 +6,42 @@ import { supabase } from "@/lib/supabase/client";
  * Клиентский трекинг для аналитики сайта. Пишет в page_views / funnel_events /
  * hero_slide_events через anon-клиент (RLS разрешает anon insert). Всё
  * fire-and-forget: не блокирует UI, молча игнорирует ошибки.
+ *
+ * МНОГОУРОВНЕВЫЙ СБОР ПО СОГЛАСИЮ (152-ФЗ / cookie):
+ *  • Уровень 0 — ВСЕГДА (без согласия): обезличенное first-party измерение,
+ *    которое не идентифицирует человека — path, referrer, device_type, бакеты
+ *    browser/os и счёт по ЭФЕМЕРНОЙ сессии (sessionStorage). Юридически —
+ *    обезличенная статистика, согласия не требует.
+ *  • Уровень 1 — только при согласии на аналитику (consent.analytics):
+ *    ПОСТОЯННЫЙ visitor_id (localStorage), is_new_visitor, сырой user_agent.
+ *    Я.Метрика грузится отдельно (CookieConsent), тоже только при согласии.
+ *  • Уровень 2 — реклама (consent.advertising): VK Ads Pixel и пр. (вешается в
+ *    CookieConsent, не здесь).
+ *
+ * ВАЖНО: на Уровне 0 НЕ создаём и НЕ читаем постоянный visitor_id (иначе это уже
+ * не обезличенный сбор) — getVisitorId() вызывается ТОЛЬКО внутри ветки согласия.
  */
 
 const VISITOR_KEY = "pt:vid";
 const SESSION_KEY = "pt:sid";
+const CONSENT_COOKIE = "pt_cookie_consent";
 
-/** Стабильный анонимный ID посетителя (localStorage). */
+type AnalyticsConsent = { analytics: boolean; advertising: boolean };
+
+/** Читает выбор cookie-согласия из first-party cookie (пишет CookieConsent). */
+function readConsent(): AnalyticsConsent {
+  try {
+    if (typeof document === "undefined") return { analytics: false, advertising: false };
+    const m = document.cookie.match(new RegExp(`(?:^|; )${CONSENT_COOKIE}=([^;]*)`));
+    if (!m) return { analytics: false, advertising: false };
+    const c = JSON.parse(decodeURIComponent(m[1])) as { analytics?: boolean; advertising?: boolean };
+    return { analytics: !!c.analytics, advertising: !!c.advertising };
+  } catch {
+    return { analytics: false, advertising: false };
+  }
+}
+
+/** Стабильный анонимный ID посетителя (localStorage). ТОЛЬКО при согласии (Уровень 1). */
 export function getVisitorId(): { id: string; isNew: boolean } {
   try {
     let id = localStorage.getItem(VISITOR_KEY);
@@ -24,7 +54,7 @@ export function getVisitorId(): { id: string; isNew: boolean } {
   }
 }
 
-/** ID сессии (sessionStorage — живёт до закрытия вкладки). */
+/** ID сессии (sessionStorage — живёт до закрытия вкладки). Эфемерный — Уровень 0. */
 export function getSessionId(): string {
   try {
     let id = sessionStorage.getItem(SESSION_KEY);
@@ -68,23 +98,29 @@ function osName(ua: string): string {
 /** Запись просмотра страницы + событие воронки view_page (и view_product). */
 export function trackPageView(path: string): void {
   if (!supabase) return;
-  const { id: visitorId, isNew } = getVisitorId();
-  const sessionId = getSessionId();
+  const consent = readConsent();
   const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-  void supabase
-    .from("page_views")
-    .insert({
-      path,
-      referrer: typeof document !== "undefined" ? document.referrer || null : null,
-      session_id: sessionId,
-      visitor_id: visitorId,
-      is_new_visitor: isNew,
-      device_type: deviceType(),
-      browser: browserName(ua),
-      os: osName(ua),
-      user_agent: ua,
-    })
-    .then(() => {});
+
+  // Уровень 0 — обезличенные поля (бакеты browser/os считаются из UA, но сам UA
+  // не сохраняется; идентификатор — только эфемерная сессия).
+  const row: Record<string, unknown> = {
+    path,
+    referrer: typeof document !== "undefined" ? document.referrer || null : null,
+    session_id: getSessionId(),
+    device_type: deviceType(),
+    browser: browserName(ua),
+    os: osName(ua),
+  };
+
+  // Уровень 1 — идентификация только при согласии на аналитику.
+  if (consent.analytics) {
+    const { id: visitorId, isNew } = getVisitorId();
+    row.visitor_id = visitorId;
+    row.is_new_visitor = isNew;
+    row.user_agent = ua;
+  }
+
+  void supabase.from("page_views").insert(row).then(() => {});
 
   trackFunnel("view_page", { path });
   const m = path.match(/^\/product\/([^/?#]+)/);
@@ -108,15 +144,14 @@ export type FunnelEventType = (typeof FUNNEL_TYPES)[number];
 
 export function trackFunnel(eventType: FunnelEventType, payload?: Record<string, unknown>): void {
   if (!supabase) return;
-  void supabase
-    .from("funnel_events")
-    .insert({ session_id: getSessionId(), visitor_id: getVisitorId().id, event_type: eventType, payload: payload ?? null })
-    .then(() => {});
+  const row: Record<string, unknown> = { session_id: getSessionId(), event_type: eventType, payload: payload ?? null };
+  if (readConsent().analytics) row.visitor_id = getVisitorId().id;
+  void supabase.from("funnel_events").insert(row).then(() => {});
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Показ/клик hero-слайда (slideId должен быть uuid из БД). */
+/** Показ/клик hero-слайда (slideId должен быть uuid из БД). Уровень 0 — только сессия. */
 export function trackHero(slideId: string, eventType: "view" | "click"): void {
   if (!supabase || !UUID_RE.test(slideId)) return;
   void supabase
@@ -125,17 +160,15 @@ export function trackHero(slideId: string, eventType: "view" | "click"): void {
     .then(() => {});
 }
 
-/** Поисковый запрос с сайта. */
+/** Поисковый запрос с сайта. visitor_id — только при согласии (Уровень 1). */
 export function trackSearch(query: string, resultsCount: number): void {
   if (!supabase || !query.trim()) return;
-  void supabase
-    .from("search_queries")
-    .insert({
-      query: query.trim(),
-      normalized_query: query.trim().toLowerCase(),
-      results_count: resultsCount,
-      session_id: getSessionId(),
-      visitor_id: getVisitorId().id,
-    })
-    .then(() => {});
+  const row: Record<string, unknown> = {
+    query: query.trim(),
+    normalized_query: query.trim().toLowerCase(),
+    results_count: resultsCount,
+    session_id: getSessionId(),
+  };
+  if (readConsent().analytics) row.visitor_id = getVisitorId().id;
+  void supabase.from("search_queries").insert(row).then(() => {});
 }
