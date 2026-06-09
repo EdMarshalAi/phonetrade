@@ -25,10 +25,14 @@ export function CatalogHero({ title, description, total, parent = null }: Props)
       <div className="container-page pt-10 md:pt-14 pb-6 md:pb-8">
         <nav
           aria-label="Хлебные крошки"
-          className="flex items-center gap-1.5 text-xs text-ink-subtle mb-4"
+          className="flex flex-wrap items-center gap-1.5 text-xs text-ink-subtle mb-4"
         >
           <Link href="/" className="hover:text-ink transition-colors">
             Главная
+          </Link>
+          <ChevronRight className="size-3.5" aria-hidden />
+          <Link href="/catalog" className="hover:text-ink transition-colors">
+            Каталог
           </Link>
           <ChevronRight className="size-3.5" aria-hidden />
           {parent ? (
