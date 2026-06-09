@@ -140,7 +140,6 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
   const [phone, setPhone] = React.useState(initialPhone ?? "");
   const [marketing, setMarketing] = React.useState(false);
   const [cRules, setCRules] = React.useState(false);
-  const [cOffer, setCOffer] = React.useState(false);
   const [cPd, setCPd] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -159,7 +158,7 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
     if (phone.replace(/\D/g, "").length < 11) { setError("Укажите корректный телефон"); return; }
     if (!name.trim()) { setError("Укажите имя"); return; }
     if (!cRules) { setError("Подтвердите, что ознакомились с правилами ремонтных работ"); return; }
-    if (!authed && (!cOffer || !cPd)) { setError("Подтвердите согласия, чтобы отправить заявку"); return; }
+    if (!authed && !cPd) { setError("Необходимо дать согласие на обработку персональных данных"); return; }
     setBusy(true);
     const res = await submitRepairRequest({ device: device!, category: cat, issues, comment, name, phone, consentMarketing: marketing });
     setBusy(false);
@@ -280,16 +279,12 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
               {!authed ? (
                 <>
                   <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-muted">
-                    <input type="checkbox" checked={cOffer} onChange={(e) => setCOffer(e.target.checked)} className="mt-0.5 size-4" />
-                    <span>Принимаю <a href="/offer" target="_blank" className="text-ink underline">оферту</a> и <a href="/privacy" target="_blank" className="text-ink underline">политику конфиденциальности</a></span>
-                  </label>
-                  <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-muted">
                     <input type="checkbox" checked={cPd} onChange={(e) => setCPd(e.target.checked)} className="mt-0.5 size-4" />
                     <span>Даю <a href="/consent" target="_blank" className="text-ink underline">согласие на обработку персональных данных</a></span>
                   </label>
                   <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-muted">
                     <input type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} className="mt-0.5 size-4" />
-                    <span>Хочу получать акции и выгодные предложения (необязательно)</span>
+                    <span>Хочу получать акции и новинки (необязательно)</span>
                   </label>
                 </>
               ) : null}
@@ -299,10 +294,17 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
 
             <div className="mt-5 flex items-center justify-between gap-3">
               <button type="button" onClick={() => setStep(2)} className="inline-flex h-11 items-center gap-1.5 rounded-full px-5 text-[14px] font-medium text-ink-muted hover:text-ink"><ChevronLeft className="size-4" /> Назад</button>
-              <button type="button" onClick={submit} disabled={busy || !cRules || (!authed && (!cOffer || !cPd))} className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-ink px-8 text-[15px] font-medium text-white transition-colors hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-60">
+              <button type="button" onClick={submit} disabled={busy || !cRules || (!authed && !cPd)} className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-ink px-8 text-[15px] font-medium text-white transition-colors hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-60">
                 {busy ? <Loader2 className="size-5 animate-spin" /> : <Phone className="size-[18px]" />} Оставить заявку
               </button>
             </div>
+            {!authed ? (
+              <p className="mt-3 text-[12px] leading-snug text-ink-subtle">
+                Нажимая «Оставить заявку», вы принимаете условия{" "}
+                <a href="/offer" target="_blank" className="underline underline-offset-2 hover:text-ink">оферты</a> и{" "}
+                <a href="/privacy" target="_blank" className="underline underline-offset-2 hover:text-ink">политики конфиденциальности</a>
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>

@@ -74,8 +74,8 @@ export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | nul
       setError("Как к вам обращаться?");
       return;
     }
-    if (mode === "register" && (!consent.oferta || !consent.pd)) {
-      setError("Необходимо принять оферту и согласие на обработку персональных данных");
+    if (mode === "register" && !consent.pd) {
+      setError("Необходимо дать согласие на обработку персональных данных");
       return;
     }
 
@@ -242,10 +242,6 @@ export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | nul
                 {mode === "register" && (
                   <div className="space-y-2 pt-1">
                     <label className="flex items-start gap-2.5 text-[12.5px] leading-snug text-ink-muted cursor-pointer">
-                      <input type="checkbox" checked={consent.oferta} onChange={(e) => setConsent((c) => ({ ...c, oferta: e.target.checked }))} className="mt-0.5 size-4 shrink-0 accent-[var(--color-ink)]" />
-                      <span>Принимаю <a href="/offer" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">оферту</a> и <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">политику конфиденциальности</a></span>
-                    </label>
-                    <label className="flex items-start gap-2.5 text-[12.5px] leading-snug text-ink-muted cursor-pointer">
                       <input type="checkbox" checked={consent.pd} onChange={(e) => setConsent((c) => ({ ...c, pd: e.target.checked }))} className="mt-0.5 size-4 shrink-0 accent-[var(--color-ink)]" />
                       <span>Даю <a href="/consent" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">согласие на обработку персональных данных</a></span>
                     </label>
@@ -269,6 +265,14 @@ export function AuthShell({ initialUser = null }: { initialUser?: AuthUser | nul
                 >
                   {pending ? "Подождите…" : mode === "login" ? "Войти" : "Создать аккаунт"}
                 </button>
+
+                {mode === "register" && (
+                  <p className="text-center text-[12px] leading-snug text-ink-subtle">
+                    Нажимая «Создать аккаунт», вы принимаете условия{" "}
+                    <a href="/offer" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-ink">оферты</a> и{" "}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-ink">политики конфиденциальности</a>
+                  </p>
+                )}
               </form>
 
               <p className="mt-5 text-center text-[13px] text-ink-muted">

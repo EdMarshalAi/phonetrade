@@ -65,20 +65,22 @@ export function CustomerSection({ state, onChange, errors, showErrors, loggedIn,
 
           {!loggedIn && (
             <div className="mt-5 space-y-2.5">
-              <ConsentRow checked={consent.oferta} onChange={(v) => onConsent({ oferta: v })}>
-                Принимаю <a href="/offer" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">условия оферты</a> и <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">политику конфиденциальности</a>
-              </ConsentRow>
               <ConsentRow checked={consent.pd} onChange={(v) => onConsent({ pd: v })}>
                 Даю <a href="/consent" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">согласие на обработку персональных данных</a> для оформления и исполнения заказа
               </ConsentRow>
               <ConsentRow checked={consent.marketing} onChange={(v) => onConsent({ marketing: v })} subtle>
                 Хочу получать акции и новинки (необязательно)
               </ConsentRow>
-              {showErrors && (!consent.oferta || !consent.pd) && (
+              {showErrors && !consent.pd && (
                 <p className="text-[12px] text-sale" role="alert">
-                  Необходимо принять оферту и согласие на обработку персональных данных
+                  Необходимо дать согласие на обработку персональных данных
                 </p>
               )}
+              <p className="text-[12px] leading-snug text-ink-subtle">
+                Нажимая «Оформить заказ», вы принимаете условия{" "}
+                <a href="/offer" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-ink">оферты</a> и{" "}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-ink">политики конфиденциальности</a>
+              </p>
             </div>
           )}
         </>
@@ -112,8 +114,8 @@ function AuthPanel({
     if (normalizePhone(phone).length < 11) return setError("Укажите корректный номер телефона");
     if (password.length < 6) return setError("Пароль — минимум 6 символов");
     if (mode === "register" && !name.trim()) return setError("Укажите имя");
-    if (mode === "register" && (!consent.oferta || !consent.pd))
-      return setError("Необходимо принять оферту и согласие на обработку персональных данных");
+    if (mode === "register" && !consent.pd)
+      return setError("Необходимо дать согласие на обработку персональных данных");
     setPending(true);
     try {
       if (mode === "register") await register({ name, phone, email, password, consentMarketing: consent.marketing });
@@ -153,9 +155,6 @@ function AuthPanel({
 
       {mode === "register" ? (
         <div className="mt-4 space-y-2">
-          <ConsentRow checked={consent.oferta} onChange={(v) => setConsent((c) => ({ ...c, oferta: v }))}>
-            Принимаю <a href="/offer" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">оферту</a> и <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">политику конфиденциальности</a>
-          </ConsentRow>
           <ConsentRow checked={consent.pd} onChange={(v) => setConsent((c) => ({ ...c, pd: v }))}>
             Даю <a href="/consent" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">согласие на обработку персональных данных</a>
           </ConsentRow>
@@ -184,6 +183,13 @@ function AuthPanel({
           {mode === "login" ? "Нет аккаунта? Зарегистрироваться" : "Уже есть аккаунт? Войти"}
         </button>
       </div>
+      {mode === "register" ? (
+        <p className="mt-3 text-[12px] leading-snug text-ink-subtle">
+          Нажимая «Зарегистрироваться», вы принимаете условия{" "}
+          <a href="/offer" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-ink">оферты</a> и{" "}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-ink">политики конфиденциальности</a>
+        </p>
+      ) : null}
     </div>
   );
 }

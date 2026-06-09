@@ -85,7 +85,7 @@ export function TradeInQuiz({ models, initialUser = null }: { models: TradeInMod
       case 4: return d.hasBreakage === false || (d.hasBreakage === true && d.breakageDescription.trim().length > 0);
       case 5: return !!d.icloud;
       case 6: return !!d.kit;
-      case 7: return nameOk && phoneOk && (!!user || (consent.oferta && consent.pd));
+      case 7: return nameOk && phoneOk && (!!user || consent.pd);
       default: return false;
     }
   })();
@@ -261,15 +261,17 @@ export function TradeInQuiz({ models, initialUser = null }: { models: TradeInMod
                   <input value={d.phone} onChange={(e) => set({ phone: e.target.value })} type="tel" inputMode="tel" placeholder="+7 ___ ___-__-__" className="h-12 w-full rounded-xl bg-surface px-4 text-[15px] text-ink outline-none focus:bg-white focus:ring-2 focus:ring-ink/15" />
                   <input value={d.email} onChange={(e) => set({ email: e.target.value })} type="email" inputMode="email" placeholder="E-mail (необязательно)" className="h-12 w-full rounded-xl bg-surface px-4 text-[15px] text-ink outline-none focus:bg-white focus:ring-2 focus:ring-ink/15" />
                   <div className="space-y-2 pt-1">
-                    <Consent checked={consent.oferta} onChange={(v) => setConsent((c) => ({ ...c, oferta: v }))}>
-                      Принимаю <a href="/offer" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">оферту</a> и <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">политику конфиденциальности</a>
-                    </Consent>
                     <Consent checked={consent.pd} onChange={(v) => setConsent((c) => ({ ...c, pd: v }))}>
                       Даю <a href="/consent" target="_blank" rel="noopener noreferrer" className="text-ink underline underline-offset-2">согласие на обработку персональных данных</a>
                     </Consent>
                     <Consent checked={consent.marketing} onChange={(v) => setConsent((c) => ({ ...c, marketing: v }))} subtle>
                       Хочу получать акции и новинки (необязательно)
                     </Consent>
+                    <p className="pt-0.5 text-[12px] leading-snug text-ink-subtle">
+                      Нажимая «Узнать цену», вы принимаете условия{" "}
+                      <a href="/offer" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-ink">оферты</a> и{" "}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-ink">политики конфиденциальности</a>
+                    </p>
                   </div>
                 </div>
               )

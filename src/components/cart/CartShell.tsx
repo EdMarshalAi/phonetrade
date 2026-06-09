@@ -135,7 +135,7 @@ export function CartShell({
   const handleSubmit = () => {
     setAttempted(true);
     if (items.length === 0 || errorCount > 0) return;
-    if (!consent.oferta || !consent.pd) return; // 152-ФЗ: без согласий заказ не оформляется
+    if (!consent.pd) return; // 152-ФЗ: без согласия на обработку ПДн заказ не оформляется
     if (submitPending) return;
 
     setSubmitError(null);
@@ -178,7 +178,7 @@ export function CartShell({
       total,
       promoCode: promo?.code,
       promoDiscount,
-      consentOferta: consent.oferta,
+      consentOferta: true, // принятие оферты — факт оформления заказа (текст под кнопкой)
       consentPd: consent.pd,
       consentMarketing: consent.marketing,
     }).then((result) => {
