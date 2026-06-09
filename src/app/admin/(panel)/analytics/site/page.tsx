@@ -25,6 +25,7 @@ const DEVICE_LABELS: Record<string, string> = { desktop: "Десктоп", mobil
 
 function fmt(n: number) { return n.toLocaleString("ru-RU"); }
 function pctStr(a: number, b: number) { return b ? `${((a / b) * 100).toFixed(1)}%` : "0%"; }
+function num(v: unknown) { return Number(v ?? 0); }
 
 function classifySource(referrer: string | null, utm: Record<string, string> | null): string {
   const medium = utm?.utm_medium ?? utm?.medium ?? "";
@@ -46,44 +47,62 @@ function refHost(referrer: string | null): string {
   try { return new URL(referrer).hostname.replace(/^www\./, ""); } catch { return "—"; }
 }
 
-type ViewRow = {
-  path: string; referrer: string | null; utm: Record<string, string> | null;
-  session_id: string | null; visitor_id: string | null; device_type: string | null;
-  city: string | null; created_at: string;
-};
-type SessionRow = { id: string; is_bounce: boolean | null; pages_count: number | null };
+/* ── загрузка KPI (агрегация в БД, не вытягиваем сырые строки) ─────────────────── */
 
-async function loadSite(db: ReturnType<typeof createSupabaseAdminClient>, range: Range) {
+async function loadSummary(db: ReturnType<typeof createSupabaseAdminClient>, range: Range) {
   const from = range.from.toISOString();
   const to = range.to.toISOString();
-  const [{ data: viewsRaw }, { data: sessionsRaw }, { count: leadsCount }, { count: ordersCount }] = await Promise.all([
-    db.from("page_views").select("path,referrer,utm,session_id,visitor_id,device_type,city,created_at").gte("created_at", from).lte("created_at", to).limit(20000),
-    db.from("sessions").select("id,is_bounce,pages_count").gte("created_at", from).lte("created_at", to).limit(20000),
+  const [{ data: sumRows }, { count: leadsCount }, { count: ordersCount }] = await Promise.all([
+    db.rpc("analytics_summary", { p_from: from, p_to: to }),
     db.from("leads").select("id", { count: "exact", head: true }).gte("created_at", from).lte("created_at", to),
     db.from("orders").select("id", { count: "exact", head: true }).is("deleted_at", null).gte("created_at", from).lte("created_at", to),
   ]);
-  const views = (viewsRaw ?? []) as ViewRow[];
-  const sessions = (sessionsRaw ?? []) as SessionRow[];
-
-  const visitors = new Set(views.map((v) => v.visitor_id ?? v.session_id)).size;
-  const pageviews = views.length;
-  const sessionPages: Record<string, number> = {};
-  for (const v of views) { const s = v.session_id ?? "—"; sessionPages[s] = (sessionPages[s] ?? 0) + 1; }
-  const totalSessions = sessions.length || Object.keys(sessionPages).length;
-  const bounceSessions = sessions.length
-    ? sessions.filter((s) => s.is_bounce).length
-    : Object.values(sessionPages).filter((c) => c === 1).length;
+  const s = (sumRows?.[0] ?? {}) as { visitors?: unknown; pageviews?: unknown; sessions?: unknown; bounce_sessions?: unknown };
+  const visitors = num(s.visitors);
+  const pageviews = num(s.pageviews);
+  const totalSessions = num(s.sessions);
+  const bounceSessions = num(s.bounce_sessions);
   const bounce = totalSessions ? (bounceSessions / totalSessions) * 100 : 0;
   const depth = totalSessions ? pageviews / totalSessions : 0;
   const conversion = visitors ? ((ordersCount ?? 0) / visitors) * 100 : 0;
-
-  return {
-    views, sessions, visitors, pageviews, totalSessions, bounce, depth, conversion,
-    leads: leadsCount ?? 0, orders: ordersCount ?? 0,
-  };
+  return { visitors, pageviews, totalSessions, bounce, depth, conversion, leads: leadsCount ?? 0, orders: ordersCount ?? 0 };
 }
 
-type SiteData = Awaited<ReturnType<typeof loadSite>>;
+type SiteData = Awaited<ReturnType<typeof loadSummary>>;
+
+/* ── helpers над агрегатами рефереров ────────────────────────────────────────── */
+
+type RefGroup = { referrer: string | null; utm: Record<string, string> | null; views: number; visitors: number };
+
+function classifySources(groups: RefGroup[]) {
+  const map: Record<string, { views: number; visitors: number }> = {};
+  for (const g of groups) {
+    const src = classifySource(g.referrer, g.utm);
+    (map[src] ??= { views: 0, visitors: 0 });
+    map[src].views += g.views;
+    map[src].visitors += g.visitors;
+  }
+  return Object.entries(map).map(([label, d]) => ({ label, views: d.views, visitors: d.visitors })).sort((a, b) => b.views - a.views);
+}
+
+function refHosts(groups: RefGroup[]) {
+  const map: Record<string, number> = {};
+  for (const g of groups) { const h = refHost(g.referrer); if (h !== "—") map[h] = (map[h] ?? 0) + g.views; }
+  return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([host, views]) => ({ host, views }));
+}
+
+async function loadReferrers(db: ReturnType<typeof createSupabaseAdminClient>, range: Range): Promise<RefGroup[]> {
+  const { data } = await db.rpc("analytics_by_referrer", { p_from: range.from.toISOString(), p_to: range.to.toISOString() });
+  return ((data ?? []) as { referrer: string | null; utm: Record<string, string> | null; views: unknown; visitors: unknown }[])
+    .map((r) => ({ referrer: r.referrer, utm: r.utm, views: num(r.views), visitors: num(r.visitors) }));
+}
+
+async function loadDevices(db: ReturnType<typeof createSupabaseAdminClient>, range: Range) {
+  const { data } = await db.rpc("analytics_by_device", { p_from: range.from.toISOString(), p_to: range.to.toISOString() });
+  return ((data ?? []) as { device_type: string; views: unknown }[])
+    .map((d) => ({ label: DEVICE_LABELS[d.device_type] ?? d.device_type, value: num(d.views) }))
+    .sort((a, b) => b.value - a.value);
+}
 
 /* ── маленькие переиспользуемые виджеты ─────────────────────────────────────── */
 
@@ -101,34 +120,6 @@ function Donut({ data, title }: { data: SeriesPoint[]; title: string }) {
   );
 }
 
-/* ── агрегаторы по views ────────────────────────────────────────────────────── */
-
-function sourceBreakdown(views: ViewRow[]) {
-  const map: Record<string, { views: number; visitors: Set<string> }> = {};
-  for (const v of views) {
-    const src = classifySource(v.referrer, v.utm);
-    (map[src] ??= { views: 0, visitors: new Set() });
-    map[src].views++;
-    map[src].visitors.add(v.visitor_id ?? v.session_id ?? "");
-  }
-  return Object.entries(map).map(([label, d]) => ({ label, views: d.views, visitors: d.visitors.size })).sort((a, b) => b.views - a.views);
-}
-
-function deviceBreakdown(views: ViewRow[]) {
-  const map: Record<string, number> = {};
-  for (const v of views) { const d = v.device_type ?? "—"; map[d] = (map[d] ?? 0) + 1; }
-  return Object.entries(map).map(([k, value]) => ({ label: DEVICE_LABELS[k] ?? k, value })).sort((a, b) => b.value - a.value);
-}
-
-function cityBreakdown(views: ViewRow[]) {
-  const map: Record<string, Set<string>> = {};
-  for (const v of views) {
-    const c = (v.city && v.city.trim()) || "Не определён";
-    (map[c] ??= new Set()).add(v.visitor_id ?? v.session_id ?? "");
-  }
-  return Object.entries(map).map(([label, set]) => ({ label, value: set.size })).sort((a, b) => b.value - a.value);
-}
-
 /* ── page ───────────────────────────────────────────────────────────────────── */
 
 export default async function SiteAnalyticsPage({
@@ -143,10 +134,12 @@ export default async function SiteAnalyticsPage({
   const compare = params.compare !== "false";
   const range = getDateRange(period);
   const prevRange = getPreviousPeriod(range);
+  const from = range.from.toISOString();
+  const to = range.to.toISOString();
 
   const db = createSupabaseAdminClient();
-  const cur: SiteData = await loadSite(db, range);
-  const prev: SiteData | null = tab === "overview" && compare ? await loadSite(db, prevRange) : null;
+  const cur: SiteData = await loadSummary(db, range);
+  const prev: SiteData | null = tab === "overview" && compare ? await loadSummary(db, prevRange) : null;
 
   const header = (
     <>
@@ -164,22 +157,20 @@ export default async function SiteAnalyticsPage({
   /* ── Обзор ── */
   if (tab === "overview") {
     const dayKeys = daysInRange(range);
-    const viewsByDayMap: Record<string, number> = {};
-    const visByDay: Record<string, Set<string>> = {};
-    for (const v of cur.views) {
-      const d = v.created_at.slice(0, 10);
-      viewsByDayMap[d] = (viewsByDayMap[d] ?? 0) + 1;
-      (visByDay[d] ??= new Set()).add(v.visitor_id ?? v.session_id ?? "");
-    }
+    const [{ data: byDayRaw }, refGroups, devices, { data: topPagesRaw }] = await Promise.all([
+      db.rpc("analytics_views_by_day", { p_from: from, p_to: to }),
+      loadReferrers(db, range),
+      loadDevices(db, range),
+      db.rpc("analytics_top_pages", { p_from: from, p_to: to }),
+    ]);
+    const byDay = ((byDayRaw ?? []) as { d: string; views: unknown; visitors: unknown }[]).map((r) => ({ d: r.d, views: num(r.views), visitors: num(r.visitors) }));
+    const viewsByDayMap: Record<string, number> = Object.fromEntries(byDay.map((r) => [r.d, r.views]));
+    const visByDayMap: Record<string, number> = Object.fromEntries(byDay.map((r) => [r.d, r.visitors]));
     const pvSpark = dayKeys.map((d) => viewsByDayMap[d] ?? 0);
-    const visSpark = dayKeys.map((d) => visByDay[d]?.size ?? 0);
+    const visSpark = dayKeys.map((d) => visByDayMap[d] ?? 0);
     const viewsSeries: SeriesPoint[] = dayKeys.map((d) => ({ label: d.slice(5).replace("-", "."), value: viewsByDayMap[d] ?? 0 }));
-    const sources = sourceBreakdown(cur.views);
-    const devices = deviceBreakdown(cur.views);
-    const pathViews: Record<string, number> = {};
-    const pathVisitors: Record<string, Set<string>> = {};
-    for (const v of cur.views) { pathViews[v.path] = (pathViews[v.path] ?? 0) + 1; (pathVisitors[v.path] ??= new Set()).add(v.visitor_id ?? v.session_id ?? ""); }
-    const topPages = Object.entries(pathViews).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([path, v]) => ({ path, views: v, visitors: pathVisitors[path]?.size ?? 0 }));
+    const sources = classifySources(refGroups);
+    const topPages = ((topPagesRaw ?? []) as { path: string; views: unknown; visitors: unknown }[]).slice(0, 10).map((r) => ({ path: r.path, views: num(r.views), visitors: num(r.visitors) }));
     const vs = (val: string) => (compare && prev ? `vs ${val} в прошлом периоде` : undefined);
 
     return (
@@ -222,16 +213,14 @@ export default async function SiteAnalyticsPage({
 
   /* ── Аудитория ── */
   if (tab === "audience") {
-    // новые vs вернувшиеся: посетитель «вернувшийся», если заходил в ≥2 разных дня периода
-    const visitorDays: Record<string, Set<string>> = {};
-    for (const v of cur.views) {
-      const id = v.visitor_id ?? v.session_id ?? "";
-      (visitorDays[id] ??= new Set()).add(v.created_at.slice(0, 10));
-    }
-    const ids = Object.keys(visitorDays);
-    const returning = ids.filter((id) => visitorDays[id].size >= 2).length;
-    const fresh = ids.length - returning;
-    const cities = cityBreakdown(cur.views);
+    const [{ data: nrRaw }, { data: cityRaw }] = await Promise.all([
+      db.rpc("analytics_new_returning", { p_from: from, p_to: to }),
+      db.rpc("analytics_by_city", { p_from: from, p_to: to }),
+    ]);
+    const total = num((nrRaw?.[0] as { total?: unknown })?.total);
+    const returning = num((nrRaw?.[0] as { returning_cnt?: unknown })?.returning_cnt);
+    const fresh = total - returning;
+    const cities = ((cityRaw ?? []) as { city: string; visitors: unknown }[]).map((c) => ({ label: c.city, value: num(c.visitors) }));
 
     return (
       <>
@@ -239,8 +228,8 @@ export default async function SiteAnalyticsPage({
         <div className="space-y-6">
           <KpiRow>
             <KpiCard label="Уник. посетители" value={formatNumber(cur.visitors)} current={cur.visitors} previousLabel="за период" />
-            <KpiCard label="Новые" value={formatNumber(fresh)} current={fresh} previousLabel={ids.length ? `${pctStr(fresh, ids.length)} от всех` : undefined} />
-            <KpiCard label="Вернувшиеся" value={formatNumber(returning)} current={returning} previousLabel={ids.length ? `${pctStr(returning, ids.length)} · заходили ≥2 дней` : undefined} />
+            <KpiCard label="Новые" value={formatNumber(fresh)} current={fresh} previousLabel={total ? `${pctStr(fresh, total)} от всех` : undefined} />
+            <KpiCard label="Вернувшиеся" value={formatNumber(returning)} current={returning} previousLabel={total ? `${pctStr(returning, total)} · заходили ≥2 дней` : undefined} />
             <KpiCard label="Сессии" value={formatNumber(cur.totalSessions)} current={cur.totalSessions} previousLabel={`${cur.depth.toFixed(1).replace(".", ",")} стр./сессия`} />
           </KpiRow>
           <div className="grid gap-5 lg:grid-cols-2">
@@ -262,17 +251,12 @@ export default async function SiteAnalyticsPage({
 
   /* ── Поведение: воронка + поиск + hero CTR ── */
   if (tab === "behavior") {
-    const from = range.from.toISOString();
-    const to = range.to.toISOString();
-    const [{ data: funnelRaw }, { data: searchRaw }, { data: heroEventsRaw }, { data: heroSlidesRaw }] = await Promise.all([
-      db.from("funnel_events").select("event_type,session_id,created_at").gte("created_at", from).lte("created_at", to).limit(50000),
-      db.from("search_queries").select("query,normalized_query,results_count,created_at").gte("created_at", from).lte("created_at", to).limit(10000),
-      db.from("hero_slide_events").select("slide_id,event_type,created_at").gte("created_at", from).lte("created_at", to).limit(50000),
+    const [{ data: funnelRaw }, { data: searchRaw }, { data: heroRaw }, { data: heroSlidesRaw }] = await Promise.all([
+      db.rpc("analytics_funnel", { p_from: from, p_to: to }),
+      db.rpc("analytics_search", { p_from: from, p_to: to }),
+      db.rpc("analytics_hero", { p_from: from, p_to: to }),
       db.from("hero_slides").select("id,title"),
     ]);
-    const funnelEvents = (funnelRaw ?? []) as { event_type: string }[];
-    const searchRows = (searchRaw ?? []) as { query: string; normalized_query: string | null; results_count: number }[];
-    const heroEvents = (heroEventsRaw ?? []) as { slide_id: string | null; event_type: string }[];
     const heroSlides = (heroSlidesRaw ?? []) as { id: string; title: string | null }[];
 
     const FUNNEL = [
@@ -284,24 +268,21 @@ export default async function SiteAnalyticsPage({
       { key: "pay_order", label: "Оплата заказа" },
     ];
     const fc: Record<string, number> = {};
-    for (const e of funnelEvents) fc[e.event_type] = (fc[e.event_type] ?? 0) + 1;
+    for (const e of (funnelRaw ?? []) as { event_type: string; cnt: unknown }[]) fc[e.event_type] = num(e.cnt);
     const steps = FUNNEL.map((s) => ({ ...s, count: fc[s.key] ?? 0 }));
     const first = steps[0]?.count ?? 0;
     const hasFunnel = steps.some((s) => s.count > 0);
 
-    const qc: Record<string, number> = {};
-    const noRes: Record<string, number> = {};
-    for (const s of searchRows) {
-      const k = s.normalized_query ?? s.query;
-      qc[k] = (qc[k] ?? 0) + 1;
-      if (s.results_count === 0) noRes[k] = (noRes[k] ?? 0) + 1;
-    }
-    const topQ = Object.entries(qc).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([query, count]) => ({ query, count }));
-    const topNoRes = Object.entries(noRes).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([query, count]) => ({ query, count }));
+    const searchRows = ((searchRaw ?? []) as { q: string; cnt: unknown; nores: unknown }[]).map((r) => ({ query: r.q, count: num(r.cnt), nores: num(r.nores) }));
+    const topQ = searchRows.slice(0, 10);
+    const topNoRes = searchRows.filter((r) => r.nores > 0).sort((a, b) => b.nores - a.nores).slice(0, 10).map((r) => ({ query: r.query, count: r.nores }));
 
     const heroMap = Object.fromEntries(heroSlides.map((s) => [s.id, s.title ?? s.id]));
     const hv: Record<string, number> = {}; const hcl: Record<string, number> = {};
-    for (const e of heroEvents) { const id = e.slide_id ?? "unknown"; if (e.event_type === "view") hv[id] = (hv[id] ?? 0) + 1; else if (e.event_type === "click") hcl[id] = (hcl[id] ?? 0) + 1; }
+    for (const e of (heroRaw ?? []) as { slide_id: string; event_type: string; cnt: unknown }[]) {
+      const id = e.slide_id ?? "unknown";
+      if (e.event_type === "view") hv[id] = num(e.cnt); else if (e.event_type === "click") hcl[id] = num(e.cnt);
+    }
     const heroRows = Object.keys({ ...hv, ...hcl }).map((id) => ({
       id, title: heroMap[id] ?? id, views: hv[id] ?? 0, clicks: hcl[id] ?? 0,
       ctr: hv[id] ? `${(((hcl[id] ?? 0) / hv[id]) * 100).toFixed(1)}%` : "—",
@@ -364,10 +345,9 @@ export default async function SiteAnalyticsPage({
 
   /* ── Источники ── */
   if (tab === "sources") {
-    const sources = sourceBreakdown(cur.views);
-    const refMap: Record<string, number> = {};
-    for (const v of cur.views) { const h = refHost(v.referrer); if (h !== "—") refMap[h] = (refMap[h] ?? 0) + 1; }
-    const refRows = Object.entries(refMap).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([host, views]) => ({ host, views }));
+    const refGroups = await loadReferrers(db, range);
+    const sources = classifySources(refGroups);
+    const refRows = refHosts(refGroups);
 
     return (
       <>
@@ -394,7 +374,7 @@ export default async function SiteAnalyticsPage({
   }
 
   /* ── Технические ── */
-  const devices = deviceBreakdown(cur.views);
+  const devices = await loadDevices(db, range);
   const devTotal = devices.reduce((s, d) => s + d.value, 0);
   return (
     <>
