@@ -29,6 +29,9 @@ export const metadata: Metadata = {
     "Trade-in iPhone",
     "PhoneTrade",
   ],
+  // Подтверждение прав в Яндекс.Вебмастере (рендерит
+  // <meta name="yandex-verification" content="…"> в <head> на всех страницах).
+  verification: { yandex: "ec396f42004ecb9a" },
   openGraph: {
     title: "PhoneTrade — Магазин техники Apple в Белгороде",
     description:
