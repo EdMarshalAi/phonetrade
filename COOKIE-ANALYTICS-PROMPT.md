@@ -470,43 +470,50 @@ $fn$;
 Под КАЖДОЙ формой, собирающей ПДн (регистрация, заявка, заказ), — галочки. **Кнопка
 отправки неактивна, пока не отмечены ВСЕ обязательные** (маркетинговая — необязательная).
 
-### Тексты галочек (дословно)
-- ☑️ **Принимаю [оферту](/offer) и [политику конфиденциальности](/privacy)** — обязательная.
-- ☑️ **Даю [согласие на обработку персональных данных](/consent)** — обязательная.
-- ☐ **Хочу получать акции и выгодные предложения (необязательно)** — маркетинг, опциональная.
-- (для заявки на услугу/ремонт) ☑️ **Ознакомлен(а) с [правилами …](/service-rules)** — обязательная.
+### Что должно быть (галочки оферты НЕТ — она избыточна)
+- ☑️ **Даю [согласие на обработку персональных данных](/consent)** — обязательная **галочка**.
+- ☐ **Хочу получать акции и новинки (необязательно)** — маркетинг, опциональная галочка.
+- (для заявки на услугу/ремонт) ☑️ **Ознакомлен(а) с [правилами …](/service-rules)** —
+  обязательная галочка.
+- **Принятие оферты и политики — НЕ галочкой, а текстом под кнопкой** (оферта принимается
+  фактом действия; ознакомление с политикой чекбокса не требует):
+  > Нажимая «<текст кнопки>», вы принимаете условия [оферты](/offer) и [политики
+  > конфиденциальности](/privacy)
 
 ### Паттерн (React)
 ```tsx
-const [cOffer, setCOffer] = React.useState(false);
 const [cPd, setCPd] = React.useState(false);
 const [marketing, setMarketing] = React.useState(false);
 // ...
 const submit = async () => {
-  if (!cOffer || !cPd) { setError("Подтвердите согласия, чтобы отправить"); return; }
-  // отправка; в payload передать consentMarketing: marketing
+  if (!cPd) { setError("Необходимо дать согласие на обработку персональных данных"); return; }
+  // payload: consentPd: cPd, consentMarketing: marketing,
+  //          consentOferta: true (принятие = факт действия, см. текст под кнопкой)
 };
 // в JSX:
-<label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-muted">
-  <input type="checkbox" checked={cOffer} onChange={(e) => setCOffer(e.target.checked)} className="mt-0.5 size-4" />
-  <span>Принимаю <a href="/offer" target="_blank" className="text-ink underline">оферту</a> и <a href="/privacy" target="_blank" className="text-ink underline">политику конфиденциальности</a></span>
-</label>
 <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-muted">
   <input type="checkbox" checked={cPd} onChange={(e) => setCPd(e.target.checked)} className="mt-0.5 size-4" />
   <span>Даю <a href="/consent" target="_blank" className="text-ink underline">согласие на обработку персональных данных</a></span>
 </label>
 <label className="flex cursor-pointer items-start gap-2 text-[12.5px] text-ink-muted">
   <input type="checkbox" checked={marketing} onChange={(e) => setMarketing(e.target.checked)} className="mt-0.5 size-4" />
-  <span>Хочу получать акции и выгодные предложения (необязательно)</span>
+  <span>Хочу получать акции и новинки (необязательно)</span>
 </label>
 // кнопка:
-<button type="button" onClick={submit} disabled={busy || !cOffer || !cPd} className="... disabled:cursor-not-allowed disabled:opacity-60">Отправить</button>
+<button type="button" onClick={submit} disabled={busy || !cPd} className="... disabled:cursor-not-allowed disabled:opacity-60">Отправить</button>
+// текст под кнопкой:
+<p className="mt-3 text-[12px] leading-snug text-ink-subtle">
+  Нажимая «Отправить», вы принимаете условия{" "}
+  <a href="/offer" target="_blank" className="underline underline-offset-2 hover:text-ink">оферты</a> и{" "}
+  <a href="/privacy" target="_blank" className="underline underline-offset-2 hover:text-ink">политики конфиденциальности</a>
+</p>
 ```
 
-**НЕ писать** под формами/в логине пассивных фраз вида «Продолжая, вы соглашаетесь…» —
-согласие только активной галочкой. Для авторизованного пользователя, уже давшего согласие
-при регистрации, повторные галочки оферты/ПДн можно скрыть (но «ознакомлен с правилами
-услуги» показывать всем — это принятие условий услуги, не ПДн).
+**НЕ писать** пассивных фраз «Продолжая пользоваться сайтом, вы соглашаетесь…» (ПДн-согласие
+только активной галочкой). Текст «Нажимая «<кнопка>», вы принимаете оферту/политику» —
+допустим (оферта = акцепт действием). Для авторизованного пользователя, уже давшего
+ПДн-согласие при регистрации, галочку ПДн можно скрыть (но «ознакомлен с правилами услуги»
+показывать всем — это принятие условий услуги, не ПДн).
 
 ### Логирование согласий (рекомендуется)
 При сабмите писать запись в таблицу `data_consents` (тип согласия, версия, IP, user-agent,
