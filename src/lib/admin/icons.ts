@@ -56,7 +56,7 @@ import {
   CheckCircle2,
   type LucideIcon,
 } from "lucide-react";
-import { TelegramIcon, VkIcon } from "@/lib/admin/brand-icons";
+import { TelegramIcon, VkIcon, YandexMapsIcon, TwoGisIcon } from "@/lib/admin/brand-icons";
 
 /**
  * Единый набор иконок системы (kebab-имена ↔ lucide-компоненты).
@@ -124,6 +124,9 @@ export const ICON_SET: { name: string; Icon: LucideIcon }[] = [
   // Соцсети (брендовые, fill=currentColor)
   { name: "telegram", Icon: TelegramIcon as unknown as LucideIcon },
   { name: "vk", Icon: VkIcon as unknown as LucideIcon },
+  // Карты / гео (брендовые плитки, fill=currentColor)
+  { name: "yandex-maps", Icon: YandexMapsIcon as unknown as LucideIcon },
+  { name: "2gis", Icon: TwoGisIcon as unknown as LucideIcon },
 ];
 
 const MAP: Record<string, LucideIcon> = Object.fromEntries(ICON_SET.map((i) => [i.name, i.Icon]));

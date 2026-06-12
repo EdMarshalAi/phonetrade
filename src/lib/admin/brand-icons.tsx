@@ -29,3 +29,51 @@ export const VkIcon = React.forwardRef<SVGSVGElement, IconProps>(
     );
   }
 );
+
+/**
+ * Яндекс.Карты — фирменная «плитка» с прорезанной буквой «Я» (knockout-маска:
+ * фон проступает сквозь букву). fill="currentColor" → плитка наследует цвет
+ * текста, поэтому корректна и в светлой шапке, и в тёмном футере.
+ */
+export const YandexMapsIcon = React.forwardRef<SVGSVGElement, IconProps>(
+  function YandexMapsIcon(props, ref) {
+    const uid = React.useId().replace(/:/g, "");
+    const mid = `ya-${uid}`;
+    return (
+      <svg ref={ref} viewBox="0 0 24 24" fill="currentColor" aria-hidden {...props}>
+        <defs>
+          <mask id={mid}>
+            <rect x="0" y="0" width="24" height="24" rx="5.5" fill="white" />
+            <text x="12.2" y="12.3" textAnchor="middle" dominantBaseline="central"
+              fontFamily="system-ui, -apple-system, Arial, sans-serif" fontWeight="800" fontSize="16" fill="black">Я</text>
+          </mask>
+        </defs>
+        <rect x="0" y="0" width="24" height="24" rx="5.5" mask={`url(#${mid})`} />
+      </svg>
+    );
+  }
+);
+
+/**
+ * 2ГИС — фирменная «плитка» с прорезанной меткой-«каплей» (location pin) через
+ * knockout-маску (evenodd: внутреннее отверстие метки остаётся залитым). Как и
+ * остальные брендовые иконки — currentColor, адаптивна к фону.
+ */
+export const TwoGisIcon = React.forwardRef<SVGSVGElement, IconProps>(
+  function TwoGisIcon(props, ref) {
+    const uid = React.useId().replace(/:/g, "");
+    const mid = `gis-${uid}`;
+    return (
+      <svg ref={ref} viewBox="0 0 24 24" fill="currentColor" aria-hidden {...props}>
+        <defs>
+          <mask id={mid}>
+            <rect x="0" y="0" width="24" height="24" rx="5.5" fill="white" />
+            <path fillRule="evenodd" clipRule="evenodd" fill="black"
+              d="M12 4.6c-2.7 0-4.9 2.2-4.9 4.9 0 3.6 4.9 9.9 4.9 9.9s4.9-6.3 4.9-9.9c0-2.7-2.2-4.9-4.9-4.9Zm0 6.9a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z" />
+          </mask>
+        </defs>
+        <rect x="0" y="0" width="24" height="24" rx="5.5" mask={`url(#${mid})`} />
+      </svg>
+    );
+  }
+);
