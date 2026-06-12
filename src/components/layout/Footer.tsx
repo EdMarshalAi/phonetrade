@@ -156,7 +156,25 @@ export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | nul
           </div>
         </div>
 
-        <p className="mt-10 md:mt-14 w-full text-[10px] md:text-[10.5px] leading-[1.5] tracking-tight text-onDark-muted">
+        <div className="mt-10 md:mt-12 w-full">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-onDark-muted">Доставка техники Apple по Белгородской области</p>
+          <ul className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1.5 text-[13px] text-onDark-muted">
+            {[
+              ["/kupit-apple-staryj-oskol", "Старый Оскол"],
+              ["/kupit-apple-gubkin", "Губкин"],
+              ["/kupit-apple-shebekino", "Шебекино"],
+              ["/kupit-apple-alekseevka", "Алексеевка"],
+              ["/kupit-apple-valujki", "Валуйки"],
+              ["/kupit-apple-novyj-oskol", "Новый Оскол"],
+            ].map(([href, label]) => (
+              <li key={href}>
+                <a href={href} className="hover:text-white underline-offset-4 hover:underline transition-colors">{label}</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="mt-8 md:mt-10 w-full text-[10px] md:text-[10.5px] leading-[1.5] tracking-tight text-onDark-muted">
           Копирование материалов сайта возможно только по письменному согласию
           PhoneTrade. Сервисный центр — постгарантийный (неавторизованный).
           Apple, Mac, iMac, MacBook, Pro, Air, Retina, macOS, iPhone, iPad и
