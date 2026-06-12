@@ -31,9 +31,9 @@ export const VkIcon = React.forwardRef<SVGSVGElement, IconProps>(
 );
 
 /**
- * Яндекс.Карты — фирменная «плитка» с прорезанной буквой «Я» (knockout-маска:
- * фон проступает сквозь букву). fill="currentColor" → плитка наследует цвет
- * текста, поэтому корректна и в светлой шапке, и в тёмном футере.
+ * Яндекс.Карты — фирменный кружок с прорезанной буквой «Я» (knockout-маска: фон
+ * проступает сквозь букву), как в оригинальном лого, но fill="currentColor" →
+ * наследует цвет текста, поэтому корректен и в светлой шапке, и в тёмном футере.
  */
 export const YandexMapsIcon = React.forwardRef<SVGSVGElement, IconProps>(
   function YandexMapsIcon(props, ref) {
@@ -43,21 +43,21 @@ export const YandexMapsIcon = React.forwardRef<SVGSVGElement, IconProps>(
       <svg ref={ref} viewBox="0 0 24 24" fill="currentColor" aria-hidden {...props}>
         <defs>
           <mask id={mid}>
-            <rect x="0" y="0" width="24" height="24" rx="5.5" fill="white" />
-            <text x="12.2" y="12.3" textAnchor="middle" dominantBaseline="central"
-              fontFamily="system-ui, -apple-system, Arial, sans-serif" fontWeight="800" fontSize="16" fill="black">Я</text>
+            <circle cx="12" cy="12" r="11.5" fill="white" />
+            <text x="12.6" y="12.8" textAnchor="middle" dominantBaseline="central"
+              fontFamily="system-ui, -apple-system, Arial, sans-serif" fontWeight="700" fontSize="15" fill="black">Я</text>
           </mask>
         </defs>
-        <rect x="0" y="0" width="24" height="24" rx="5.5" mask={`url(#${mid})`} />
+        <circle cx="12" cy="12" r="11.5" mask={`url(#${mid})`} />
       </svg>
     );
   }
 );
 
 /**
- * 2ГИС — фирменная «плитка» с прорезанной меткой-«каплей» (location pin) через
- * knockout-маску (evenodd: внутреннее отверстие метки остаётся залитым). Как и
- * остальные брендовые иконки — currentColor, адаптивна к фону.
+ * 2ГИС — фирменная «плитка»-карта с прорезанной меткой-балуном (круглое тело +
+ * две ножки), как в оригинальном лого, но монохром: currentColor + knockout-маска
+ * (фон проступает сквозь метку). Адаптивна к светлому/тёмному фону.
  */
 export const TwoGisIcon = React.forwardRef<SVGSVGElement, IconProps>(
   function TwoGisIcon(props, ref) {
@@ -68,8 +68,9 @@ export const TwoGisIcon = React.forwardRef<SVGSVGElement, IconProps>(
         <defs>
           <mask id={mid}>
             <rect x="0" y="0" width="24" height="24" rx="5.5" fill="white" />
-            <path fillRule="evenodd" clipRule="evenodd" fill="black"
-              d="M12 4.6c-2.7 0-4.9 2.2-4.9 4.9 0 3.6 4.9 9.9 4.9 9.9s4.9-6.3 4.9-9.9c0-2.7-2.2-4.9-4.9-4.9Zm0 6.9a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z" />
+            <circle cx="12" cy="8.6" r="4.5" fill="black" />
+            <path fill="black"
+              d="M9.5 11.7c1 .55 4 .55 5 0 .35 2-.15 3.6-.9 4.8-.35.55-.8.9-1.2 1.05-.25.1-.5-.08-.5-.34 0-.7-.2-1.3-.45-1.65-.25.35-.45.95-.45 1.65 0 .26-.25.44-.5.34-.4-.15-.85-.5-1.2-1.05-.75-1.2-1.25-2.8-.9-4.8z" />
           </mask>
         </defs>
         <rect x="0" y="0" width="24" height="24" rx="5.5" mask={`url(#${mid})`} />
