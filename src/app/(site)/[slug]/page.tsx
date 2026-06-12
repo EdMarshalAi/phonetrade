@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getStaticPage } from "@/lib/content";
 import { sanitizeRichHtml } from "@/lib/utils/sanitize-html";
+import { jsonLdScript } from "@/lib/utils/json-ld";
+import { faqFromHtml, faqPageLd } from "@/lib/utils/faq-schema";
 
 /**
  * Публичная статическая страница из админки (/about, /delivery, /warranty…).
@@ -38,8 +40,22 @@ export default async function StaticPage({
   // автоматический h1 не выводим (маркер <!--hide-title-->).
   const hideTitle = page.content?.includes("<!--hide-title-->") ?? false;
 
+  // JSON-LD: хлебные крошки + FAQPage (если в контенте есть «Частые вопросы»).
+  const base = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: `${base}/` },
+      { "@type": "ListItem", position: 2, name: page.title, item: `${base}/${slug}` },
+    ],
+  };
+  const faqLd = faqPageLd(faqFromHtml(page.content));
+  const schemas = [breadcrumbLd, ...(faqLd ? [faqLd] : [])];
+
   return (
     <article className="container-page py-16 md:py-24">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(schemas) }} />
       <div className="w-full">
         {!hideTitle && <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-4xl">{page.title}</h1>}
         {page.content ? (
