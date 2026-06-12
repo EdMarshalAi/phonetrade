@@ -38,6 +38,7 @@ export async function generateMetadata(): Promise<Metadata> {
   // Яндекс — yandex-verification, Bing — msvalidate.01 (нужен для ChatGPT/SearchGPT).
   verification: {
     ...(wm.yandex ? { yandex: wm.yandex } : {}),
+    ...(wm.google ? { google: wm.google } : {}),
     ...(wm.bing ? { other: { "msvalidate.01": wm.bing } } : {}),
   },
   openGraph: {

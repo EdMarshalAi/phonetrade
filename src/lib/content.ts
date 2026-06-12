@@ -343,10 +343,10 @@ export async function getMetrikaSettings(): Promise<MetrikaSettings> {
   } catch { return { id: null, collectWithoutConsent: false }; }
 }
 
-/** Коды подтверждения прав в вебмастерах (Яндекс, Bing) из интеграции `webmaster`.
+/** Коды подтверждения прав в вебмастерах (Яндекс, Bing, Google) из интеграции `webmaster`.
  *  Фолбэк — захардкоженные значения, чтобы верификация не слетела при пустой БД. */
-export async function getWebmasterVerification(): Promise<{ yandex: string | null; bing: string | null }> {
-  const FALLBACK = { yandex: "ec396f42004ecb9a", bing: "1CBE9EB073CB5A735F19C97915CEA8B2" };
+export async function getWebmasterVerification(): Promise<{ yandex: string | null; bing: string | null; google: string | null }> {
+  const FALLBACK = { yandex: "ec396f42004ecb9a", bing: "1CBE9EB073CB5A735F19C97915CEA8B2", google: "rAhJ_3GwJOd6cMQdpaX0ZpZLGVHlV2wFg3ntzdcdh0I" };
   if (!supabase) return FALLBACK;
   try {
     const { data } = await supabase.from("integrations").select("config,is_enabled").eq("key", "webmaster").maybeSingle();
@@ -354,7 +354,8 @@ export async function getWebmasterVerification(): Promise<{ yandex: string | nul
     const cfg = (data.config ?? {}) as Record<string, unknown>;
     const yandex = typeof cfg.yandex === "string" && cfg.yandex.trim() ? cfg.yandex.trim() : FALLBACK.yandex;
     const bing = typeof cfg.bing === "string" && cfg.bing.trim() ? cfg.bing.trim() : FALLBACK.bing;
-    return { yandex, bing };
+    const google = typeof cfg.google === "string" && cfg.google.trim() ? cfg.google.trim() : FALLBACK.google;
+    return { yandex, bing, google };
   } catch { return FALLBACK; }
 }
 

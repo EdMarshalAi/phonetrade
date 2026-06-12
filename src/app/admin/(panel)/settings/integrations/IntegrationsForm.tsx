@@ -31,6 +31,7 @@ const BUILTIN: Builtin[] = [
     fields: [
       { name: "yandex", label: "Яндекс.Вебмастер", placeholder: "ec396f42004ecb9a", hint: "Код из <meta name=\"yandex-verification\" content=\"…\">. Webmaster.yandex.ru → добавить сайт → метатег." },
       { name: "bing", label: "Bing Webmaster", placeholder: "1CBE9EB073CB5A735F19C97915CEA8B2", hint: "Код из <meta name=\"msvalidate.01\" content=\"…\">. Нужен для попадания в ChatGPT/SearchGPT." },
+      { name: "google", label: "Google Search Console", placeholder: "rAhJ_3GwJOd6cMQdpaX0ZpZLGVHlV2wFg3ntzdcdh0I", hint: "Код из <meta name=\"google-site-verification\" content=\"…\">. Способ «Тег HTML», ресурс с префиксом URL." },
     ] },
   { key: "openai", title: "ChatGPT (OpenAI)", desc: "Генерация описаний и мета-тегов товара по кнопке", icon: Sparkles,
     fields: [
