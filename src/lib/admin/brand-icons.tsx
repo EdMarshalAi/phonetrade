@@ -31,49 +31,28 @@ export const VkIcon = React.forwardRef<SVGSVGElement, IconProps>(
 );
 
 /**
- * Яндекс.Карты — фирменный кружок с прорезанной буквой «Я» (knockout-маска: фон
- * проступает сквозь букву), как в оригинальном лого, но fill="currentColor" →
- * наследует цвет текста, поэтому корректен и в светлой шапке, и в тёмном футере.
+ * Яндекс — голый фирменный глиф «Я» (контур обведён с оригинального лого, без
+ * подложки-кружка). fill="currentColor" → наследует цвет текста, как VK/Telegram.
  */
 export const YandexMapsIcon = React.forwardRef<SVGSVGElement, IconProps>(
   function YandexMapsIcon(props, ref) {
-    const uid = React.useId().replace(/:/g, "");
-    const mid = `ya-${uid}`;
     return (
       <svg ref={ref} viewBox="0 0 24 24" fill="currentColor" aria-hidden {...props}>
-        <defs>
-          <mask id={mid}>
-            <circle cx="12" cy="12" r="11.5" fill="white" />
-            <text x="12.6" y="12.8" textAnchor="middle" dominantBaseline="central"
-              fontFamily="system-ui, -apple-system, Arial, sans-serif" fontWeight="700" fontSize="15" fill="black">Я</text>
-          </mask>
-        </defs>
-        <circle cx="12" cy="12" r="11.5" mask={`url(#${mid})`} />
+        <path d="M13.47 1.2 19.16 1.2 19.16 22.75 15.43 22.75 15.43 4.19 13.14 4.14 12.16 4.28 11.28 4.56 10.39 5.07 9.74 5.73 9.32 6.47 9.13 7.08 9.08 8.85 9.46 10.3 10.11 11.37 11.56 12.72 14.36 14.68 8.9 22.8 4.84 22.8 9.74 15.52 8.48 14.54 7.26 13.38 6.47 12.35 5.77 10.95 5.35 8.99 5.4 7.08 5.77 5.59 6.19 4.7 6.89 3.72 7.73 2.93 8.66 2.32 9.69 1.85 10.95 1.48 13.47 1.2Z" />
       </svg>
     );
   }
 );
 
 /**
- * 2ГИС — фирменная «плитка»-карта с прорезанной меткой-балуном (круглое тело +
- * две ножки), как в оригинальном лого, но монохром: currentColor + knockout-маска
- * (фон проступает сквозь метку). Адаптивна к светлому/тёмному фону.
+ * 2ГИС — голый фирменный глиф-балун (круглое тело + две короткие ножки с плоским
+ * основанием), обведён с оригинального лого, без подложки-плитки. currentColor.
  */
 export const TwoGisIcon = React.forwardRef<SVGSVGElement, IconProps>(
   function TwoGisIcon(props, ref) {
-    const uid = React.useId().replace(/:/g, "");
-    const mid = `gis-${uid}`;
     return (
       <svg ref={ref} viewBox="0 0 24 24" fill="currentColor" aria-hidden {...props}>
-        <defs>
-          <mask id={mid}>
-            <rect x="0" y="0" width="24" height="24" rx="5.5" fill="white" />
-            <circle cx="12" cy="8.6" r="4.5" fill="black" />
-            <path fill="black"
-              d="M9.5 11.7c1 .55 4 .55 5 0 .35 2-.15 3.6-.9 4.8-.35.55-.8.9-1.2 1.05-.25.1-.5-.08-.5-.34 0-.7-.2-1.3-.45-1.65-.25.35-.45.95-.45 1.65 0 .26-.25.44-.5.34-.4-.15-.85-.5-1.2-1.05-.75-1.2-1.25-2.8-.9-4.8z" />
-          </mask>
-        </defs>
-        <rect x="0" y="0" width="24" height="24" rx="5.5" mask={`url(#${mid})`} />
+        <path d="M6.59 17.84 5.43 16.84 4.45 15.65 3.68 14.32 3.14 12.87 2.8 11.36 2.8 9.82 3.25 7.56 3.85 6.14 4.67 4.84 5.7 3.69 6.91 2.74 8.26 2 9.71 1.49 11.23 1.23 12.77 1.23 14.29 1.49 15.74 2 17.09 2.74 18.3 3.69 19.33 4.84 20.15 6.14 20.75 7.56 21.18 9.82 21.18 11.36 20.62 13.61 19.97 15 19.09 16.26 18.01 17.36 16.99 18.18 15.86 19.15 14.94 20.08 14.24 20.94 13.75 21.76 13.42 22.76 13.4 23 10.6 23 10.53 22.52 10.25 21.76 9.76 20.94 9.06 20.08 8.14 19.15 7.01 18.18 6.59 17.84Z" />
       </svg>
     );
   }
