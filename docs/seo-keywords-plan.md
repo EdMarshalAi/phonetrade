@@ -242,3 +242,8 @@ description ≤160), content-writer (естественные тексты, E-E-
   - Батч 2: где купить · недорого · купить 17 · 16 Pro Max обзор · Б/У или новый · ремонт · как отличить оригинал · какой iPad · MacBook Air или Pro · какие Apple Watch.
 
 **Осталось (по желанию):** FAQPage-schema на товары/статьи; уникализация description_html через seo-content-writer (сейчас шаблон+FAQ); ещё статьи под низкочастотные гео-связки; обновить sitemap-аудит покрытия конфигураций.
+
+### Schema.org (выполнено 12.06.2026)
+- **Товары:** Product + Offer (цена/наличие/priceValidUntil) + **BreadcrumbList** + **FAQPage** (из FAQ-блока описания). Утилита `src/lib/utils/faq-schema.ts`.
+- **Статьи блога:** Article + **BreadcrumbList** + **FAQPage** (из секции «Частые вопросы»).
+- Проверено на бою: rich-сниппеты «вопросы-ответы» и хлебные крошки отдаются в HTML всех страниц.
