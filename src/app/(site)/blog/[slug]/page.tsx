@@ -53,7 +53,16 @@ export default async function BlogPostPage({
   };
   // FAQPage из блока «Частые вопросы» статьи (rich-сниппет).
   const faqLd = faqPageLd(faqFromHtml(post.content));
-  const blogSchemas = [articleLd, ...(faqLd ? [faqLd] : [])];
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: `${base}/` },
+      { "@type": "ListItem", position: 2, name: "Блог", item: `${base}/blog` },
+      { "@type": "ListItem", position: 3, name: post.title, item: `${base}/blog/${slug}` },
+    ],
+  };
+  const blogSchemas = [articleLd, breadcrumbLd, ...(faqLd ? [faqLd] : [])];
 
   return (
     <article className="container-page py-16 md:py-24">
