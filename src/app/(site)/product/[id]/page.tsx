@@ -10,6 +10,7 @@ import { getProductBlocks } from "@/lib/content";
 import { ProductDetailShell } from "@/components/product-detail/ProductDetailShell";
 import { productImages } from "@/lib/utils/product-images";
 import { jsonLdScript } from "@/lib/utils/json-ld";
+import { faqFromHtml, faqPageLd } from "@/lib/utils/faq-schema";
 
 type RouteParams = { id: string };
 
@@ -100,9 +101,13 @@ export default async function ProductPage({
     itemListElement: crumbs.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, item: c.url })),
   };
 
+  // FAQPage из FAQ-блока описания (rich-сниппет «вопросы-ответы» в выдаче).
+  const faqLd = faqPageLd(faqFromHtml(product.descriptionHtml));
+  const schemas = [jsonLd, breadcrumbLd, ...(faqLd ? [faqLd] : [])];
+
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript([jsonLd, breadcrumbLd]) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(schemas) }} />
       <ProductDetailShell
         product={product}
         related={related}

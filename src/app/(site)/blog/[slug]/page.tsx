@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ArrowLeft, Eye } from "lucide-react";
 import { getBlogPost } from "@/lib/content";
 import { jsonLdScript } from "@/lib/utils/json-ld";
+import { faqFromHtml, faqPageLd } from "@/lib/utils/faq-schema";
 import { sanitizeRichHtml } from "@/lib/utils/sanitize-html";
 import { BlogViewPing } from "@/components/blog/BlogViewPing";
 
@@ -50,10 +51,13 @@ export default async function BlogPostPage({
     publisher: { "@id": `${base}/#organization` },
     mainEntityOfPage: `${base}/blog/${slug}`,
   };
+  // FAQPage из блока «Частые вопросы» статьи (rich-сниппет).
+  const faqLd = faqPageLd(faqFromHtml(post.content));
+  const blogSchemas = [articleLd, ...(faqLd ? [faqLd] : [])];
 
   return (
     <article className="container-page py-16 md:py-24">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(articleLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(blogSchemas) }} />
       <div className="mx-auto max-w-3xl">
         <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink">
           <ArrowLeft className="h-4 w-4" strokeWidth={1.75} /> Все статьи
