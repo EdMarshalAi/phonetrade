@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { getWebmasterVerification } from "@/lib/content";
 import "./globals.css";
 
 const inter = Inter({
@@ -14,7 +15,11 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru";
 const OG_IMAGE =
   "https://giwehapapi.beget.app/storage/v1/object/public/product-images/content/store-belgorod.jpg";
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  // Коды подтверждения прав в вебмастерах редактируются в админке
+  // (Настройки → Интеграции → «Верификация в вебмастерах»); фолбэк — захардкожен.
+  const wm = await getWebmasterVerification();
+  return {
   metadataBase: new URL(SITE_URL),
   title: {
     default: "PhoneTrade — Магазин техники Apple в Белгороде",
@@ -29,9 +34,12 @@ export const metadata: Metadata = {
     "Trade-in iPhone",
     "PhoneTrade",
   ],
-  // Подтверждение прав в Яндекс.Вебмастере (рендерит
-  // <meta name="yandex-verification" content="…"> в <head> на всех страницах).
-  verification: { yandex: "ec396f42004ecb9a" },
+  // Подтверждение прав в вебмастерах (рендерит <meta> в <head> на всех страницах):
+  // Яндекс — yandex-verification, Bing — msvalidate.01 (нужен для ChatGPT/SearchGPT).
+  verification: {
+    ...(wm.yandex ? { yandex: wm.yandex } : {}),
+    ...(wm.bing ? { other: { "msvalidate.01": wm.bing } } : {}),
+  },
   openGraph: {
     title: "PhoneTrade — Магазин техники Apple в Белгороде",
     description:
@@ -50,7 +58,8 @@ export const metadata: Metadata = {
     description: "Оригинальная техника Apple с гарантией, Trade-in и сервисом. Белгород, ул. Попова, 36.",
     images: [OG_IMAGE],
   },
-};
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",

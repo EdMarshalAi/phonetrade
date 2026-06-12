@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { BarChart3, Send, Mail, Code2, Plus, Loader2, Trash2, X, Sparkles } from "lucide-react";
+import { BarChart3, Send, Mail, Code2, Plus, Loader2, Trash2, X, Sparkles, ShieldCheck } from "lucide-react";
 import { Field, TextInput, Textarea, Switch, Select, AdminButton } from "@/components/admin/form";
 import { cn } from "@/lib/utils/cn";
 import { saveIntegration, createCustomIntegration, deleteIntegration, sendTestEmail, type IntegrationRow } from "./actions";
@@ -26,6 +26,11 @@ const BUILTIN: Builtin[] = [
       { name: "user", label: "Пользователь", placeholder: "noreply@phonetrade.ru" },
       { name: "pass", label: "Пароль", type: "password" },
       { name: "from", label: "Адрес отправителя (From)", placeholder: "PhoneTrade <noreply@phonetrade.ru>" },
+    ] },
+  { key: "webmaster", title: "Верификация в вебмастерах", desc: "Подтверждение прав: метатеги Яндекс и Bing", icon: ShieldCheck,
+    fields: [
+      { name: "yandex", label: "Яндекс.Вебмастер", placeholder: "ec396f42004ecb9a", hint: "Код из <meta name=\"yandex-verification\" content=\"…\">. Webmaster.yandex.ru → добавить сайт → метатег." },
+      { name: "bing", label: "Bing Webmaster", placeholder: "1CBE9EB073CB5A735F19C97915CEA8B2", hint: "Код из <meta name=\"msvalidate.01\" content=\"…\">. Нужен для попадания в ChatGPT/SearchGPT." },
     ] },
   { key: "openai", title: "ChatGPT (OpenAI)", desc: "Генерация описаний и мета-тегов товара по кнопке", icon: Sparkles,
     fields: [

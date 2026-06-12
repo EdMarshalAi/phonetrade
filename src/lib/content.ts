@@ -343,6 +343,21 @@ export async function getMetrikaSettings(): Promise<MetrikaSettings> {
   } catch { return { id: null, collectWithoutConsent: false }; }
 }
 
+/** Коды подтверждения прав в вебмастерах (Яндекс, Bing) из интеграции `webmaster`.
+ *  Фолбэк — захардкоженные значения, чтобы верификация не слетела при пустой БД. */
+export async function getWebmasterVerification(): Promise<{ yandex: string | null; bing: string | null }> {
+  const FALLBACK = { yandex: "ec396f42004ecb9a", bing: "1CBE9EB073CB5A735F19C97915CEA8B2" };
+  if (!supabase) return FALLBACK;
+  try {
+    const { data } = await supabase.from("integrations").select("config,is_enabled").eq("key", "webmaster").maybeSingle();
+    if (!data || data.is_enabled === false) return FALLBACK;
+    const cfg = (data.config ?? {}) as Record<string, unknown>;
+    const yandex = typeof cfg.yandex === "string" && cfg.yandex.trim() ? cfg.yandex.trim() : FALLBACK.yandex;
+    const bing = typeof cfg.bing === "string" && cfg.bing.trim() ? cfg.bing.trim() : FALLBACK.bing;
+    return { yandex, bing };
+  } catch { return FALLBACK; }
+}
+
 export interface HeroSlideRow {
   id: string;
   overline: string | null;
