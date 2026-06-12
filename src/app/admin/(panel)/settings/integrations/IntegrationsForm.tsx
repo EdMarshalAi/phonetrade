@@ -13,7 +13,7 @@ type Builtin = { key: string; title: string; desc: string; icon: typeof BarChart
 
 const BUILTIN: Builtin[] = [
   { key: "metrika", title: "Яндекс.Метрика", desc: "Веб-аналитика, вебвизор, цели и e-commerce", icon: BarChart3,
-    fields: [{ name: "counter_id", label: "Номер счётчика", placeholder: "91129028", hint: "Грузится при согласии на cookie-аналитику" }] },
+    fields: [{ name: "counter_id", label: "Номер счётчика", placeholder: "91129028", hint: "По умолчанию грузится при согласии на cookie-аналитику (см. тумблер ниже)" }] },
   { key: "telegram", title: "Telegram-бот", desc: "Уведомления о заказах и заявках", icon: Send,
     fields: [
       { name: "bot_token", label: "Bot Token", type: "password", placeholder: "1234567890:AA…", hint: "Получите у @BotFather" },
@@ -218,6 +218,20 @@ function SettingsModal({ intKey, builtin, entry, onClose, onSaved, onDeleted }: 
             </Field>
           </>
         )}
+        {intKey === "metrika" ? (
+          <div className="rounded-xl border border-border/60 px-4 py-3">
+            <Switch
+              checked={cfg.collect_without_consent === true}
+              onChange={(v) => setCfg((p) => ({ ...p, collect_without_consent: v }))}
+              label="Собирать без подтверждения cookie"
+            />
+            <p className="mt-1.5 text-[12px] leading-snug text-ink-subtle">
+              По умолчанию (выкл) Метрика грузится только после согласия посетителя на
+              cookie-аналитику. Включите, чтобы счётчик собирал данные сразу, не дожидаясь
+              согласия. Учитывайте требования 152-ФЗ — ответственность за такой сбор на владельце.
+            </p>
+          </div>
+        ) : null}
         {intKey === "smtp" ? <TestEmailBlock cfg={cfg} /> : null}
         <div className="flex items-center gap-2 pt-1">
           <AdminButton type="button" onClick={save} loading={saving}>Сохранить</AdminButton>

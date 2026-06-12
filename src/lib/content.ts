@@ -322,17 +322,25 @@ export async function getCartSettings(): Promise<CartSettings> {
   };
 }
 
-/** ID счётчика Я.Метрики (если интеграция включена). Метрика грузится только
- *  при cookie-согласии на аналитику (см. CookieConsentProvider). */
-export async function getMetrikaId(): Promise<string | null> {
-  if (!supabase) return null;
+export interface MetrikaSettings {
+  /** Номер счётчика (если интеграция включена), иначе null. */
+  id: string | null;
+  /** Грузить Метрику без подтверждения cookie (тумблер в интеграции). По умолчанию
+   *  false — Метрика грузится только при cookie-согласии (см. CookieConsentProvider). */
+  collectWithoutConsent: boolean;
+}
+
+/** Настройки Я.Метрики из интеграции (id счётчика + флаг сбора без согласия). */
+export async function getMetrikaSettings(): Promise<MetrikaSettings> {
+  if (!supabase) return { id: null, collectWithoutConsent: false };
   try {
     const { data } = await supabase.from("integrations").select("config,is_enabled").eq("key", "metrika").maybeSingle();
-    if (!data || data.is_enabled === false) return null;
+    if (!data || data.is_enabled === false) return { id: null, collectWithoutConsent: false };
     const cfg = (data.config ?? {}) as Record<string, unknown>;
     const id = cfg.counter_id ?? cfg.id ?? cfg.counter ?? null;
-    return id ? String(id) : null;
-  } catch { return null; }
+    const force = cfg.collect_without_consent === true || cfg.collect_without_consent === "true";
+    return { id: id ? String(id) : null, collectWithoutConsent: force };
+  } catch { return { id: null, collectWithoutConsent: false }; }
 }
 
 export interface HeroSlideRow {

@@ -31,7 +31,7 @@ type Ctx = { openSettings: () => void; applyAll: () => void };
 const CookieCtx = React.createContext<Ctx>({ openSettings: () => {}, applyAll: () => {} });
 export const useCookieConsent = () => React.useContext(CookieCtx);
 
-export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }: { children: React.ReactNode; metrikaId?: string | null; codeSnippets?: CodeSnippet[] }) {
+export function CookieConsentProvider({ children, metrikaId, metrikaForce = false, codeSnippets = [] }: { children: React.ReactNode; metrikaId?: string | null; metrikaForce?: boolean; codeSnippets?: CodeSnippet[] }) {
   const [mounted, setMounted] = React.useState(false);
   const [consent, setConsent] = React.useState<Consent | null>(null);
   const [decided, setDecided] = React.useState(true); // до маунта не показываем (без гидрейшн-скачка)
@@ -72,8 +72,9 @@ export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }
     <CookieCtx.Provider value={{ openSettings: () => setDrawer(true), applyAll }}>
       {children}
 
-      {/* Я.Метрика — только при согласии на аналитику */}
-      {metrikaId && consent?.analytics ? (
+      {/* Я.Метрика — при согласии на аналитику ИЛИ если в интеграции включён
+          «сбор без подтверждения cookie» (metrikaForce). */}
+      {metrikaId && (metrikaForce || consent?.analytics) ? (
         <Script id="ym-metrika" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: `
           (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};m[i].l=1*new Date();
           for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
@@ -86,7 +87,7 @@ export function CookieConsentProvider({ children, metrikaId, codeSnippets = [] }
       {/* Кастомные код-сниппеты из админки (счётчики/пиксели/виджеты) — при согласии на аналитику */}
       <CustomCodeInjector snippets={codeSnippets} allowed={!!consent?.analytics} />
 
-      {metrikaId && consent?.analytics ? (
+      {metrikaId && (metrikaForce || consent?.analytics) ? (
         <noscript><div><img src={`https://mc.yandex.ru/watch/${Number(metrikaId)}`} style={{ position: "absolute", left: "-9999px" }} alt="" /></div></noscript>
       ) : null}
 
