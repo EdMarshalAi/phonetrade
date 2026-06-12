@@ -247,3 +247,6 @@ description ≤160), content-writer (естественные тексты, E-E-
 - **Товары:** Product + Offer (цена/наличие/priceValidUntil) + **BreadcrumbList** + **FAQPage** (из FAQ-блока описания). Утилита `src/lib/utils/faq-schema.ts`.
 - **Статьи блога:** Article + **BreadcrumbList** + **FAQPage** (из секции «Частые вопросы»).
 - Проверено на бою: rich-сниппеты «вопросы-ответы» и хлебные крошки отдаются в HTML всех страниц.
+
+### Гео-лендинги по области (выполнено 12.06.2026)
+- 6 страниц `static_pages` (published, в sitemap): `/kupit-apple-staryj-oskol`, `-gubkin`, `-shebekino`, `-alekseevka`, `-valujki`, `-novyj-oskol` — под «купить айфон {город}». Честно про доставку из Белгорода (без фейк-филиалов), FAQ + FAQPage/Breadcrumb schema, перелинковка между собой + сайтовые ссылки в футере «Доставка по области». FAQPage/Breadcrumb добавлены и в роут `(site)/[slug]` (усиливает и /trade-in, /delivery).
