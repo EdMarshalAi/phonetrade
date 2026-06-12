@@ -80,7 +80,12 @@ export default async function SiteLayout({
       addressCountry: "RU",
     },
     geo: { "@type": "GeoCoordinates", latitude: lat, longitude: lng },
-    areaServed: { "@type": "City", name: "Белгород" },
+    areaServed: [
+      { "@type": "City", name: "Белгород" },
+      { "@type": "AdministrativeArea", name: "Белгородская область" },
+      ...["Старый Оскол", "Губкин", "Шебекино", "Алексеевка", "Валуйки", "Новый Оскол"].map((n) => ({ "@type": "City", name: n })),
+    ],
+    knowsAbout: ["Apple", "iPhone", "iPad", "MacBook", "Mac", "Apple Watch", "AirPods", "Samsung Galaxy", "Dyson", "техника Apple", "ремонт iPhone", "Trade-in", "Б/У iPhone"],
     openingHoursSpecification: [{
       "@type": "OpeningHoursSpecification",
       dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],

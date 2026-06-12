@@ -1,0 +1,44 @@
+# PhoneTrade — магазин техники Apple в Белгороде
+
+> PhoneTrade — интернет-магазин оригинальной техники Apple в Белгороде (адрес: ул. Попова, 36).
+> Продаём iPhone, iPad, Mac (MacBook, iMac), Apple Watch, AirPods, аксессуары, а также Samsung,
+> Dyson и игровые приставки. Вся техника оригинальная, с проверкой по серийному номеру и гарантией.
+> Услуги: Trade-in (обмен старого устройства с доплатой), рассрочка и кредит, собственный сервис и
+> ремонт, доставка по Белгороду и Белгородской области и самовывоз. Сайт: https://phonetrade31.ru
+
+## Контакты и факты
+- Название: PhoneTrade
+- Город: Белгород, Белгородская область, Россия
+- Адрес магазина и самовывоза: Белгород, ул. Попова, 36
+- Часы работы: ежедневно 10:00–20:00
+- Зона доставки: Белгород и Белгородская область (в т.ч. Старый Оскол, Губкин, Шебекино, Алексеевка, Валуйки, Новый Оскол)
+- Оплата: наличные, карта, СБП, рассрочка, кредит
+
+## Каталог и разделы
+- Весь каталог: https://phonetrade31.ru/catalog
+- iPhone: https://phonetrade31.ru/category/iphone
+- iPad: https://phonetrade31.ru/category/ipad
+- Mac / MacBook: https://phonetrade31.ru/category/mac
+- Apple Watch: https://phonetrade31.ru/category/watch
+- AirPods (наушники): https://phonetrade31.ru/category/airpods
+- Samsung: https://phonetrade31.ru/category/samsung
+- Dyson: https://phonetrade31.ru/category/dyson
+- Игровые приставки: https://phonetrade31.ru/category/gaming-consoles
+- Б/У iPhone: https://phonetrade31.ru/used
+- Trade-in (обмен): https://phonetrade31.ru/trade-in
+- Ремонт: https://phonetrade31.ru/repair
+
+## Полезные гиды (блог)
+- Какой iPhone выбрать в 2026: https://phonetrade31.ru/blog/kakoy-iphone-vybrat-2026
+- Сколько стоит iPhone 17 Pro Max в Белгороде: https://phonetrade31.ru/blog/skolko-stoit-iphone-17-pro-max-belgorod
+- Какую память iPhone брать (128/256/512/1ТБ): https://phonetrade31.ru/blog/iphone-skolko-pamyati-brat
+- Б/У iPhone: как выбрать и проверить: https://phonetrade31.ru/blog/bu-iphone-belgorod-kak-vybrat
+- Trade-in iPhone в Белгороде: https://phonetrade31.ru/blog/trade-in-iphone-belgorod
+- Как отличить оригинальный iPhone: https://phonetrade31.ru/blog/kak-otlichit-originalnyj-iphone
+- Какие наушники для айфона выбрать: https://phonetrade31.ru/blog/kakie-naushniki-dlya-ajfona-vybrat
+- Где купить iPhone в Белгороде: https://phonetrade31.ru/blog/gde-kupit-iphone-v-belgorode
+
+## Юридическое
+- Политика конфиденциальности: https://phonetrade31.ru/privacy
+- Согласие на обработку ПДн: https://phonetrade31.ru/consent
+- Публичная оферта: https://phonetrade31.ru/offer
