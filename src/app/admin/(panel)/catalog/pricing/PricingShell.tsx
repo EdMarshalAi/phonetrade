@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -116,6 +117,8 @@ export function PricingShell({
   const [hideArchived, setHideArchived] = React.useState(true);
   const [lowOnly, setLowOnly] = React.useState(false);
   const [fullscreen, setFullscreen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
   React.useEffect(() => {
     if (!fullscreen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
@@ -625,7 +628,9 @@ export function PricingShell({
         <EmptyBox title="В каталоге пока нет товаров" hint="Добавьте товары в разделе «Товары»." href="/admin/catalog/products" cta="Перейти в каталог" />
       ) : (
         <>
-          <div className={cn("hidden overflow-auto border border-border/60 bg-white lg:block", fullscreen ? "fixed inset-0 z-[60] max-h-screen rounded-none" : "max-h-[calc(100vh-220px)] rounded-xl")}>
+          {(() => {
+          const desktopTable = (
+          <div className={cn("hidden overflow-auto border border-border/60 bg-white lg:block", fullscreen ? "fixed inset-0 z-[100] max-h-screen rounded-none" : "max-h-[calc(100vh-220px)] rounded-xl")}>
             <table className="w-full table-fixed text-[13px]" style={{ minWidth: COL_W_CHECK + COL_W_IMG + COL_W_ACTION + colOrder.reduce((s, k) => s + colWidths[k], 0) }}>
               <colgroup>
                 <col style={{ width: COL_W_CHECK }} />
@@ -721,6 +726,9 @@ export function PricingShell({
               </tbody>
             </table>
           </div>
+          );
+          return mounted && fullscreen ? createPortal(desktopTable, document.body) : desktopTable;
+          })()}
 
           {/* мобильные карточки */}
           <div className="space-y-3 lg:hidden">
