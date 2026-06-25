@@ -598,6 +598,10 @@ export function PricingShell({
         <Switch checked={hideArchived} onChange={setHideArchived} label="Скрыть архивные" />
         <Switch checked={lowOnly} onChange={setLowOnly} label="Маржа ниже мин." />
         <div className="ml-auto flex shrink-0 items-center gap-2.5">
+          <button type="button" onClick={() => setFullscreen(true)} title="Развернуть таблицу на весь экран"
+            className="hidden items-center gap-1 rounded-lg border border-border bg-white px-2.5 py-1.5 text-[12.5px] text-ink-subtle transition-colors hover:bg-surface hover:text-ink lg:inline-flex">
+            <Maximize2 className="h-3.5 w-3.5" /> На весь экран
+          </button>
           <button type="button" onClick={resetColumns} title="Сбросить порядок, ширину и сортировку столбцов"
             className="hidden items-center gap-1 rounded-lg border border-border bg-white px-2.5 py-1.5 text-[12.5px] text-ink-subtle transition-colors hover:bg-surface hover:text-ink lg:inline-flex">
             <RotateCcw className="h-3.5 w-3.5" /> Столбцы
@@ -645,6 +649,16 @@ export function PricingShell({
           {(() => {
           const desktopTable = (
           <div className={cn("hidden overflow-auto border border-border/60 bg-white lg:block", fullscreen ? "fixed inset-0 z-[100] max-h-screen rounded-none" : "max-h-[calc(100vh-220px)] rounded-xl")}>
+            {fullscreen ? (
+              <button
+                type="button"
+                onClick={() => setFullscreen(false)}
+                title="Свернуть (Esc)"
+                className="fixed right-4 top-4 z-[101] inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-2 text-[13px] text-ink shadow-md hover:bg-surface"
+              >
+                <Minimize2 className="h-4 w-4" strokeWidth={1.75} /> Свернуть
+              </button>
+            ) : null}
             <table className="w-full table-fixed text-[13px]" style={{ minWidth: COL_W_CHECK + COL_W_IMG + COL_W_ACTION + colOrder.reduce((s, k) => s + colWidths[k], 0) }}>
               <colgroup>
                 <col style={{ width: COL_W_CHECK }} />
@@ -695,16 +709,7 @@ export function PricingShell({
                       </th>
                     );
                   })}
-                  <th className="px-2 py-2.5 text-right">
-                    <button
-                      type="button"
-                      onClick={() => setFullscreen((f) => !f)}
-                      title={fullscreen ? "Свернуть (Esc)" : "Развернуть на весь экран"}
-                      className="inline-flex size-7 items-center justify-center rounded-sm border border-border bg-white text-ink-subtle hover:bg-surface hover:text-ink"
-                    >
-                      {fullscreen ? <Minimize2 className="h-3.5 w-3.5" strokeWidth={1.75} /> : <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.75} />}
-                    </button>
-                  </th>
+                  <th className="px-3 py-2.5"></th>
                 </tr>
               </thead>
               <tbody>
