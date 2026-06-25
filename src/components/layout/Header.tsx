@@ -493,14 +493,13 @@ export function Header({
                 aria-expanded={contactOpen}
                 onClick={() => setContactOpen((v) => !v)}
                 className={cn(
-                  "inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-[12px] font-medium transition-colors",
+                  "inline-flex size-10 items-center justify-center rounded-full transition-colors",
                   contactOpen
                     ? "bg-white text-ink"
-                    : "bg-white/10 text-white hover:bg-white/15"
+                    : "text-white hover:bg-white/10"
                 )}
               >
-                <Phone className="size-[14px]" aria-hidden />
-                Контакты
+                <Phone className="size-[18px]" aria-hidden />
               </button>
               <a
                 href="/cart"

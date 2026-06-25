@@ -122,7 +122,7 @@ export function Hero({ slides, autoplayMs = AUTOPLAY_DEFAULT }: Props) {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      <div className="relative min-h-[30vh] md:min-h-[34vh] lg:min-h-[38vh]">
+      <div className="relative min-h-[400px] sm:min-h-[460px] lg:min-h-[38vh]">
         {/* Редкий «блик» — лёгкий световой проход по баннеру */}
         <div aria-hidden className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
           <div
@@ -152,8 +152,8 @@ export function Hero({ slides, autoplayMs = AUTOPLAY_DEFAULT }: Props) {
             )}
             style={bgStyle(slide.background)}
           >
-            <div className="container-page h-full grid grid-cols-12 items-center gap-3 sm:gap-6 lg:gap-10 py-6 md:py-10">
-              <div className="col-span-7 lg:col-span-6 flex flex-col justify-center max-w-xl">
+            <div className="container-page h-full flex flex-col justify-center lg:grid lg:grid-cols-12 items-center gap-3 sm:gap-5 lg:gap-10 py-6 md:py-10">
+              <div className="order-2 lg:order-none w-full lg:col-span-6 flex flex-col justify-center lg:max-w-xl">
                 {slide.eyebrow && (
                   <span
                     className={cn(
@@ -199,15 +199,15 @@ export function Hero({ slides, autoplayMs = AUTOPLAY_DEFAULT }: Props) {
                 )}
               </div>
 
-              <div className="col-span-5 lg:col-span-6 relative h-full min-h-[120px] sm:min-h-[160px] md:min-h-[220px] lg:min-h-[260px]">
+              <div className="order-1 lg:order-none w-full lg:col-span-6 relative h-[150px] sm:h-[200px] lg:h-full lg:min-h-[260px]">
                 {slide.image && (
                   <Image
                     src={slide.image}
                     alt={`${slide.title} — Apple в Белгороде, PhoneTrade`}
                     fill
-                    sizes="(min-width: 1024px) 50vw, 42vw"
+                    sizes="(min-width: 1024px) 50vw, 100vw"
                     priority
-                    className="object-contain object-right drop-shadow-[0_18px_30px_rgba(0,0,0,0.25)]"
+                    className="object-contain object-center lg:object-right drop-shadow-[0_18px_30px_rgba(0,0,0,0.25)]"
                   />
                 )}
               </div>
