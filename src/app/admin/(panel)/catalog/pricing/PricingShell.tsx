@@ -51,6 +51,24 @@ function pluralTovar(n: number): string {
 const CATEGORY_LABEL: Record<string, string> = { iphone: "iPhone", ipad: "iPad", mac: "Mac", watch: "Apple Watch", airpods: "AirPods", accessories: "Аксессуары", used: "Б/У" };
 const PAGE_SIZES = [20, 50, 100];
 
+// ── Конфигурируемые столбцы таблицы прайса (порядок/ширина/сортировка) ──
+type ColKey = "product" | "cost" | "rate" | "cash" | "card" | "markup" | "margin" | "status";
+const DATA_COLS: ColKey[] = ["product", "cost", "rate", "cash", "card", "markup", "margin", "status"];
+const COL_META: Record<ColKey, { label: string; defaultWidth: number; align: "left" | "right"; info?: boolean }> = {
+  product: { label: "Товар", defaultWidth: 320, align: "left" },
+  cost: { label: "Закупка ₽", defaultWidth: 128, align: "right" },
+  rate: { label: "Курс", defaultWidth: 96, align: "right" },
+  cash: { label: "Нал", defaultWidth: 112, align: "right" },
+  card: { label: "Карта", defaultWidth: 112, align: "right" },
+  markup: { label: "Наценка", defaultWidth: 92, align: "right" },
+  margin: { label: "Маржа ₽", defaultWidth: 108, align: "right", info: true },
+  status: { label: "Статус", defaultWidth: 128, align: "left" },
+};
+const MARGIN_INFO = "Маржа = цена нал − закупка ₽. Наценка считается от закупки по РАБОЧЕМУ курсу, а не по курсу закупа. Если рабочий курс ниже курса закупа — часть наценки уходит на курсовую разницу, и маржа меньше, чем % наценки.";
+const COL_W_CHECK = 40, COL_W_IMG = 52, COL_W_ACTION = 52;
+const TABLE_PREFS_KEY = "pt_pricing_table_v2";
+const defaultColWidths = () => Object.fromEntries(DATA_COLS.map((k) => [k, COL_META[k].defaultWidth])) as Record<ColKey, number>;
+
 function relativeTime(iso: string | null): string {
   if (!iso) return "";
   const diff = Date.now() - new Date(iso).getTime();
@@ -98,6 +116,78 @@ export function PricingShell({
   const [pageSize, setPageSize] = React.useState(50);
   const [page, setPage] = React.useState(1);
   React.useEffect(() => setPage(1), [cat, q, hideFixed, lowOnly, pageSize]);
+
+  // ── Столбцы: порядок, ширина, сортировка (с сохранением в localStorage) ──
+  const [colOrder, setColOrder] = React.useState<ColKey[]>(DATA_COLS);
+  const [colWidths, setColWidths] = React.useState<Record<ColKey, number>>(defaultColWidths);
+  const [sort, setSort] = React.useState<{ key: ColKey; dir: "asc" | "desc" } | null>(null);
+  // загрузка сохранённых настроек один раз при монтировании
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem(TABLE_PREFS_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { order?: string[]; widths?: Record<string, number>; sort?: { key: ColKey; dir: "asc" | "desc" } | null };
+      if (Array.isArray(saved.order)) {
+        const valid = saved.order.filter((k): k is ColKey => DATA_COLS.includes(k as ColKey));
+        const missing = DATA_COLS.filter((k) => !valid.includes(k));
+        setColOrder([...valid, ...missing]);
+      }
+      if (saved.widths) setColWidths((w) => ({ ...w, ...saved.widths }));
+      if (saved.sort && DATA_COLS.includes(saved.sort.key)) setSort(saved.sort);
+    } catch { /* noop */ }
+  }, []);
+  // сохранение при изменениях
+  React.useEffect(() => {
+    try { localStorage.setItem(TABLE_PREFS_KEY, JSON.stringify({ order: colOrder, widths: colWidths, sort })); } catch { /* noop */ }
+  }, [colOrder, colWidths, sort]);
+
+  const toggleSort = React.useCallback((k: ColKey) => {
+    setSort((prev) => (prev && prev.key === k ? (prev.dir === "asc" ? { key: k, dir: "desc" } : null) : { key: k, dir: "asc" }));
+  }, []);
+  const resetColumns = React.useCallback(() => { setColOrder(DATA_COLS); setColWidths(defaultColWidths()); setSort(null); }, []);
+
+  // перетаскивание столбцов
+  const dragKey = React.useRef<ColKey | null>(null);
+  const onHeaderDrop = React.useCallback((key: ColKey) => {
+    const from = dragKey.current;
+    dragKey.current = null;
+    if (!from || from === key) return;
+    setColOrder((prev) => {
+      const arr = prev.filter((k) => k !== from);
+      const idx = arr.indexOf(key);
+      arr.splice(idx < 0 ? arr.length : idx, 0, from);
+      return arr;
+    });
+  }, []);
+
+  // изменение ширины столбцов — глобальные слушатели навешиваются только во время перетаскивания ручки
+  const resizing = React.useRef<{ key: ColKey; startX: number; startW: number } | null>(null);
+  const [resizingKey, setResizingKey] = React.useState<ColKey | null>(null);
+  const onResizeStart = React.useCallback((key: ColKey, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizing.current = { key, startX: e.clientX, startW: colWidths[key] };
+    setResizingKey(key);
+  }, [colWidths]);
+  React.useEffect(() => {
+    if (!resizingKey) return;
+    const move = (e: MouseEvent) => {
+      const st = resizing.current;
+      if (!st) return;
+      const w = Math.max(60, st.startW + (e.clientX - st.startX));
+      setColWidths((prev) => ({ ...prev, [st.key]: w }));
+    };
+    const up = () => { resizing.current = null; setResizingKey(null); };
+    document.body.style.cursor = "col-resize";
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
+    return () => {
+      document.body.style.cursor = "";
+      window.removeEventListener("mousemove", move);
+      window.removeEventListener("mouseup", up);
+    };
+  }, [resizingKey]);
+
   const [localRows, setLocalRows] = React.useState<PricingRow[]>(rows);
   React.useEffect(() => setLocalRows(rows), [rows]);
   const [sel, setSel] = React.useState<Set<string>>(new Set());
@@ -119,6 +209,20 @@ export function PricingShell({
   const settingsForCalc: PricingSettings = settings;
   // slug → данные категории (наценка, мин.маржа ₽, название)
   const catBy = React.useMemo(() => new Map(categories.map((c) => [c.slug, c])), [categories]);
+  // Категории для выпадающего фильтра: родители по алфавиту, под каждым — его подкатегории по алфавиту
+  const sortedCategories = React.useMemo(() => {
+    const byTitle = (a: PricingCategory, b: PricingCategory) => a.title.localeCompare(b.title, "ru");
+    const parents = categories.filter((c) => !c.parent_slug).sort(byTitle);
+    const out: { cat: PricingCategory; child: boolean }[] = [];
+    for (const p of parents) {
+      out.push({ cat: p, child: false });
+      categories.filter((c) => c.parent_slug === p.slug).sort(byTitle).forEach((c) => out.push({ cat: c, child: true }));
+    }
+    // подкатегории, чей родитель отсутствует в списке, — добавляем в общий алфавит
+    const seen = new Set(out.map((o) => o.cat.slug));
+    categories.filter((c) => !seen.has(c.slug)).sort(byTitle).forEach((c) => out.push({ cat: c, child: false }));
+    return out;
+  }, [categories]);
   const markupOf = (slug: string | null) => (slug && catBy.get(slug)?.markup_percent != null ? catBy.get(slug)!.markup_percent : settings.default_markup_percent);
   const minMarginOf = (slug: string | null) => (slug ? catBy.get(slug)?.min_margin_rub ?? 0 : 0);
   const delta = course.usd && course.prevUsd ? ((course.usd - course.prevUsd) / course.prevUsd) * 100 : null;
@@ -161,9 +265,36 @@ export function PricingShell({
     return true;
   });
 
-  const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  // Сортировка по выбранному столбцу (null-значения всегда в конце)
+  const sorted = React.useMemo(() => {
+    if (!sort) return filtered;
+    const markupOfRow = (slug: string | null) => (slug && catBy.get(slug)?.markup_percent != null ? catBy.get(slug)!.markup_percent : settings.default_markup_percent);
+    const val = (r: PricingRow): number | string | null => {
+      switch (sort.key) {
+        case "product": return (r.title ?? "").toLowerCase();
+        case "cost": return r.cost_rub;
+        case "rate": return r.cost_rate;
+        case "cash": return r.price_cash;
+        case "card": return r.price_card;
+        case "markup": return r.price_override ? null : markupOfRow(r.category_slug);
+        case "margin": return r.cost_rub != null && r.price_cash != null ? r.price_cash - r.cost_rub : null;
+        case "status": return r.status ?? "";
+      }
+    };
+    const dir = sort.dir === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const av = val(a), bv = val(b);
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      const cmp = typeof av === "number" && typeof bv === "number" ? av - bv : String(av).localeCompare(String(bv), "ru");
+      return cmp * dir;
+    });
+  }, [filtered, sort, catBy, settings]);
+
+  const pages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const pageClamped = Math.min(page, pages);
-  const paged = filtered.slice((pageClamped - 1) * pageSize, pageClamped * pageSize);
+  const paged = sorted.slice((pageClamped - 1) * pageSize, pageClamped * pageSize);
 
   const groups = React.useMemo(() => {
     const order = new Map(categories.map((c, i) => [c.slug, i]));
@@ -177,6 +308,38 @@ export function PricingShell({
   }, [paged, categories, catBy]);
 
   const withoutCost = localRows.filter((r) => !r.is_used && r.cost_rub == null).length;
+
+  // Рендер ячейки таблицы по ключу столбца (порядок задаётся colOrder)
+  const renderCell = (k: ColKey, r: PricingRow): React.ReactNode => {
+    switch (k) {
+      case "product":
+        return (
+          <div className="min-w-0">
+            <Link href={`/admin/catalog/products/${r.id}/edit`} className="block truncate font-medium text-ink hover:underline">{r.title}</Link>
+            <div className="truncate text-[11.5px] text-ink-subtle">{[r.sku, r.color, r.memory].filter(Boolean).join(" · ") || "—"}{r.is_used ? " · Б/У" : ""}</div>
+          </div>
+        );
+      case "cost":
+        return r.price_override ? <span className="text-ink-subtle">фикс</span> : <EditableNum value={r.cost_rub} onSave={(v) => saveCost(r, v, r.cost_rate)} />;
+      case "rate":
+        return r.price_override ? <span className="text-ink-subtle">—</span> : <EditableNum value={r.cost_rate} step="0.01" onSave={(v) => saveCost(r, r.cost_rub, v)} />;
+      case "cash":
+        return <span className="font-semibold text-sale tabular-nums">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</span>;
+      case "card":
+        return <span className="tabular-nums text-ink-muted">{r.price_card != null ? formatPrice(r.price_card) : "—"}</span>;
+      case "markup":
+        return <span className="tabular-nums text-ink-subtle">{r.price_override ? "—" : `${markupOf(r.category_slug)}%`}</span>;
+      case "margin":
+        return <MarginPill rub={r.cost_rub != null && r.price_cash != null ? r.price_cash - r.cost_rub : null} minRub={minMarginOf(r.category_slug)} />;
+      case "status":
+        return (
+          <span className="inline-flex items-center gap-1.5">
+            <StatusPill status={r.status} />
+            {r.price_override ? <span className="inline-flex items-center gap-0.5 rounded-full bg-ink px-1.5 py-0.5 text-[10px] font-medium text-white"><Lock className="h-2.5 w-2.5" />фикс</span> : null}
+          </span>
+        );
+    }
+  };
 
   /* ── курс / пересчёт ── */
   const applyWorking = async () => {
@@ -385,12 +548,16 @@ export function PricingShell({
       <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-white px-4 py-2.5">
         <Select value={cat} onChange={(e) => setCat(e.target.value)} className="w-44 shrink-0">
           <option value="">Все категории</option>
-          {categories.map((c) => <option key={c.slug} value={c.slug}>{c.title}</option>)}
+          {sortedCategories.map(({ cat: c, child }) => <option key={c.slug} value={c.slug}>{child ? `  ${c.title}` : c.title}</option>)}
         </Select>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по названию или SKU…" className="h-10 w-56 min-w-0 flex-1 rounded-lg border border-border bg-white px-3 text-[13px] text-ink outline-none focus:border-ink/40" />
         <Switch checked={hideFixed} onChange={setHideFixed} label="Скрыть зафиксированные" />
         <Switch checked={lowOnly} onChange={setLowOnly} label="Маржа ниже мин." />
         <div className="ml-auto flex shrink-0 items-center gap-2.5">
+          <button type="button" onClick={resetColumns} title="Сбросить порядок, ширину и сортировку столбцов"
+            className="hidden items-center gap-1 rounded-lg border border-border bg-white px-2.5 py-1.5 text-[12.5px] text-ink-subtle transition-colors hover:bg-surface hover:text-ink lg:inline-flex">
+            <RotateCcw className="h-3.5 w-3.5" /> Столбцы
+          </button>
           <div className="inline-flex overflow-hidden rounded-lg border border-border">
             {PAGE_SIZES.map((n) => (
               <button key={n} type="button" onClick={() => setPageSize(n)} className={cn("px-2.5 py-1.5 text-[12.5px] transition-colors", pageSize === n ? "bg-ink text-white" : "bg-white text-ink hover:bg-surface")}>{n}</button>
@@ -432,83 +599,84 @@ export function PricingShell({
       ) : (
         <>
           <div className="hidden overflow-x-auto rounded-xl border border-border/60 bg-white lg:block">
-            <table className="w-full min-w-[1000px] text-[13px]">
+            <table className="table-fixed text-[13px]" style={{ width: COL_W_CHECK + COL_W_IMG + COL_W_ACTION + colOrder.reduce((s, k) => s + colWidths[k], 0) }}>
+              <colgroup>
+                <col style={{ width: COL_W_CHECK }} />
+                <col style={{ width: COL_W_IMG }} />
+                {colOrder.map((k) => <col key={k} style={{ width: colWidths[k] }} />)}
+                <col style={{ width: COL_W_ACTION }} />
+              </colgroup>
               <thead className="sticky top-0 z-10 bg-surface/90 text-ink-subtle backdrop-blur-sm">
-                <tr className="[&>th]:px-3 [&>th]:py-2.5 [&>th]:text-left [&>th]:font-medium">
-                  <th className="w-8"><input type="checkbox" checked={allPageSelected} onChange={toggleAll} aria-label="Выбрать все" className="size-4" /></th>
-                  <th className="w-12"></th>
-                  <th>Товар</th>
-                  <th className="w-32 text-right">Закупка ₽</th>
-                  <th className="w-24 text-right">Курс</th>
-                  <th className="w-28 text-right">Нал</th>
-                  <th className="w-28 text-right">Карта</th>
-                  <th className="w-20 text-right">Наценка</th>
-                  <th className="w-24 text-right">
-                    <span className="inline-flex items-center justify-end gap-1">
-                      Маржа ₽
-                      <InfoTip text="Маржа = цена нал − закупка ₽. Наценка считается от закупки по РАБОЧЕМУ курсу, а не по курсу закупа. Если рабочий курс ниже курса закупа — часть наценки уходит на курсовую разницу, и маржа меньше, чем % наценки." />
-                    </span>
-                  </th>
-                  <th className="w-28">Статус</th>
-                  <th className="w-12"></th>
+                <tr>
+                  <th className="px-3 py-2.5"><input type="checkbox" checked={allPageSelected} onChange={toggleAll} aria-label="Выбрать все" className="size-4" /></th>
+                  <th className="px-3 py-2.5"></th>
+                  {colOrder.map((k) => {
+                    const meta = COL_META[k];
+                    const active = sort?.key === k;
+                    return (
+                      <th
+                        key={k}
+                        onClick={() => toggleSort(k)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => onHeaderDrop(k)}
+                        className={cn("group relative cursor-pointer select-none px-3 py-2.5 font-medium", meta.align === "right" ? "text-right" : "text-left")}
+                      >
+                        <span
+                          draggable
+                          onDragStart={(e) => { dragKey.current = k; e.dataTransfer.effectAllowed = "move"; }}
+                          title="Клик — сортировка · потяните, чтобы переместить столбец"
+                          className={cn("inline-flex max-w-full cursor-grab items-center gap-1 active:cursor-grabbing", meta.align === "right" && "flex-row-reverse", active && "text-ink")}
+                        >
+                          <span className="truncate">{meta.label}</span>
+                          {meta.info ? <InfoTip text={MARGIN_INFO} /> : null}
+                          {active
+                            ? (sort!.dir === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />)
+                            : <ArrowDown className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-30" />}
+                        </span>
+                        <span
+                          onMouseDown={(e) => onResizeStart(k, e)}
+                          onClick={(e) => e.stopPropagation()}
+                          onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                          title="Потяните, чтобы изменить ширину"
+                          className="absolute right-0 top-0 z-10 h-full w-1.5 cursor-col-resize hover:bg-ink/25"
+                        />
+                      </th>
+                    );
+                  })}
+                  <th className="px-3 py-2.5"></th>
                 </tr>
               </thead>
               <tbody>
                 {groups.map((g) => (
                   <React.Fragment key={g.key}>
                     <tr className="bg-surface/40">
-                      <td colSpan={12} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">{g.label} · {g.items.length} · наценка {markupOf(g.key === "other" ? null : g.key)}%</td>
+                      <td colSpan={colOrder.length + 3} className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-subtle">{g.label} · {g.items.length} · наценка {markupOf(g.key === "other" ? null : g.key)}%</td>
                     </tr>
-                    {g.items.map((r) => {
-                      return (
-                        <tr
-                          key={r.id}
-                          onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button,input,label")) toggleSel(r.id); }}
-                          className={cn("cursor-pointer select-none border-t border-border/40 align-middle transition-colors hover:bg-surface/50 [&>td]:px-3 [&>td]:py-2", sel.has(r.id) && "bg-ink/[0.06]")}
-                        >
-                          <td><input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} aria-label="Выбрать" className="size-4" /></td>
-                          <td>
-                            <span className="inline-flex size-10 items-center justify-center overflow-hidden rounded-md border border-border bg-white">
-                              {r.image ? <Image src={r.image} alt="" width={36} height={36} unoptimized className="size-9 object-contain" /> : null}
-                            </span>
-                          </td>
-                          <td>
-                            <Link href={`/admin/catalog/products/${r.id}/edit`} className="font-medium text-ink hover:underline">{r.title}</Link>
-                            <div className="text-[11.5px] text-ink-subtle">{[r.sku, r.color, r.memory].filter(Boolean).join(" · ") || "—"}{r.is_used ? " · Б/У" : ""}</div>
-                          </td>
-                          <td className="text-right">
-                            {r.price_override ? (
-                              <span className="text-ink-subtle">фикс</span>
-                            ) : (
-                              <>
-                                <EditableNum value={r.cost_rub} onSave={(v) => saveCost(r, v, r.cost_rate)} />
-                              </>
-                            )}
-                          </td>
-                          <td className="text-right">
-                            {r.price_override ? <span className="text-ink-subtle">—</span> : <EditableNum value={r.cost_rate} step="0.01" onSave={(v) => saveCost(r, r.cost_rub, v)} />}
-                          </td>
-                          <td className="text-right font-semibold text-sale tabular-nums">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</td>
-                          <td className="text-right tabular-nums text-ink-muted">{r.price_card != null ? formatPrice(r.price_card) : "—"}</td>
-                          <td className="text-right tabular-nums text-ink-subtle">{r.price_override ? "—" : `${markupOf(r.category_slug)}%`}</td>
-                          <td className="text-right"><MarginPill rub={r.cost_rub != null && r.price_cash != null ? r.price_cash - r.cost_rub : null} minRub={minMarginOf(r.category_slug)} /></td>
-                          <td>
-                            <span className="inline-flex items-center gap-1.5">
-                              <StatusPill status={r.status} />
-                              {r.price_override ? <span className="inline-flex items-center gap-0.5 rounded-full bg-ink px-1.5 py-0.5 text-[10px] font-medium text-white"><Lock className="h-2.5 w-2.5" />фикс</span> : null}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="flex items-center justify-end gap-1">
-                              <button type="button" onClick={() => recalcOne(r.id)} title="Пересчитать по формуле" className="inline-flex size-7 items-center justify-center rounded-sm border border-border bg-white text-ink-subtle hover:bg-surface hover:text-ink"><RefreshCw className="h-3.5 w-3.5" strokeWidth={1.75} /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {g.items.map((r) => (
+                      <tr
+                        key={r.id}
+                        onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button,input,label")) toggleSel(r.id); }}
+                        className={cn("cursor-pointer select-none border-t border-border/40 align-middle transition-colors hover:bg-surface/50 [&>td]:px-3 [&>td]:py-2", sel.has(r.id) && "bg-ink/[0.06]")}
+                      >
+                        <td><input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} aria-label="Выбрать" className="size-4" /></td>
+                        <td>
+                          <span className="inline-flex size-10 items-center justify-center overflow-hidden rounded-md border border-border bg-white">
+                            {r.image ? <Image src={r.image} alt="" width={36} height={36} unoptimized className="size-9 object-contain" /> : null}
+                          </span>
+                        </td>
+                        {colOrder.map((k) => (
+                          <td key={k} className={cn(COL_META[k].align === "right" ? "text-right" : "text-left", "overflow-hidden")}>{renderCell(k, r)}</td>
+                        ))}
+                        <td>
+                          <div className="flex items-center justify-end gap-1">
+                            <button type="button" onClick={() => recalcOne(r.id)} title="Пересчитать по формуле" className="inline-flex size-7 items-center justify-center rounded-sm border border-border bg-white text-ink-subtle hover:bg-surface hover:text-ink"><RefreshCw className="h-3.5 w-3.5" strokeWidth={1.75} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
                   </React.Fragment>
                 ))}
-                {paged.length === 0 ? <tr><td colSpan={12} className="px-4 py-10 text-center text-ink-muted">Нет товаров по фильтру.</td></tr> : null}
+                {paged.length === 0 ? <tr><td colSpan={colOrder.length + 3} className="px-4 py-10 text-center text-ink-muted">Нет товаров по фильтру.</td></tr> : null}
               </tbody>
             </table>
           </div>
