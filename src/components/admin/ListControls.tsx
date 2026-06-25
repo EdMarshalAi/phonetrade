@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { Select } from "@/components/admin/form";
 
@@ -119,6 +119,48 @@ export function CategoryFilter({
         </Select>
       ) : null}
     </>
+  );
+}
+
+/**
+ * Кликабельный заголовок-сортировщик (URL: sort, dir). Клик по активному —
+ * переключает asc/desc, по новому — ставит asc. defaultColumn задаёт колонку
+ * сортировки по умолчанию (для подсветки стрелки, когда sort в URL не задан).
+ */
+export function SortHeader({
+  column,
+  label,
+  align = "left",
+  defaultColumn = "title",
+}: {
+  column: string;
+  label: string;
+  align?: "left" | "right";
+  defaultColumn?: string;
+}) {
+  const params = useSearchParams();
+  const setParam = useSetParam();
+  const sort = params.get("sort") ?? defaultColumn;
+  const dir = params.get("dir") ?? "asc";
+  const active = sort === column;
+  const toggle = () => setParam({ sort: column, dir: active && dir === "asc" ? "desc" : "asc" });
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className={cn(
+        "group inline-flex items-center gap-1 uppercase tracking-[0.03em] transition-colors hover:text-ink",
+        align === "right" && "flex-row-reverse",
+        active && "text-ink"
+      )}
+    >
+      <span>{label}</span>
+      {active ? (
+        dir === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />
+      ) : (
+        <ArrowUp className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-40" />
+      )}
+    </button>
   );
 }
 

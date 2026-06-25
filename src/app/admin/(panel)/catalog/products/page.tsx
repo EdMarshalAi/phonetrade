@@ -8,13 +8,17 @@ import { PageHeader, StatusBadge } from "@/components/admin/ui";
 import { Table, THead, TH, TBody, TR, TD, EmptyState } from "@/components/admin/table";
 import { AdminButton } from "@/components/admin/form";
 import { DeleteButton } from "@/components/admin/DeleteButton";
-import { SearchBox, FilterSelect, CategoryFilter, Pagination } from "@/components/admin/ListControls";
+import { SearchBox, FilterSelect, CategoryFilter, Pagination, SortHeader } from "@/components/admin/ListControls";
 import { deleteProduct } from "./actions";
 
 export const metadata: Metadata = { title: "Товары" };
 
 const PAGE_SIZE = 20;
 const STATUS_LABEL: Record<string, string> = { published: "Опубликован", draft: "Черновик", archived: "Архив" };
+// Ключ сортировки (из URL) → колонка БД. По умолчанию — по названию.
+const SORT_COLUMNS: Record<string, string> = {
+  title: "title", category: "category_slug", cash: "price_cash", card: "price_card", stock: "stock", status: "status",
+};
 
 function fmt(n: number | null): string {
   return n == null ? "—" : new Intl.NumberFormat("ru-RU").format(n) + " ₽";
@@ -57,8 +61,14 @@ export default async function ProductsPage({
   if (sp.type) query = query.eq("type", sp.type);
   if (sp.q) query = query.or(`title.ilike.%${sp.q}%,sku.ilike.%${sp.q}%,model.ilike.%${sp.q}%`);
 
+  // Сортировка из URL (по умолчанию — по названию, A→Я). id как вторичный ключ для стабильной пагинации.
+  const sortKey = sp.sort && SORT_COLUMNS[sp.sort] ? sp.sort : "title";
+  const ascending = sp.dir !== "desc";
   const [from, to] = rangeFor(page, PAGE_SIZE);
-  const { data, count } = await query.order("created_at", { ascending: false }).range(from, to);
+  const { data, count } = await query
+    .order(SORT_COLUMNS[sortKey], { ascending, nullsFirst: false })
+    .order("id", { ascending: true })
+    .range(from, to);
 
   const rows = (data ?? []) as {
     id: string;
@@ -128,12 +138,12 @@ export default async function ProductsPage({
           <Table>
             <THead>
               <TH className="w-14" />
-              <TH>Название</TH>
-              <TH className="w-28">Категория</TH>
-              <TH className="w-28">Наличными</TH>
-              <TH className="w-24">Картой</TH>
-              <TH className="w-20">Остаток</TH>
-              <TH className="w-28">Статус</TH>
+              <TH><SortHeader column="title" label="Название" /></TH>
+              <TH className="w-28"><SortHeader column="category" label="Категория" /></TH>
+              <TH className="w-28"><SortHeader column="cash" label="Наличными" /></TH>
+              <TH className="w-24"><SortHeader column="card" label="Картой" /></TH>
+              <TH className="w-20"><SortHeader column="stock" label="Остаток" /></TH>
+              <TH className="w-28"><SortHeader column="status" label="Статус" /></TH>
               <TH className="w-px text-right">Действия</TH>
             </THead>
             <TBody>
