@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { Plus, ImageOff, Settings, Table2 } from "lucide-react";
+import { Plus, ImageOff, Settings, Table2, Archive } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rangeFor } from "@/lib/admin/mutations";
 import { PageHeader } from "@/components/admin/ui";
 import { Table, THead, TH, TBody, TR, TD, EmptyState } from "@/components/admin/table";
 import { AdminButton } from "@/components/admin/form";
 import { DeleteButton } from "@/components/admin/DeleteButton";
-import { SearchBox, FilterSelect, CategoryFilter, Pagination, SortHeader } from "@/components/admin/ListControls";
+import { SearchBox, FilterSelect, CategoryFilter, Pagination, SortHeader, ToggleButton } from "@/components/admin/ListControls";
 import { ProductStatusSelect } from "./ProductStatusSelect";
 import { deleteProduct } from "./actions";
 
@@ -57,7 +57,11 @@ export default async function ProductsPage({
     const kids = childrenOf(sp.category);
     query = kids.length > 0 ? query.in("category_slug", [sp.category, ...kids]) : query.eq("category_slug", sp.category);
   }
-  if (sp.status) query = query.eq("status", sp.status);
+  // Архивные по умолчанию скрыты; кнопка «Архив» (?archived=1) показывает только их.
+  const showArchived = sp.archived === "1";
+  if (showArchived) query = query.eq("status", "archived");
+  else if (sp.status) query = query.eq("status", sp.status);
+  else query = query.neq("status", "archived");
   if (sp.type) query = query.eq("type", sp.type);
   if (sp.q) query = query.or(`title.ilike.%${sp.q}%,sku.ilike.%${sp.q}%,model.ilike.%${sp.q}%`);
 
@@ -84,7 +88,7 @@ export default async function ProductsPage({
   }[];
   const total = count ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const hasFilters = !!(sp.q || sp.category || sp.subcategory || sp.status || sp.type);
+  const hasFilters = !!(sp.q || sp.category || sp.subcategory || sp.status || sp.type || sp.archived);
 
   return (
     <>
@@ -115,8 +119,9 @@ export default async function ProductsPage({
       <div className="flex flex-wrap items-center gap-2">
         <SearchBox placeholder="Поиск по названию, SKU, модели…" />
         <CategoryFilter tree={categoryTree} />
-        <FilterSelect param="status" allLabel="Все статусы" options={[{ value: "published", label: "Опубликован" }, { value: "draft", label: "Черновик" }, { value: "archived", label: "Архив" }]} />
+        <FilterSelect param="status" allLabel="Все статусы" options={[{ value: "published", label: "Опубликован" }, { value: "draft", label: "Черновик" }]} />
         <FilterSelect param="type" allLabel="Все типы" options={[{ value: "new", label: "Новые" }, { value: "used", label: "Б/У" }]} />
+        <ToggleButton param="archived" label="Архив" icon={<Archive className="h-4 w-4" strokeWidth={1.75} />} />
       </div>
 
       {rows.length === 0 ? (

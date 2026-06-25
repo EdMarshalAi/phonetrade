@@ -164,6 +164,26 @@ export function SortHeader({
   );
 }
 
+/** Кнопка-тумблер URL-флага (значение "1"/нет). Напр. показать архивные товары. */
+export function ToggleButton({ param, label, icon }: { param: string; label: string; icon?: React.ReactNode }) {
+  const params = useSearchParams();
+  const setParam = useSetParam();
+  const active = params.get(param) === "1";
+  return (
+    <button
+      type="button"
+      onClick={() => setParam({ [param]: active ? null : "1" })}
+      className={cn(
+        "flex h-9 items-center gap-1.5 rounded-sm border px-3 text-[13px] transition-colors",
+        active ? "border-ink bg-ink text-white" : "border-border bg-white text-ink hover:bg-surface"
+      )}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
 /** Пагинация по URL-параметру page. */
 export function Pagination({ page, pages }: { page: number; pages: number }) {
   const setParam = useSetParam();

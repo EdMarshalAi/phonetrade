@@ -113,10 +113,11 @@ export function PricingShell({
   const [cat, setCat] = React.useState("");
   const [q, setQ] = React.useState("");
   const [hideFixed, setHideFixed] = React.useState(false);
+  const [hideArchived, setHideArchived] = React.useState(true);
   const [lowOnly, setLowOnly] = React.useState(false);
   const [pageSize, setPageSize] = React.useState(50);
   const [page, setPage] = React.useState(1);
-  React.useEffect(() => setPage(1), [cat, q, hideFixed, lowOnly, pageSize]);
+  React.useEffect(() => setPage(1), [cat, q, hideFixed, hideArchived, lowOnly, pageSize]);
 
   // ── Столбцы: порядок, ширина, сортировка (с сохранением в localStorage) ──
   const [colOrder, setColOrder] = React.useState<ColKey[]>(DATA_COLS);
@@ -257,6 +258,7 @@ export function PricingShell({
   const filtered = localRows.filter((r) => {
     if (catMatch && !(r.category_slug && catMatch.has(r.category_slug))) return false;
     if (hideFixed && r.price_override) return false;
+    if (hideArchived && r.status === "archived") return false;
     if (q.trim()) {
       const t = `${r.title} ${r.sku ?? ""} ${r.color ?? ""} ${r.memory ?? ""}`.toLowerCase();
       if (!t.includes(q.trim().toLowerCase())) return false;
@@ -568,7 +570,8 @@ export function PricingShell({
           {sortedCategories.map(({ cat: c, child }) => <option key={c.slug} value={c.slug}>{child ? `  ${c.title}` : c.title}</option>)}
         </Select>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по названию или SKU…" className="h-10 w-56 min-w-0 flex-1 rounded-lg border border-border bg-white px-3 text-[13px] text-ink outline-none focus:border-ink/40" />
-        <Switch checked={hideFixed} onChange={setHideFixed} label="Скрыть зафиксированные" />
+        <Switch checked={hideFixed} onChange={setHideFixed} label="Скрыть фикс" />
+        <Switch checked={hideArchived} onChange={setHideArchived} label="Скрыть архивные" />
         <Switch checked={lowOnly} onChange={setLowOnly} label="Маржа ниже мин." />
         <div className="ml-auto flex shrink-0 items-center gap-2.5">
           <button type="button" onClick={resetColumns} title="Сбросить порядок, ширину и сортировку столбцов"
