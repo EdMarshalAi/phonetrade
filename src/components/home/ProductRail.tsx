@@ -6,6 +6,7 @@ import {
   MotionReveal,
   MotionStagger,
 } from "@/components/ui/MotionReveal";
+import { RailScroller } from "@/components/home/RailScroller";
 import { cn } from "@/lib/utils/cn";
 import type { Product } from "@/lib/data/products";
 
@@ -49,20 +50,21 @@ export function ProductRail({
           </header>
         </MotionReveal>
 
-        <MotionStagger
-          className={cn(
-            "grid gap-4 md:gap-5",
-            "grid-flow-col auto-cols-[minmax(260px,1fr)] sm:auto-cols-[minmax(280px,1fr)]",
-            "overflow-x-auto scrollbar-hide scroll-snap-x snap-x pb-2",
-            "md:grid-flow-row md:auto-cols-auto md:grid-cols-2 lg:grid-cols-4 md:overflow-visible"
-          )}
-        >
-          {products.map((p) => (
-            <MotionItem key={p.id} className="snap-card">
-              <ProductCard product={p} />
-            </MotionItem>
-          ))}
-        </MotionStagger>
+        <RailScroller className="overflow-x-auto scrollbar-hide snap-x snap-proximity pb-2 md:overflow-visible">
+          <MotionStagger
+            className={cn(
+              "grid gap-4 md:gap-5",
+              "grid-flow-col auto-cols-[minmax(260px,1fr)] sm:auto-cols-[minmax(280px,1fr)]",
+              "md:grid-flow-row md:auto-cols-auto md:grid-cols-2 lg:grid-cols-4"
+            )}
+          >
+            {products.map((p) => (
+              <MotionItem key={p.id} className="snap-card snap-start">
+                <ProductCard product={p} />
+              </MotionItem>
+            ))}
+          </MotionStagger>
+        </RailScroller>
       </div>
     </section>
   );
