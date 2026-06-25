@@ -121,6 +121,7 @@ export function PricingShell({
   const [colOrder, setColOrder] = React.useState<ColKey[]>(DATA_COLS);
   const [colWidths, setColWidths] = React.useState<Record<ColKey, number>>(defaultColWidths);
   const [sort, setSort] = React.useState<{ key: ColKey; dir: "asc" | "desc" } | null>(null);
+  const [dragOverKey, setDragOverKey] = React.useState<ColKey | null>(null);
   // загрузка сохранённых настроек один раз при монтировании
   React.useEffect(() => {
     try {
@@ -151,6 +152,7 @@ export function PricingShell({
   const onHeaderDrop = React.useCallback((key: ColKey) => {
     const from = dragKey.current;
     dragKey.current = null;
+    setDragOverKey(null);
     if (!from || from === key) return;
     setColOrder((prev) => {
       const arr = prev.filter((k) => k !== from);
@@ -599,7 +601,7 @@ export function PricingShell({
       ) : (
         <>
           <div className="hidden overflow-x-auto rounded-xl border border-border/60 bg-white lg:block">
-            <table className="table-fixed text-[13px]" style={{ width: COL_W_CHECK + COL_W_IMG + COL_W_ACTION + colOrder.reduce((s, k) => s + colWidths[k], 0) }}>
+            <table className="w-full table-fixed text-[13px]" style={{ minWidth: COL_W_CHECK + COL_W_IMG + COL_W_ACTION + colOrder.reduce((s, k) => s + colWidths[k], 0) }}>
               <colgroup>
                 <col style={{ width: COL_W_CHECK }} />
                 <col style={{ width: COL_W_IMG }} />
@@ -616,30 +618,36 @@ export function PricingShell({
                     return (
                       <th
                         key={k}
-                        onClick={() => toggleSort(k)}
+                        draggable
+                        onDragStart={(e) => { dragKey.current = k; e.dataTransfer.effectAllowed = "move"; }}
+                        onDragEnter={() => { if (dragKey.current && dragKey.current !== k) setDragOverKey(k); }}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={() => onHeaderDrop(k)}
-                        className={cn("group relative cursor-pointer select-none px-3 py-2.5 font-medium", meta.align === "right" ? "text-right" : "text-left")}
+                        onDragEnd={() => { dragKey.current = null; setDragOverKey(null); }}
+                        onClick={() => toggleSort(k)}
+                        title="Клик — сортировка · потяните заголовок, чтобы переместить столбец"
+                        className={cn(
+                          "group relative cursor-grab select-none px-3 py-2.5 font-medium transition-colors active:cursor-grabbing",
+                          meta.align === "right" ? "text-right" : "text-left",
+                          dragOverKey === k && "bg-ink/10",
+                        )}
                       >
-                        <span
-                          draggable
-                          onDragStart={(e) => { dragKey.current = k; e.dataTransfer.effectAllowed = "move"; }}
-                          title="Клик — сортировка · потяните, чтобы переместить столбец"
-                          className={cn("inline-flex max-w-full cursor-grab items-center gap-1 active:cursor-grabbing", meta.align === "right" && "flex-row-reverse", active && "text-ink")}
-                        >
+                        <span className={cn("inline-flex max-w-full items-center gap-1", meta.align === "right" && "flex-row-reverse", active && "text-ink")}>
                           <span className="truncate">{meta.label}</span>
                           {meta.info ? <InfoTip text={MARGIN_INFO} /> : null}
                           {active
                             ? (sort!.dir === "asc" ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />)
                             : <ArrowDown className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-30" />}
                         </span>
+                        {/* видимая полоска-разделитель = зона захвата для изменения ширины */}
                         <span
                           onMouseDown={(e) => onResizeStart(k, e)}
                           onClick={(e) => e.stopPropagation()}
-                          onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                          title="Потяните, чтобы изменить ширину"
-                          className="absolute right-0 top-0 z-10 h-full w-1.5 cursor-col-resize hover:bg-ink/25"
-                        />
+                          title="Потяните, чтобы изменить ширину столбца"
+                          className="group/rz absolute -right-1.5 top-0 z-20 flex h-full w-3 cursor-col-resize justify-center"
+                        >
+                          <span className="h-full w-px bg-border-strong transition-colors group-hover/rz:w-0.5 group-hover/rz:bg-ink" />
+                        </span>
                       </th>
                     );
                   })}
