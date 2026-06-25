@@ -11,5 +11,10 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
  */
 export const supabase: SupabaseClient | null =
   url && anonKey
-    ? createClient(url, anonKey, { auth: { persistSession: false } })
+    ? createClient(url, anonKey, {
+        // Свой storageKey + без сессии/автообновления: этот anon-клиент только
+        // читает каталог и НЕ должен делить auth-хранилище с AuthProvider
+        // (иначе в браузере «Multiple GoTrueClient instances»).
+        auth: { persistSession: false, autoRefreshToken: false, storageKey: "sb-pt-data" },
+      })
     : null;
