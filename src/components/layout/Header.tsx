@@ -194,9 +194,9 @@ export function Header({
               <li>
                 <a
                   href="/repair"
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-0.5 font-medium text-white transition-colors hover:bg-white/20"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-0.5 text-[13px] font-medium text-white transition-colors hover:bg-white/20"
                 >
-                  <Wrench className="size-3.5" aria-hidden /> Ремонт
+                  <Wrench className="size-3.5" aria-hidden /> Ремонт вашей техники
                 </a>
               </li>
             </ul>
