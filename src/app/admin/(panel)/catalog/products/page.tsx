@@ -4,17 +4,17 @@ import Image from "next/image";
 import { Plus, ImageOff, Settings, Table2 } from "lucide-react";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { rangeFor } from "@/lib/admin/mutations";
-import { PageHeader, StatusBadge } from "@/components/admin/ui";
+import { PageHeader } from "@/components/admin/ui";
 import { Table, THead, TH, TBody, TR, TD, EmptyState } from "@/components/admin/table";
 import { AdminButton } from "@/components/admin/form";
 import { DeleteButton } from "@/components/admin/DeleteButton";
 import { SearchBox, FilterSelect, CategoryFilter, Pagination, SortHeader } from "@/components/admin/ListControls";
+import { ProductStatusSelect } from "./ProductStatusSelect";
 import { deleteProduct } from "./actions";
 
 export const metadata: Metadata = { title: "Товары" };
 
 const PAGE_SIZE = 20;
-const STATUS_LABEL: Record<string, string> = { published: "Опубликован", draft: "Черновик", archived: "Архив" };
 // Ключ сортировки (из URL) → колонка БД. По умолчанию — по названию.
 const SORT_COLUMNS: Record<string, string> = {
   title: "title", category: "category_slug", cash: "price_cash", card: "price_card", stock: "stock", status: "status",
@@ -169,9 +169,7 @@ export default async function ProductsPage({
                   <TD className="text-ink-muted">{fmt(p.price_card)}</TD>
                   <TD className="text-ink-muted">{p.stock == null ? "—" : p.stock}</TD>
                   <TD>
-                    <StatusBadge tone={p.status === "published" ? "strong" : p.status === "archived" ? "danger" : "neutral"}>
-                      {STATUS_LABEL[p.status] ?? p.status}
-                    </StatusBadge>
+                    <ProductStatusSelect id={p.id} status={p.status} />
                   </TD>
                   <TD>
                     <div className="flex items-center justify-end gap-2">

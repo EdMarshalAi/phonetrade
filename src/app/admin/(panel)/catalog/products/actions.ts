@@ -253,6 +253,29 @@ export async function recalcProductPrices(id: string): Promise<{ error?: string 
 }
 
 /** Soft-delete: помечаем deleted_at + архивируем (товар исчезает с сайта, но восстановим). */
+/** Сменить статус товара (опубликован/черновик/архив) — inline из списка и прайса. */
+export async function updateProductStatus(id: string, status: string): Promise<{ error?: string }> {
+  const allowed = ["published", "draft", "archived"];
+  if (!allowed.includes(status)) return { error: "Неизвестный статус" };
+  try {
+    await adminMutation({
+      roles: [...STAFF],
+      action: "update",
+      entityType: "product",
+      entityId: id,
+      changes: { status },
+      revalidate: ["/", "/catalog", `/product/${id}`],
+      run: async (db) => {
+        const { error } = await db.from("products").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
+        if (error) throw error;
+      },
+    });
+    return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Ошибка смены статуса" };
+  }
+}
+
 export async function deleteProduct(id: string): Promise<{ error?: string }> {
   try {
     await adminMutation({

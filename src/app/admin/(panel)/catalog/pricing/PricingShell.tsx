@@ -14,6 +14,7 @@ import { calculatePrices, type PricingSettings } from "@/lib/pricing/calculate";
 import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, recalcSelected, updateProductCost, updateOverrideCash, updateCategoryPricing, type PricingSettingsInput } from "./actions";
 import { exportPricing, exportPricingToTelegram, savePricingExportPrefs, saveYmlFeedPrefs, parsePricingFile, applyPricingImport, bulkUpdateCost, type ImportPreviewRow, type BulkOp } from "./io-actions";
 import { EXPORT_COLUMNS, type ExportColumnKey, type PricingExportPrefs, type YmlFeedPrefs } from "./export-columns";
+import { ProductStatusSelect } from "../products/ProductStatusSelect";
 
 function downloadBase64(filename: string, base64: string, mime: string) {
   const bytes = atob(base64);
@@ -338,7 +339,7 @@ export function PricingShell({
       case "margin":
         return <MarginPill rub={r.cost_rub != null && r.price_cash != null ? r.price_cash - r.cost_rub : null} minRub={minMarginOf(r.category_slug)} />;
       case "status":
-        return <StatusPill status={r.status} />;
+        return <ProductStatusSelect id={r.id} status={r.status ?? "draft"} />;
     }
   };
 
@@ -803,12 +804,6 @@ function MarginPill({ rub, minRub }: { rub: number | null; minRub: number }) {
     : minRub > 0 && rub >= minRub * 1.5 ? "bg-[#e7f6ee] text-[#0a7d3e]"
     : "bg-surface text-ink-muted";
   return <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[12px] font-medium tabular-nums", cls)}>{formatPrice(rub)}</span>;
-}
-
-function StatusPill({ status }: { status: string | null }) {
-  if (status === "draft") return <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] text-ink-muted">Черновик</span>;
-  if (status === "archived") return <span className="rounded-full bg-surface px-2 py-0.5 text-[11px] text-ink-subtle">Архив</span>;
-  return <span className="rounded-full bg-ink/[0.06] px-2 py-0.5 text-[11px] text-ink">Опубликован</span>;
 }
 
 function Cell({ label, children }: { label: string; children: React.ReactNode }) {
