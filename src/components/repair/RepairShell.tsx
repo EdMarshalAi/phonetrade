@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Wrench, ShieldCheck, BadgeCheck, Clock, Check, Phone, ChevronLeft, ChevronRight, Loader2, Smartphone } from "lucide-react";
+import { Wrench, ShieldCheck, BadgeCheck, Clock, Check, Phone, ChevronLeft, ChevronRight, Loader2, Smartphone, HelpCircle, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { ymReachGoal } from "@/lib/analytics/metrika";
 import { useCookieConsent } from "@/components/legal/CookieConsent";
@@ -10,11 +10,12 @@ import { DEVICE_CATEGORIES, issuesFor, deviceImage, type DeviceCategoryKey } fro
 import { submitRepairRequest } from "@/lib/repair/repair-actions";
 
 const HERO_IMAGE = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/repair/hero-broken-iphone.png";
+const IPAD_HELP_IMAGE = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/repair/ipad-model-help.jpg";
 
 const ADVANTAGES = [
   { icon: BadgeCheck, title: "Только оригинал", text: "Оригинальные запчасти и комплектующие" },
   { icon: ShieldCheck, title: "Гарантия на ремонт", text: "До 12 месяцев на работы и детали" },
-  { icon: Clock, title: "В день обращения", text: "Большинство работ — от 20 минут" },
+  { icon: Clock, title: "В день обращения", text: "Большинство ремонтов — за 1–2 часа" },
 ];
 
 const WORDS = ["Быстрый", "Честный", "Выгодный", "Надёжный", "Качественный"];
@@ -53,17 +54,17 @@ export function RepairShell({ initialPhone, initialName, authed }: { initialPhon
           <div className="absolute bottom-0 left-1/3 size-[280px] rounded-full blur-3xl" style={{ background: "radial-gradient(circle, rgba(251,146,160,0.28), transparent 70%)" }} />
         </div>
 
-        <div className="container-page relative grid items-center gap-6 py-10 md:gap-8 md:py-14 lg:grid-cols-[1.08fr_0.92fr]">
-          <div className="max-w-xl">
+        <div className="container-page relative grid items-center gap-6 py-12 md:gap-10 md:py-20 lg:grid-cols-[1.08fr_0.92fr]">
+          <div className="max-w-xl lg:pl-2 xl:pl-6">
             <span className="inline-flex items-center gap-2 rounded-full bg-ink px-3 py-1 text-[12px] font-medium text-white">
               <Wrench className="size-3.5" /> Сервисный центр · Белгород
             </span>
-            <h1 className="mt-5 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+            <h1 className="mt-6 text-4xl font-semibold leading-[1.05] tracking-[-0.02em] text-ink sm:text-5xl lg:text-6xl">
               <RotatingWord /> ремонт<br className="hidden sm:block" /> iPhone, iPad и Mac
             </h1>
-            <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-ink-muted">
+            <p className="mt-5 max-w-lg text-[15px] leading-relaxed text-ink-muted md:text-base">
               Сервисный центр PhoneTrade в Белгороде чинит технику Apple в день обращения —
-              с гарантией и оригинальными запчастями.
+              с гарантией и оригинальными запчастями. Большинство ремонтов производим за 1–2 часа.
             </p>
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <button
@@ -146,6 +147,7 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [done, setDone] = React.useState(false);
+  const [helpOpen, setHelpOpen] = React.useState(false);
 
   const activeCat = DEVICE_CATEGORIES.find((c) => c.key === cat)!;
   const activeSeries = activeCat.series?.find((s) => s.key === seriesKey) ?? null;
@@ -226,6 +228,37 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
                   </div>
                 </div>
               )
+            ) : activeCat.groups ? (
+              <div className="mt-4">
+                <div className="mb-3 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setHelpOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-3 py-1.5 text-[12.5px] font-medium text-ink-muted transition-colors hover:border-ink/40 hover:text-ink"
+                  >
+                    <HelpCircle className="size-4" /> Помочь определить модель
+                  </button>
+                </div>
+                <div className="space-y-5">
+                  {activeCat.groups.map((g) => (
+                    <div key={g.title}>
+                      <p className="mb-2 text-[12.5px] font-semibold uppercase tracking-wide text-ink-subtle">{g.title}</p>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                        {g.models.map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => pickDevice(m)}
+                            className="rounded-xl border border-border/70 bg-white px-3 py-2.5 text-center text-[12.5px] font-medium text-ink transition-all hover:-translate-y-0.5 hover:border-ink hover:shadow-sm"
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : (
               <div className="mt-4 grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-5">
                 {(activeCat.models ?? []).map((m) => <DeviceTile key={m} label={m} image={deviceImage(m)} onClick={() => pickDevice(m)} />)}
@@ -311,6 +344,27 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
           </div>
         ) : null}
       </div>
+
+      {/* Модалка-подсказка: как определить модель iPad */}
+      {helpOpen ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={() => setHelpOpen(false)} aria-hidden />
+          <div className="relative z-10 w-full max-w-lg rounded-3xl border border-border/60 bg-white p-5 shadow-xl sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="text-[17px] font-semibold text-ink">Как определить модель iPad</h3>
+              <button type="button" onClick={() => setHelpOpen(false)} aria-label="Закрыть" className="rounded-full p-1.5 text-ink-subtle transition-colors hover:bg-surface hover:text-ink">
+                <X className="size-5" />
+              </button>
+            </div>
+            <p className="mt-2 text-[13.5px] leading-relaxed text-ink-muted">
+              При обращении уточните модель — она указана на обратной стороне iPad в нижней части, по типу <span className="font-semibold text-ink">A1584</span>.
+            </p>
+            <div className="mt-4 overflow-hidden rounded-2xl border border-border/60 bg-surface">
+              <Image src={IPAD_HELP_IMAGE} alt="Номер модели (A-номер) на задней крышке iPad" width={960} height={680} className="h-auto w-full object-contain" />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

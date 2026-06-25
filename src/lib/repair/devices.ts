@@ -14,12 +14,19 @@ export interface PhoneSeries {
   models: string[];
 }
 
+export interface DeviceModelGroup {
+  title: string;
+  models: string[];
+}
+
 export interface DeviceCategory {
   key: DeviceCategoryKey;
   title: string;
   freeInput?: boolean;
   /** Для iPhone: выбор в два шага (серия → модель). */
   series?: PhoneSeries[];
+  /** Сгруппированные модели (iPad) — плитки без фото, по линейкам. */
+  groups?: DeviceModelGroup[];
   /** Для остальных типов: плоский список моделей. */
   models?: string[];
 }
@@ -40,14 +47,31 @@ export const IPHONE_SERIES: PhoneSeries[] = [
 ];
 
 export const DEVICE_CATEGORIES: DeviceCategory[] = [
-  { key: "iphone", title: "iPhone", series: IPHONE_SERIES },
+  {
+    key: "iphone",
+    title: "iPhone",
+    // Весь модельный ряд сразу (плоско), от новых к старым. Без SE и 8 (по требованию).
+    models: [
+      "iPhone 17 Pro Max", "iPhone 17 Pro", "iPhone 17", "iPhone 17e", "iPhone Air",
+      "iPhone 16 Pro Max", "iPhone 16 Pro", "iPhone 16 Plus", "iPhone 16", "iPhone 16e",
+      "iPhone 15 Pro Max", "iPhone 15 Pro", "iPhone 15 Plus", "iPhone 15",
+      "iPhone 14 Pro Max", "iPhone 14 Pro", "iPhone 14 Plus", "iPhone 14",
+      "iPhone 13 Pro Max", "iPhone 13 Pro", "iPhone 13", "iPhone 13 mini",
+      "iPhone 12 Pro Max", "iPhone 12 Pro", "iPhone 12", "iPhone 12 mini",
+      "iPhone 11 Pro Max", "iPhone 11 Pro", "iPhone 11",
+      "iPhone XS Max", "iPhone XS", "iPhone XR", "iPhone X",
+    ],
+  },
   {
     key: "ipad",
     title: "iPad",
-    models: [
-      "iPad Pro 13 (M4)", "iPad Pro 11 (M4)", "iPad Pro 12.9", "iPad Pro 11",
-      "iPad Air 13 (M2)", "iPad Air 11 (M2)", "iPad Air (M1)", "iPad Air",
-      "iPad 11 (A16)", "iPad 10.9", "iPad 10.2", "iPad mini 7", "iPad mini",
+    // Плитки без фото, сгруппированы по линейкам — весь модельный ряд.
+    groups: [
+      { title: "iPad mini", models: ["iPad mini 4", "iPad mini 5", "iPad mini 6", "iPad mini 7"] },
+      { title: "iPad Air", models: ["iPad Air", "iPad Air 2", "iPad Air 3 (2019)", "iPad Air 4 (2020)", "iPad Air 5 (2022)", "iPad Air 11″ M2 (2024)", "iPad Air 11″ M3 (2025)"] },
+      { title: "iPad Pro 11″ и компактнее", models: ["iPad Pro 9.7″", "iPad Pro 10.5″", "iPad Pro 11″ (2018)", "iPad Pro 11″ (2020)", "iPad Pro 11″ (2021)", "iPad Pro 11″ (2022)", "iPad Pro 11″ M4 (2024)", "iPad Pro 11″ M5 (2025)"] },
+      { title: "iPad Pro 12.9″ / 13″", models: ["iPad Pro 12.9″ (1 ген, 2015)", "iPad Pro 12.9″ (2 ген, 2017)", "iPad Pro 12.9″ (3 ген, 2018)", "iPad Pro 12.9″ (4 ген, 2020)", "iPad Pro 12.9″ (5 ген, 2021)", "iPad Pro 12.9″ (6 ген, 2022)", "iPad Pro 13″ M4 (2024)", "iPad Pro 13″ M5 (2025)"] },
+      { title: "iPad (базовый)", models: ["iPad 5 (2017)", "iPad 6 (2018)", "iPad 7 (2019)", "iPad 8 (2020)", "iPad 9 (2021)", "iPad 10 (2022)", "iPad 11 A16 (2025)"] },
     ],
   },
   {
