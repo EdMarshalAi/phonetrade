@@ -4,11 +4,12 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { X, ChevronDown } from "lucide-react";
+import { X, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { navForAccess } from "@/lib/admin/nav";
 
 const COLLAPSE_KEY = "admin-nav-collapsed";
+const RAIL_KEY = "admin-nav-rail";
 /** Группы, свёрнутые по умолчанию (однократно; дальше — выбор пользователя). */
 const DEFAULT_COLLAPSED = ["Рассылки"];
 
@@ -65,6 +66,18 @@ export function AdminSidebar({
     });
   };
 
+  // Свёрнутый до иконок сайдбар (только desktop). Сохраняется в localStorage.
+  const [rail, setRail] = React.useState(false);
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- гидрация из localStorage (недоступен при SSR)
+    try { setRail(localStorage.getItem(RAIL_KEY) === "1"); } catch { /* ignore */ }
+  }, []);
+  const toggleRail = () => setRail((v) => {
+    const n = !v;
+    try { localStorage.setItem(RAIL_KEY, n ? "1" : "0"); } catch { /* ignore */ }
+    return n;
+  });
+
   return (
     <>
       {/* затемнение под drawer на мобильных */}
@@ -79,13 +92,24 @@ export function AdminSidebar({
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex w-[264px] flex-col bg-ink text-onDark",
-          "transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
+          "transition-[transform,width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
           "lg:sticky lg:top-0 lg:h-dvh lg:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full"
+          open ? "translate-x-0" : "-translate-x-full",
+          rail ? "lg:w-[72px]" : "lg:w-[264px]"
         )}
       >
+        {/* кнопка свернуть/развернуть сайдбар — по центру правого края (только desktop) */}
+        <button
+          type="button"
+          onClick={toggleRail}
+          aria-label={rail ? "Развернуть меню" : "Свернуть меню"}
+          title={rail ? "Развернуть меню" : "Свернуть меню"}
+          className="absolute -right-3 top-1/2 z-50 hidden size-6 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-ink text-onDark-muted shadow-md transition-colors hover:text-white lg:flex"
+        >
+          {rail ? <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} /> : <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2.25} />}
+        </button>
         {/* бренд */}
-        <div className="flex items-center justify-between px-5 py-5">
+        <div className={cn("flex items-center justify-between px-5 py-5", rail && "lg:justify-center lg:px-0")}>
           <Link href="/admin" className="flex items-center gap-3 leading-none" onClick={onClose}>
             <Image
               src="/brand/logo-mark-white.png"
@@ -95,7 +119,7 @@ export function AdminSidebar({
               height={32}
               className="size-7 shrink-0 select-none"
             />
-            <span className="flex flex-col">
+            <span className={cn("flex flex-col", rail && "lg:hidden")}>
               <span className="text-[17px] font-semibold tracking-tight text-white">
                 PhoneTrade
               </span>
@@ -119,15 +143,18 @@ export function AdminSidebar({
           {groups.map((group, gi) => {
             const label = group.label;
             const hasActive = group.items.some((it) => isActive(pathname, it.href));
-            // активную группу не сворачиваем принудительно — показываем её содержимое
-            const isCollapsed = !!label && collapsed.has(label) && !hasActive;
+            // активную группу не сворачиваем принудительно; в rail-режиме группы всегда раскрыты
+            const isCollapsed = !rail && !!label && collapsed.has(label) && !hasActive;
             return (
-            <div key={label ?? gi} className={cn(gi > 0 && "mt-5")}>
+            <div key={label ?? gi} className={cn(gi > 0 && "mt-5", rail && "lg:mt-2")}>
               {label ? (
                 <button
                   type="button"
                   onClick={() => toggleGroup(label)}
-                  className="group flex w-full items-center justify-between gap-2 px-3 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-onDark-muted/70 transition-colors hover:text-onDark-muted"
+                  className={cn(
+                    "group flex w-full items-center justify-between gap-2 px-3 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-onDark-muted/70 transition-colors hover:text-onDark-muted",
+                    rail && "lg:hidden"
+                  )}
                 >
                   <span>{label}</span>
                   <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 transition-transform duration-200", isCollapsed && "-rotate-90")} strokeWidth={2.25} />
@@ -143,8 +170,10 @@ export function AdminSidebar({
                         href={item.href}
                         onClick={onClose}
                         aria-current={active ? "page" : undefined}
+                        title={rail ? item.label : undefined}
                         className={cn(
                           "group relative flex items-center gap-3 rounded-sm px-3 py-2 text-[13.5px] transition-colors duration-200",
+                          rail && "lg:justify-center lg:px-0",
                           active
                             ? "bg-white/10 font-medium text-white"
                             : "text-onDark-muted hover:bg-white/5 hover:text-white"
@@ -160,7 +189,7 @@ export function AdminSidebar({
                           )}
                           strokeWidth={1.75}
                         />
-                        <span className="truncate">{item.label}</span>
+                        <span className={cn("truncate", rail && "lg:hidden")}>{item.label}</span>
                       </Link>
                     </li>
                   );
