@@ -113,9 +113,8 @@ export function PricingShell({
 
   const [cat, setCat] = React.useState("");
   const [q, setQ] = React.useState("");
-  const [hideFixed, setHideFixed] = React.useState(false);
-  const [hideArchived, setHideArchived] = React.useState(true);
-  const [lowOnly, setLowOnly] = React.useState(false);
+  const [onlyFixed, setOnlyFixed] = React.useState(false);
+  const [showArchived, setShowArchived] = React.useState(false);
   const [fullscreen, setFullscreen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
@@ -127,7 +126,7 @@ export function PricingShell({
   }, [fullscreen]);
   const [pageSize, setPageSize] = React.useState(50);
   const [page, setPage] = React.useState(1);
-  React.useEffect(() => setPage(1), [cat, q, hideFixed, hideArchived, lowOnly, pageSize]);
+  React.useEffect(() => setPage(1), [cat, q, onlyFixed, showArchived, pageSize]);
 
   // ── Столбцы: порядок, ширина, сортировка (с сохранением в localStorage) ──
   const [colOrder, setColOrder] = React.useState<ColKey[]>(DATA_COLS);
@@ -267,16 +266,11 @@ export function PricingShell({
 
   const filtered = localRows.filter((r) => {
     if (catMatch && !(r.category_slug && catMatch.has(r.category_slug))) return false;
-    if (hideFixed && r.price_override) return false;
-    if (hideArchived && r.status === "archived") return false;
+    if (onlyFixed && !r.price_override) return false;        // «Фикс» вкл → только зафиксированные
+    if (!showArchived && r.status === "archived") return false; // «Архивные» выкл → архивные скрыты
     if (q.trim()) {
       const t = `${r.title} ${r.sku ?? ""} ${r.color ?? ""} ${r.memory ?? ""}`.toLowerCase();
       if (!t.includes(q.trim().toLowerCase())) return false;
-    }
-    if (lowOnly) {
-      const minRub = minMarginOf(r.category_slug);
-      const mRub = (r.price_cash ?? 0) - (r.cost_rub ?? 0);
-      if (!(r.cost_rub && minRub > 0 && mRub < minRub)) return false;
     }
     return true;
   });
@@ -589,19 +583,18 @@ export function PricingShell({
 
       {/* ── Фильтры (тулбар, один ряд) ── */}
       <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-white px-4 py-2.5">
+        <button type="button" onClick={() => setFullscreen(true)} title="Развернуть на весь экран"
+          className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-white text-ink-subtle transition-colors hover:bg-surface hover:text-ink lg:inline-flex">
+          <Maximize2 className="h-4 w-4" strokeWidth={1.75} />
+        </button>
         <Select value={cat} onChange={(e) => setCat(e.target.value)} className="w-44 shrink-0">
           <option value="">Все категории</option>
           {sortedCategories.map(({ cat: c, child }) => <option key={c.slug} value={c.slug}>{child ? `  ${c.title}` : c.title}</option>)}
         </Select>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск по названию или SKU…" className="h-10 w-56 min-w-0 flex-1 rounded-lg border border-border bg-white px-3 text-[13px] text-ink outline-none focus:border-ink/40" />
-        <Switch checked={hideFixed} onChange={setHideFixed} label="Скрыть фикс" />
-        <Switch checked={hideArchived} onChange={setHideArchived} label="Скрыть архивные" />
-        <Switch checked={lowOnly} onChange={setLowOnly} label="Маржа ниже мин." />
+        <Switch checked={onlyFixed} onChange={setOnlyFixed} label="Фикс" />
+        <Switch checked={showArchived} onChange={setShowArchived} label="Архивные" />
         <div className="ml-auto flex shrink-0 items-center gap-2.5">
-          <button type="button" onClick={() => setFullscreen(true)} title="Развернуть таблицу на весь экран"
-            className="hidden items-center gap-1 rounded-lg border border-border bg-white px-2.5 py-1.5 text-[12.5px] text-ink-subtle transition-colors hover:bg-surface hover:text-ink lg:inline-flex">
-            <Maximize2 className="h-3.5 w-3.5" /> На весь экран
-          </button>
           <button type="button" onClick={resetColumns} title="Сбросить порядок, ширину и сортировку столбцов"
             className="hidden items-center gap-1 rounded-lg border border-border bg-white px-2.5 py-1.5 text-[12.5px] text-ink-subtle transition-colors hover:bg-surface hover:text-ink lg:inline-flex">
             <RotateCcw className="h-3.5 w-3.5" /> Столбцы
@@ -649,16 +642,6 @@ export function PricingShell({
           {(() => {
           const desktopTable = (
           <div className={cn("hidden overflow-auto border border-border/60 bg-white lg:block", fullscreen ? "fixed inset-0 z-[100] max-h-screen rounded-none" : "max-h-[calc(100vh-220px)] rounded-xl")}>
-            {fullscreen ? (
-              <button
-                type="button"
-                onClick={() => setFullscreen(false)}
-                title="Свернуть (Esc)"
-                className="fixed right-4 top-4 z-[101] inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-2 text-[13px] text-ink shadow-md hover:bg-surface"
-              >
-                <Minimize2 className="h-4 w-4" strokeWidth={1.75} /> Свернуть
-              </button>
-            ) : null}
             <table className="w-full table-fixed text-[13px]" style={{ minWidth: COL_W_CHECK + COL_W_IMG + COL_W_ACTION + colOrder.reduce((s, k) => s + colWidths[k], 0) }}>
               <colgroup>
                 <col style={{ width: COL_W_CHECK }} />
@@ -709,7 +692,14 @@ export function PricingShell({
                       </th>
                     );
                   })}
-                  <th className="px-3 py-2.5"></th>
+                  <th className="px-2 py-2.5 text-right">
+                    {fullscreen ? (
+                      <button type="button" onClick={() => setFullscreen(false)} title="Свернуть (Esc)"
+                        className="inline-flex size-7 items-center justify-center rounded-sm border border-border bg-white text-ink-subtle hover:bg-surface hover:text-ink">
+                        <Minimize2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+                      </button>
+                    ) : null}
+                  </th>
                 </tr>
               </thead>
               <tbody>
