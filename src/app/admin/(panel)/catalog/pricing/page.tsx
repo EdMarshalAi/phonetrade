@@ -6,6 +6,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { PageHeader } from "@/components/admin/ui";
 import { AdminButton } from "@/components/admin/form";
 import { PricingShell, type PricingRow, type CourseInfo } from "./PricingShell";
+import { PricingHelp } from "./PricingHelp";
 import type { PricingSettingsInput } from "./actions";
 import { DEFAULT_EXPORT_PREFS, DEFAULT_YML_PREFS, type PricingExportPrefs, type YmlFeedPrefs } from "./export-columns";
 
@@ -90,8 +91,7 @@ export default async function PricingPage() {
   return (
     <>
       <PageHeader
-        title="Прайс"
-        description="Курс, формула и массовое редактирование цен. Цены пересчитываются от закупки в долларах."
+        title={<>Прайс <PricingHelp /></>}
         actions={
           <Link href="/admin/catalog/products">
             <AdminButton variant="outline" size="sm">

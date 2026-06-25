@@ -583,10 +583,6 @@ export function PricingShell({
 
       {/* ── Фильтры (тулбар, один ряд) ── */}
       <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-white px-4 py-2.5">
-        <button type="button" onClick={() => setFullscreen(true)} title="Развернуть на весь экран"
-          className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-white text-ink-subtle transition-colors hover:bg-surface hover:text-ink lg:inline-flex">
-          <Maximize2 className="h-4 w-4" strokeWidth={1.75} />
-        </button>
         <Select value={cat} onChange={(e) => setCat(e.target.value)} className="w-44 shrink-0">
           <option value="">Все категории</option>
           {sortedCategories.map(({ cat: c, child }) => <option key={c.slug} value={c.slug}>{child ? `  ${c.title}` : c.title}</option>)}
@@ -605,6 +601,10 @@ export function PricingShell({
             ))}
           </div>
           <span className="text-[12.5px] tabular-nums text-ink-subtle">{filtered.length}</span>
+          <button type="button" onClick={() => setFullscreen(true)} title="Развернуть на весь экран"
+            className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-white text-ink-subtle transition-colors hover:bg-surface hover:text-ink lg:inline-flex">
+            <Maximize2 className="h-4 w-4" strokeWidth={1.75} />
+          </button>
         </div>
       </div>
 
@@ -775,7 +775,6 @@ export function PricingShell({
         </>
       )}
 
-      <p className="text-[12px] text-ink-subtle">Закупку и курс закупа можно править прямо в таблице — цены пересчитываются сразу. У зафиксированных товаров правится цена наличными (колонка «Нал»), а цена по карте и кредиты считаются по формуле от неё. Кнопка ↻ в строке пересчитывает товар по формуле. Б/У в формулу не входят.</p>
 
       <FormulaModal open={formulaOpen} onClose={() => setFormulaOpen(false)} initial={settings} course={course} categories={categories} affected={localRows.filter((r) => !r.is_used && !r.price_override && r.cost_rub != null).length} onSaved={() => { router.refresh(); }} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onDone={() => { setImportOpen(false); router.refresh(); }} />
