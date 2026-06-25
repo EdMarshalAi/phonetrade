@@ -120,7 +120,7 @@ function DeviceTile({ label, image, onClick }: { label: string; image: string | 
       <span className="flex h-16 w-full items-center justify-center sm:h-20">
         {image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={image} alt={label} loading="lazy" className="h-full w-auto object-contain" />
+          <img src={image} alt={`Ремонт ${label} в Белгороде — замена экрана, аккумулятора, стекла · PhoneTrade`} loading="lazy" className="h-full w-auto object-contain" />
         ) : (
           <Smartphone className="size-8 text-ink-subtle" strokeWidth={1.5} />
         )}
@@ -284,13 +284,20 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
             ) : (
               <div className="mt-4 grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-5">
                 {(activeCat.models ?? []).map((m) => <DeviceTile key={m} label={m} image={deviceImage(m)} onClick={() => pickDevice(m)} />)}
+                {activeCat.manual ? (
+                  <button
+                    type="button"
+                    onClick={() => setManualOpen(true)}
+                    className="group flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-white p-3 text-center transition-all hover:-translate-y-0.5 hover:border-ink hover:shadow-md"
+                  >
+                    <span className="flex h-16 w-full items-center justify-center sm:h-20">
+                      <HelpCircle className="size-8 text-ink-subtle transition-colors group-hover:text-ink" strokeWidth={1.5} />
+                    </span>
+                    <span className="text-[12px] font-medium leading-tight text-ink sm:text-[12.5px]">{activeCat.manual.label}</span>
+                  </button>
+                ) : null}
               </div>
             )}
-            {activeCat.manual ? (
-              <button type="button" onClick={() => setManualOpen(true)} className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-4 py-2 text-[13px] font-medium text-ink-muted transition-colors hover:border-ink/40 hover:text-ink">
-                {activeCat.manual.label}
-              </button>
-            ) : null}
               </>
             )}
           </div>

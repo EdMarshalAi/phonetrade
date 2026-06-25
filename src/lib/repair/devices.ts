@@ -112,7 +112,7 @@ export const DEVICE_CATEGORIES: DeviceCategory[] = [
     key: "phone",
     title: "Android",
     freeInput: true,
-    models: ["Samsung", "Xiaomi", "Honor", "Huawei", "Realme", "OPPO", "vivo", "Google Pixel", "OnePlus", "Tecno", "Другой смартфон"],
+    models: ["Samsung", "Xiaomi", "Honor", "Huawei", "Realme", "OPPO", "Tecno", "Другой смартфон"],
     exactModel: { label: "Точная модель", placeholder: "например, Samsung S25" },
   },
   {
@@ -154,6 +154,18 @@ export const DEVICE_IMAGES: Record<string, string> = {
   "iPhone 12": P + "USED-IP12U-WHI-64-02.jpg",
   "iPhone 11": P + "USED-IP11U-BLA-128-01.jpg",
   "iPhone XR": P + "USED-IPXRU-WHI-64-02.jpg",
+  // iPhone — недостающие модели берут фото близких аналогов (визуально идентичны)
+  "iPhone 17e": P + "iphone-16e-128gb-white-128gb.jpg",
+  "iPhone 16 Pro": P + "USED-IP16PROMAX-WHI-256-01.jpg",
+  "iPhone 16 Plus": P + "iphone-16-128gb-white-128gb.jpg",
+  "iPhone 15 Plus": P + "iphone-15-128gb-black-128gb.jpg",
+  "iPhone 13 mini": P + "iphone-13-128gb-starlight-128gb.jpg",
+  "iPhone 12 mini": P + "USED-IP12U-WHI-64-02.jpg",
+  "iPhone 11 Pro Max": P + "USED-IP11U-BLA-128-01.jpg",
+  "iPhone 11 Pro": P + "USED-IP11U-BLA-128-01.jpg",
+  "iPhone XS Max": P + "USED-IPXRU-WHI-64-02.jpg",
+  "iPhone XS": P + "USED-IPXRU-WHI-64-02.jpg",
+  "iPhone X": P + "USED-IPXRU-WHI-64-02.jpg",
   // iPad
   "iPad Pro 13 (M4)": P + "apple-ipad-pro-13-m5-2025-wi-fi-256gb-space-black.jpg",
   "iPad Pro 12.9": P + "apple-ipad-pro-13-m5-2025-wi-fi-256gb-space-black.jpg",

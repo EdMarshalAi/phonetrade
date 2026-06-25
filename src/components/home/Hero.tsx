@@ -153,11 +153,11 @@ export function Hero({ slides, autoplayMs = AUTOPLAY_DEFAULT }: Props) {
             style={bgStyle(slide.background)}
           >
             <div className="container-page h-full flex flex-col justify-center lg:grid lg:grid-cols-12 items-center gap-3 sm:gap-5 lg:gap-10 py-6 md:py-10">
-              <div className="order-2 lg:order-none w-full lg:col-span-6 flex flex-col justify-center lg:max-w-xl">
+              <div className="order-2 lg:order-none w-full lg:col-span-6 flex flex-col items-center text-center lg:items-start lg:text-left justify-center lg:max-w-xl">
                 {slide.eyebrow && (
                   <span
                     className={cn(
-                      "inline-flex items-center self-start text-[10px] sm:text-xs uppercase tracking-[0.18em] mb-2 sm:mb-4",
+                      "inline-flex items-center self-center lg:self-start text-[11px] sm:text-xs uppercase tracking-[0.18em] mb-2 sm:mb-4",
                       isLight ? "text-onDark-muted" : "text-ink-muted"
                     )}
                   >
@@ -166,7 +166,7 @@ export function Hero({ slides, autoplayMs = AUTOPLAY_DEFAULT }: Props) {
                 )}
                 <h1
                   className={cn(
-                    "text-xl sm:text-2xl md:text-4xl lg:text-5xl font-semibold tracking-[-0.04em] leading-[1.05]",
+                    "text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold tracking-[-0.04em] leading-[1.08]",
                     isLight ? "text-white" : "text-ink"
                   )}
                 >
@@ -175,7 +175,7 @@ export function Hero({ slides, autoplayMs = AUTOPLAY_DEFAULT }: Props) {
                 {slide.subtitle && (
                   <p
                     className={cn(
-                      "mt-2 sm:mt-4 text-xs sm:text-sm md:text-base lg:text-lg max-w-md line-clamp-2 sm:line-clamp-3",
+                      "mt-2.5 sm:mt-4 text-[13px] sm:text-sm md:text-base lg:text-lg max-w-md mx-auto lg:mx-0 line-clamp-2 sm:line-clamp-3",
                       isLight ? "text-onDark-muted" : "text-ink-muted"
                     )}
                   >
@@ -183,7 +183,7 @@ export function Hero({ slides, autoplayMs = AUTOPLAY_DEFAULT }: Props) {
                   </p>
                 )}
                 {slide.cta && (
-                  <div className="mt-3 sm:mt-5 md:mt-8">
+                  <div className="mt-4 w-full sm:mt-5 md:mt-8 sm:w-auto">
                     <Button
                       variant={isLight ? "invert" : "primary"}
                       size="sm"
@@ -191,7 +191,7 @@ export function Hero({ slides, autoplayMs = AUTOPLAY_DEFAULT }: Props) {
                         trackHero(slide.id, "click");
                         window.location.href = slide.cta!.href;
                       }}
-                      className="h-9 px-4 text-[12px] sm:h-10 sm:px-5 sm:text-[13px] md:h-12 md:px-7 md:text-[15px]"
+                      className="h-11 w-full justify-center px-5 text-[14px] sm:h-10 sm:w-auto sm:px-5 sm:text-[13px] md:h-12 md:px-7 md:text-[15px]"
                     >
                       {slide.cta.label}
                     </Button>
