@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Новый товар" };
 export default async function NewProductPage() {
   const db = createSupabaseAdminClient();
   const [{ data }, { data: allProd }, { data: settings }, { data: rate }, optionDefs, badgeDefs] = await Promise.all([
-    db.from("categories").select("slug,title,parent_slug,markup_percent,min_margin_rub").order("sort"),
+    db.from("categories").select("slug,title,parent_slug,markup_percent,min_margin_rub,card_markup_percent").order("sort"),
     db.from("products").select("id,title,category_slug,image,color,memory,model,variant_group_id").is("deleted_at", null).order("sort"),
     db.from("pricing_settings").select("*").eq("id", 1).maybeSingle(),
     db.from("currency_rates").select("usd").order("date", { ascending: false }).limit(1).maybeSingle(),
@@ -18,7 +18,7 @@ export default async function NewProductPage() {
   ]);
   const categories = (data ?? []) as { slug: string; title: string; parent_slug: string | null }[];
   const categoryPricing = Object.fromEntries(
-    (data ?? []).map((c) => [c.slug as string, { markup_percent: Number(c.markup_percent ?? 10), min_margin_rub: Number(c.min_margin_rub ?? 0) }])
+    (data ?? []).map((c) => [c.slug as string, { markup_percent: Number(c.markup_percent ?? 10), min_margin_rub: Number(c.min_margin_rub ?? 0), card_markup_percent: Number(c.card_markup_percent ?? 15) }])
   );
   const pricingSettings = settings
     ? {

@@ -50,10 +50,11 @@ export function effectiveRate(settings: PricingSettings, markupPercent?: number 
   return settings.working_usd_rate * (1 + mk / 100);
 }
 
-function buildFromBase(base: number, cashOverride: number | null, cardOverride: number | null, s: PricingSettings): CalculatedPrices {
+function buildFromBase(base: number, cashOverride: number | null, cardOverride: number | null, s: PricingSettings, cardMarkupPercent?: number | null): CalculatedPrices {
   const step = s.price_rounding;
+  const cardPct = cardMarkupPercent ?? s.card_markup_percent;
   const price_cash = cashOverride != null ? cashOverride : roundTo(base, step);
-  const price_card = cardOverride != null ? cardOverride : roundTo(base * (1 + s.card_markup_percent / 100), step);
+  const price_card = cardOverride != null ? cardOverride : roundTo(base * (1 + cardPct / 100), step);
   // Кредитные считаем от base (или от зафиксированной цены нал, если override).
   const creditBase = cashOverride != null ? cashOverride : base;
   const c6 = roundTo(creditBase * (1 + s.credit_6m_markup_percent / 100), step);
@@ -69,13 +70,13 @@ function buildFromBase(base: number, cashOverride: number | null, cardOverride: 
   };
 }
 
-export function calculatePrices(product: ProductPriceInputs, settings: PricingSettings, markupPercent?: number | null): CalculatedPrices | null {
+export function calculatePrices(product: ProductPriceInputs, settings: PricingSettings, markupPercent?: number | null, cardMarkupPercent?: number | null): CalculatedPrices | null {
   if (product.price_override && product.override_price_cash) {
-    return buildFromBase(product.override_price_cash, product.override_price_cash, product.override_price_card ?? null, settings);
+    return buildFromBase(product.override_price_cash, product.override_price_cash, product.override_price_card ?? null, settings, cardMarkupPercent);
   }
   if (product.cost_usd == null || !Number.isFinite(product.cost_usd) || product.cost_usd <= 0) return null;
   const base = product.cost_usd * effectiveRate(settings, markupPercent);
-  return buildFromBase(base, null, null, settings);
+  return buildFromBase(base, null, null, settings, cardMarkupPercent);
 }
 
 /** Маржа цены нал над закупкой в текущих ценах (в ₽ и %). */

@@ -77,7 +77,7 @@ export function ProductForm({
   badgeDefs?: ProductBadge[];
   allProducts?: RelatedOption[];
   pricingSettings?: PricingSettings | null;
-  categoryPricing?: Record<string, { markup_percent: number; min_margin_rub: number }>;
+  categoryPricing?: Record<string, { markup_percent: number; min_margin_rub: number; card_markup_percent?: number }>;
   cbrUsd?: number | null;
   priceHistory?: PriceHistoryRow[];
 }) {
@@ -196,6 +196,7 @@ export function ProductForm({
   const catSlug = watch("category_slug") as string | undefined;
   const catPricing = catSlug ? categoryPricing[catSlug] : undefined;
   const catMarkup = catPricing?.markup_percent ?? pricingSettings?.default_markup_percent ?? null;
+  const catCardMarkup = catPricing?.card_markup_percent ?? pricingSettings?.card_markup_percent ?? null;
   const catMinMarginRub = catPricing?.min_margin_rub ?? 0;
   const formulaActive = !!pricingSettings && type !== "used" && (overrideOn || !!costUsd);
   const preview =
@@ -203,7 +204,8 @@ export function ProductForm({
       ? calculatePrices(
           { cost_usd: costUsd, price_override: overrideOn, override_price_cash: wCash, override_price_card: wCard },
           pricingSettings,
-          catMarkup
+          catMarkup,
+          catCardMarkup
         )
       : null;
   const marginInfo = preview ? margin(preview.price_cash, costRub) : null;

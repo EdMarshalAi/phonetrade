@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Lock, Loader2, Check, ArrowUpRight, Download, Upload, Info, Pencil, ChevronLeft, ChevronRight, ChevronDown, Send, Rss, Copy, Percent, Plus, RotateCcw, X, Banknote } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Loader2, Check, ArrowUpRight, Download, Upload, Info, Pencil, ChevronLeft, ChevronRight, ChevronDown, Send, Rss, Copy, Percent, Plus, RotateCcw, X, Banknote } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format-price";
 import { Modal } from "@/components/admin/Modal";
 import { AdminButton, Field, TextInput, Switch, Select } from "@/components/admin/form";
 import { calculatePrices, type PricingSettings } from "@/lib/pricing/calculate";
-import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, recalcSelected, updateProductCost, updateCategoryPricing, type PricingSettingsInput } from "./actions";
+import { updatePricingSettings, recalcAllPrices, refreshCbrRate, setWorkingRate, recalcSelected, updateProductCost, updateOverrideCash, updateCategoryPricing, type PricingSettingsInput } from "./actions";
 import { exportPricing, exportPricingToTelegram, savePricingExportPrefs, saveYmlFeedPrefs, parsePricingFile, applyPricingImport, bulkUpdateCost, type ImportPreviewRow, type BulkOp } from "./io-actions";
 import { EXPORT_COLUMNS, type ExportColumnKey, type PricingExportPrefs, type YmlFeedPrefs } from "./export-columns";
 
@@ -80,7 +80,7 @@ function relativeTime(iso: string | null): string {
   return `${Math.round(h / 24)} дн назад`;
 }
 
-export type PricingCategory = { slug: string; title: string; parent_slug: string | null; markup_percent: number; min_margin_rub: number };
+export type PricingCategory = { slug: string; title: string; parent_slug: string | null; markup_percent: number; min_margin_rub: number; card_markup_percent: number };
 
 export function PricingShell({
   settings,
@@ -227,6 +227,7 @@ export function PricingShell({
   }, [categories]);
   const markupOf = (slug: string | null) => (slug && catBy.get(slug)?.markup_percent != null ? catBy.get(slug)!.markup_percent : settings.default_markup_percent);
   const minMarginOf = (slug: string | null) => (slug ? catBy.get(slug)?.min_margin_rub ?? 0 : 0);
+  const cardMarkupOf = (slug: string | null) => (slug && catBy.get(slug)?.card_markup_percent != null ? catBy.get(slug)!.card_markup_percent : settings.card_markup_percent);
   const delta = course.usd && course.prevUsd ? ((course.usd - course.prevUsd) / course.prevUsd) * 100 : null;
   const deltaEur = course.eur && course.prevEur ? ((course.eur - course.prevEur) / course.prevEur) * 100 : null;
   const dirtyRate = Math.abs(Number(working.replace(",", ".")) - savedRate) > 1e-6 && Number(working.replace(",", ".")) > 0;
@@ -326,20 +327,18 @@ export function PricingShell({
       case "rate":
         return r.price_override ? <span className="text-ink-subtle">—</span> : <EditableNum value={r.cost_rate} step="0.01" onSave={(v) => saveCost(r, r.cost_rub, v)} />;
       case "cash":
-        return <span className="font-semibold text-sale tabular-nums">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</span>;
+        // У зафиксированных (override) цену нал можно править прямо здесь — карта/кредиты пересчитаются по формуле.
+        return r.price_override
+          ? <span className="font-semibold text-sale"><EditableNum value={r.price_cash} onSave={(v) => saveOverrideCash(r, v)} /></span>
+          : <span className="font-semibold text-sale tabular-nums">{r.price_cash != null ? formatPrice(r.price_cash) : "—"}</span>;
       case "card":
-        return <span className="tabular-nums text-ink-muted">{r.price_card != null ? formatPrice(r.price_card) : "—"}</span>;
+        return <span className="tabular-nums text-ink-muted" title={r.price_override ? "Считается по формуле от цены наличными" : undefined}>{r.price_card != null ? formatPrice(r.price_card) : "—"}</span>;
       case "markup":
         return <span className="tabular-nums text-ink-subtle">{r.price_override ? "—" : `${markupOf(r.category_slug)}%`}</span>;
       case "margin":
         return <MarginPill rub={r.cost_rub != null && r.price_cash != null ? r.price_cash - r.cost_rub : null} minRub={minMarginOf(r.category_slug)} />;
       case "status":
-        return (
-          <span className="inline-flex items-center gap-1.5">
-            <StatusPill status={r.status} />
-            {r.price_override ? <span className="inline-flex items-center gap-0.5 rounded-full bg-ink px-1.5 py-0.5 text-[10px] font-medium text-white"><Lock className="h-2.5 w-2.5" />фикс</span> : null}
-          </span>
-        );
+        return <StatusPill status={r.status} />;
     }
   };
 
@@ -417,6 +416,21 @@ export function PricingShell({
       ...(calc ? { price_cash: calc.price_cash, price_card: calc.price_card, credit_6m_monthly: calc.credit_6m_monthly, credit_12m_monthly: calc.credit_12m_monthly, credit_24m_monthly: calc.credit_24m_monthly } : {}),
     } : r)));
     const res = await updateProductCost(row.id, costRub, costRate);
+    if (res.error) { toast.error(res.error); router.refresh(); }
+  };
+  // Правка цены НАЛИЧНЫМИ у зафиксированного товара: нал = введено, карта = нал × (1 + наценка
+  // карты КАТЕГОРИИ), кредиты — по общим credit-наценкам. Точный пересчёт — на сервере.
+  const saveOverrideCash = async (row: PricingRow, cash: number | null) => {
+    if (!cash || cash <= 0) return;
+    const calc = calculatePrices(
+      { cost_usd: null, price_override: true, override_price_cash: cash, override_price_card: null },
+      settingsForCalc, null, cardMarkupOf(row.category_slug),
+    );
+    setLocalRows((rs) => rs.map((r) => (r.id === row.id ? {
+      ...r, price_cash: cash,
+      ...(calc ? { price_card: calc.price_card, credit_6m_monthly: calc.credit_6m_monthly, credit_12m_monthly: calc.credit_12m_monthly, credit_24m_monthly: calc.credit_24m_monthly } : {}),
+    } : r)));
+    const res = await updateOverrideCash(row.id, cash);
     if (res.error) { toast.error(res.error); router.refresh(); }
   };
   const recalcOne = async (id: string) => {
@@ -600,7 +614,7 @@ export function PricingShell({
         <EmptyBox title="В каталоге пока нет товаров" hint="Добавьте товары в разделе «Товары»." href="/admin/catalog/products" cta="Перейти в каталог" />
       ) : (
         <>
-          <div className="hidden overflow-x-auto rounded-xl border border-border/60 bg-white lg:block">
+          <div className="hidden max-h-[calc(100vh-220px)] overflow-auto rounded-xl border border-border/60 bg-white lg:block">
             <table className="w-full table-fixed text-[13px]" style={{ minWidth: COL_W_CHECK + COL_W_IMG + COL_W_ACTION + colOrder.reduce((s, k) => s + colWidths[k], 0) }}>
               <colgroup>
                 <col style={{ width: COL_W_CHECK }} />
@@ -608,7 +622,7 @@ export function PricingShell({
                 {colOrder.map((k) => <col key={k} style={{ width: colWidths[k] }} />)}
                 <col style={{ width: COL_W_ACTION }} />
               </colgroup>
-              <thead className="sticky top-0 z-10 bg-surface/90 text-ink-subtle backdrop-blur-sm">
+              <thead className="sticky top-0 z-20 bg-surface text-ink-subtle shadow-[0_1px_0_var(--color-border)]">
                 <tr>
                   <th className="px-3 py-2.5"><input type="checkbox" checked={allPageSelected} onChange={toggleAll} aria-label="Выбрать все" className="size-4" /></th>
                   <th className="px-3 py-2.5"></th>
@@ -731,7 +745,7 @@ export function PricingShell({
         </>
       )}
 
-      <p className="text-[12px] text-ink-subtle">Закупку и курс закупа можно править прямо в таблице — цены пересчитываются сразу. Кнопка ↻ в строке пересчитывает товар по формуле. Б/У в формулу не входят.</p>
+      <p className="text-[12px] text-ink-subtle">Закупку и курс закупа можно править прямо в таблице — цены пересчитываются сразу. У зафиксированных товаров правится цена наличными (колонка «Нал»), а цена по карте и кредиты считаются по формуле от неё. Кнопка ↻ в строке пересчитывает товар по формуле. Б/У в формулу не входят.</p>
 
       <FormulaModal open={formulaOpen} onClose={() => setFormulaOpen(false)} initial={settings} course={course} categories={categories} affected={localRows.filter((r) => !r.is_used && !r.price_override && r.cost_rub != null).length} onSaved={() => { router.refresh(); }} />
       <ImportModal open={importOpen} onClose={() => setImportOpen(false)} onDone={() => { setImportOpen(false); router.refresh(); }} />
@@ -920,12 +934,12 @@ function FormulaModal({ open, onClose, initial, course, affected, categories, on
           {numField("Наценка по умолчанию, %", "default_markup_percent")}
           {numField("Округление, ₽", "price_rounding")}
         </div>
-        <div className="grid gap-4 sm:grid-cols-4">
-          {numField("Карта, %", "card_markup_percent")}
+        <div className="grid gap-4 sm:grid-cols-3">
           {numField("6 мес, %", "credit_6m_markup_percent")}
           {numField("12 мес, %", "credit_12m_markup_percent")}
           {numField("24 мес, %", "credit_24m_markup_percent")}
         </div>
+        <p className="text-[12px] text-ink-subtle">Наценка по карте задаётся отдельно для каждой категории — в таблице ниже (у Б/У ~30%, у новых ~15%).</p>
         <div className="grid gap-4 sm:grid-cols-2">
           {numField("Поправка к курсу ЦБ, %", "cbr_markup_percent")}
           <Field label="Автообновление курса ЦБ">
@@ -972,8 +986,9 @@ function CategoryMarkupTable({ categories, onSaved }: { categories: PricingCateg
           <thead className="bg-surface/70 text-ink-subtle">
             <tr className="[&>th]:px-3 [&>th]:py-2 [&>th]:text-left [&>th]:font-medium">
               <th>Категория</th>
-              <th className="w-28 text-right">Наценка %</th>
-              <th className="w-32 text-right">Мин. маржа ₽</th>
+              <th className="w-24 text-right">Наценка %</th>
+              <th className="w-24 text-right">Карта %</th>
+              <th className="w-28 text-right">Мин. маржа ₽</th>
               <th className="w-24"></th>
             </tr>
           </thead>
@@ -990,15 +1005,16 @@ function CategoryMarkupTable({ categories, onSaved }: { categories: PricingCateg
 
 function CategoryMarkupRow({ cat, onSaved }: { cat: PricingCategory; onSaved: () => void }) {
   const [mk, setMk] = React.useState(String(cat.markup_percent));
+  const [cd, setCd] = React.useState(String(cat.card_markup_percent));
   const [mm, setMm] = React.useState(String(cat.min_margin_rub));
   const [saving, setSaving] = React.useState(false);
-  React.useEffect(() => { setMk(String(cat.markup_percent)); setMm(String(cat.min_margin_rub)); }, [cat.markup_percent, cat.min_margin_rub]);
-  const dirty = Number(mk) !== cat.markup_percent || Number(mm) !== cat.min_margin_rub;
+  React.useEffect(() => { setMk(String(cat.markup_percent)); setCd(String(cat.card_markup_percent)); setMm(String(cat.min_margin_rub)); }, [cat.markup_percent, cat.card_markup_percent, cat.min_margin_rub]);
+  const dirty = Number(mk) !== cat.markup_percent || Number(cd) !== cat.card_markup_percent || Number(mm) !== cat.min_margin_rub;
   const save = async () => {
-    const mkn = Number(mk.replace(",", ".")), mmn = Number(mm.replace(",", "."));
-    if (!Number.isFinite(mkn) || !Number.isFinite(mmn)) return toast.error("Введите числа");
+    const mkn = Number(mk.replace(",", ".")), cdn = Number(cd.replace(",", ".")), mmn = Number(mm.replace(",", "."));
+    if (!Number.isFinite(mkn) || !Number.isFinite(cdn) || !Number.isFinite(mmn)) return toast.error("Введите числа");
     setSaving(true);
-    const res = await updateCategoryPricing(cat.slug, mkn, mmn);
+    const res = await updateCategoryPricing(cat.slug, mkn, mmn, cdn);
     setSaving(false);
     if (res.error) return toast.error(res.error);
     toast.success(`«${cat.title}»: пересчитано ${res.recalculated ?? 0} товаров`);
@@ -1009,6 +1025,9 @@ function CategoryMarkupRow({ cat, onSaved }: { cat: PricingCategory; onSaved: ()
       <td className="text-ink">{cat.title}</td>
       <td className="text-right">
         <input type="number" min={0} step="0.5" value={mk} onChange={(e) => setMk(e.target.value)} className="h-8 w-20 rounded-md border border-border bg-white px-2 text-right tabular-nums outline-none focus:border-ink/40" />
+      </td>
+      <td className="text-right">
+        <input type="number" min={0} step="0.5" value={cd} onChange={(e) => setCd(e.target.value)} className="h-8 w-20 rounded-md border border-border bg-white px-2 text-right tabular-nums outline-none focus:border-ink/40" />
       </td>
       <td className="text-right">
         <input type="number" min={0} step="100" value={mm} onChange={(e) => setMm(e.target.value)} className="h-8 w-24 rounded-md border border-border bg-white px-2 text-right tabular-nums outline-none focus:border-ink/40" />

@@ -30,9 +30,10 @@ async function applyPricing(
   const { data: s } = await db.from("pricing_settings").select("*").eq("id", 1).maybeSingle();
   if (!s) return;
 
-  // наценка из категории товара (fallback на default_markup_percent)
-  const { data: cat } = await db.from("categories").select("markup_percent").eq("slug", input.category_slug).maybeSingle();
+  // наценка из категории товара (fallback на default_markup_percent); карта — своя per-category
+  const { data: cat } = await db.from("categories").select("markup_percent, card_markup_percent").eq("slug", input.category_slug).maybeSingle();
   const markup = cat?.markup_percent != null ? Number(cat.markup_percent) : null;
+  const cardMarkup = cat?.card_markup_percent != null ? Number(cat.card_markup_percent) : null;
 
   const calc = calculatePrices(
     {
@@ -42,7 +43,8 @@ async function applyPricing(
       override_price_card: overrideOn ? input.price_card ?? null : null,
     },
     s as PricingSettings,
-    markup
+    markup,
+    cardMarkup
   );
   if (!calc) return;
 

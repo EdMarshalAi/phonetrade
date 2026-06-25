@@ -29,7 +29,7 @@ export default async function PricingPage() {
       .order("category_slug")
       .order("title")
       .limit(5000),
-    db.from("categories").select("slug,title,parent_slug,sort,markup_percent,min_margin_rub").order("sort"),
+    db.from("categories").select("slug,title,parent_slug,sort,markup_percent,min_margin_rub,card_markup_percent").order("sort"),
     db.from("shop_settings").select("value").eq("key", "pricing_export_prefs").maybeSingle(),
     db.from("shop_settings").select("value").eq("key", "yml_feed_prefs").maybeSingle(),
   ]);
@@ -84,6 +84,7 @@ export default async function PricingPage() {
     parent_slug: (c.parent_slug as string | null) ?? null,
     markup_percent: num(c.markup_percent) ?? 10,
     min_margin_rub: num(c.min_margin_rub) ?? 0,
+    card_markup_percent: num(c.card_markup_percent) ?? 15,
   }));
 
   return (
