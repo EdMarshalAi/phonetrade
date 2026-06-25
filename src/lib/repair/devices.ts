@@ -33,7 +33,26 @@ export interface DeviceCategory {
   manual?: { label: string; hint: string; image?: string };
   /** Поле «точная модель» на шаге «что чинить» (например для Android). */
   exactModel?: { label: string; placeholder: string };
+  /** Размеры корпуса по модели (Apple Watch) — шаг выбора размера после модели. */
+  sizesByModel?: Record<string, number[]>;
 }
+
+/** Размеры корпуса Apple Watch (мм) по модели. */
+export const WATCH_SIZES: Record<string, number[]> = {
+  "Apple Watch Ultra 2": [49],
+  "Apple Watch Ultra": [49],
+  "Apple Watch Series 10": [42, 46],
+  "Apple Watch Series 9": [41, 45],
+  "Apple Watch Series 8": [41, 45],
+  "Apple Watch Series 7": [41, 45],
+  "Apple Watch Series 6": [40, 44],
+  "Apple Watch Series 5": [40, 44],
+  "Apple Watch Series 4": [40, 44],
+  "Apple Watch Series 3": [38, 42],
+  "Apple Watch SE 3": [40, 44],
+  "Apple Watch SE 2": [40, 44],
+  "Apple Watch SE": [40, 44],
+};
 
 /** Серии iPhone — начиная с iPhone 8 (по требованию). cover = модель для фото. */
 export const IPHONE_SERIES: PhoneSeries[] = [
@@ -102,6 +121,7 @@ export const DEVICE_CATEGORIES: DeviceCategory[] = [
       "Apple Watch Series 6", "Apple Watch Series 5", "Apple Watch Series 4", "Apple Watch Series 3",
       "Apple Watch SE 3", "Apple Watch SE 2", "Apple Watch SE",
     ],
+    sizesByModel: WATCH_SIZES,
   },
   {
     key: "airpods",

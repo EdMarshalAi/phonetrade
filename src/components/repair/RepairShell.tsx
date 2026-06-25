@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { Wrench, ShieldCheck, BadgeCheck, Clock, Check, Phone, ChevronLeft, ChevronRight, Loader2, Smartphone, HelpCircle, X } from "lucide-react";
+import { Wrench, ShieldCheck, BadgeCheck, Clock, Check, Phone, ChevronLeft, ChevronRight, Loader2, Smartphone, HelpCircle, X, Watch } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { ymReachGoal } from "@/lib/analytics/metrika";
 import { useCookieConsent } from "@/components/legal/CookieConsent";
@@ -151,13 +151,20 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
   const [manualOpen, setManualOpen] = React.useState(false);
   const [manualValue, setManualValue] = React.useState("");
   const [exactModel, setExactModel] = React.useState("");
+  const [sizeModel, setSizeModel] = React.useState<string | null>(null);
 
   const activeCat = DEVICE_CATEGORIES.find((c) => c.key === cat)!;
   const activeSeries = activeCat.series?.find((s) => s.key === seriesKey) ?? null;
   const catIssues = issuesFor(cat);
 
-  const setCategory = (k: DeviceCategoryKey) => { setCat(k); setSeriesKey(null); setManualOpen(false); setManualValue(""); setExactModel(""); };
+  const setCategory = (k: DeviceCategoryKey) => { setCat(k); setSeriesKey(null); setManualOpen(false); setManualValue(""); setExactModel(""); setSizeModel(null); };
   const pickDevice = (d: string) => { setDevice(d); setIssues([]); setStep(2); ymReachGoal("repair_open"); };
+  // Apple Watch: у модели несколько размеров → промежуточный шаг выбора размера.
+  const pickModel = (m: string) => {
+    const sizes = activeCat.sizesByModel?.[m];
+    if (sizes && sizes.length > 1) { setSizeModel(m); return; }
+    pickDevice(sizes && sizes.length === 1 ? `${m}, ${sizes[0]} мм` : m);
+  };
   const toggleIssue = (k: string) => setIssues((s) => (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]));
 
   const submit = async () => {
@@ -230,6 +237,28 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
                   <button type="button" disabled={!manualValue.trim()} onClick={() => pickDevice(manualValue.trim())} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-6 text-[14px] font-medium text-white transition-colors hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-50">Далее <ChevronRight className="size-4" /></button>
                 </div>
               </div>
+            ) : sizeModel ? (
+              <div className="mt-4">
+                <button type="button" onClick={() => setSizeModel(null)} className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-muted hover:text-ink">
+                  <ChevronLeft className="size-4" /> Назад к моделям
+                </button>
+                <p className="mb-2 text-[12.5px] text-ink-subtle">Выберите размер корпуса · <span className="font-medium text-ink">{sizeModel}</span></p>
+                <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-5">
+                  {(activeCat.sizesByModel?.[sizeModel] ?? []).map((sz) => (
+                    <button
+                      key={sz}
+                      type="button"
+                      onClick={() => pickDevice(`${sizeModel}, ${sz} мм`)}
+                      className="group flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-border/70 bg-white p-3 text-center transition-all hover:-translate-y-0.5 hover:border-ink hover:shadow-md"
+                    >
+                      <span className="flex h-12 w-full items-center justify-center sm:h-14">
+                        <Watch className="size-7 text-ink-subtle transition-colors group-hover:text-ink" strokeWidth={1.5} />
+                      </span>
+                      <span className="text-[13px] font-semibold text-ink">{sz} мм</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             ) : (
               <>
             {activeCat.series ? (
@@ -283,7 +312,7 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
               </div>
             ) : (
               <div className="mt-4 grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-5">
-                {(activeCat.models ?? []).map((m) => <DeviceTile key={m} label={m} image={deviceImage(m)} onClick={() => pickDevice(m)} />)}
+                {(activeCat.models ?? []).map((m) => <DeviceTile key={m} label={m} image={deviceImage(m)} onClick={() => pickModel(m)} />)}
                 {activeCat.manual ? (
                   <button
                     type="button"
