@@ -25,9 +25,22 @@ jobs:
           SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           set -euo pipefail
-          SECRET=$(curl -s "$SUPABASE_URL/rest/v1/shop_settings?key=eq.cron_secret&select=value" \
-            -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" | jq -r '.[0].value // empty')
-          if [ -z "$SECRET" ]; then echo "cron_secret not found in shop_settings"; exit 1; fi
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SERVICE_KEY:-}" ]; then
+            echo "::error::Не заданы секреты NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY"; exit 1
+          fi
+          # 1) Берём cron_secret из shop_settings (service-role). Отделяем тело от HTTP-кода,
+          #    чтобы при ошибке (напр. 401 — неверный service-key) вывести понятную диагностику,
+          #    а не криптическую "jq: Cannot index object with number".
+          RESP=$(curl -s -w $'\n%{http_code}' "$SUPABASE_URL/rest/v1/shop_settings?key=eq.cron_secret&select=value" \
+            -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY")
+          HTTP=$(printf '%s' "$RESP" | tail -n1)
+          BODY=$(printf '%s' "$RESP" | sed '$d')
+          if [ "$HTTP" != "200" ]; then
+            echo "::error::Запрос cron_secret вернул HTTP $HTTP (проверьте секрет SUPABASE_SERVICE_ROLE_KEY)"; echo "$BODY"; exit 1
+          fi
+          SECRET=$(printf '%s' "$BODY" | jq -r 'if type=="array" then (.[0].value // empty) else empty end')
+          if [ -z "$SECRET" ]; then echo "::error::cron_secret не найден в shop_settings"; echo "$BODY"; exit 1; fi
+          # 2) Дёргаем процессор очереди писем
           CODE=$(curl -fsS "https://phonetrade31.ru/api/cron/process-email-queue" \
             -H "x-cron-secret: $SECRET" -w "%{http_code}" -o /tmp/resp.json || true)
           echo "HTTP $CODE"; cat /tmp/resp.json || true
