@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Loader2, Check, ArrowUpRight, Download, Upload, Info, Pencil, ChevronLeft, ChevronRight, ChevronDown, Send, Rss, Copy, Percent, Plus, RotateCcw, X, Banknote } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus, RefreshCw, SlidersHorizontal, Loader2, Check, ArrowUpRight, Download, Upload, Info, Pencil, ChevronLeft, ChevronRight, ChevronDown, Send, Rss, Copy, Percent, Plus, RotateCcw, X, Banknote, Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatPrice } from "@/lib/utils/format-price";
 import { Modal } from "@/components/admin/Modal";
@@ -115,6 +115,13 @@ export function PricingShell({
   const [hideFixed, setHideFixed] = React.useState(false);
   const [hideArchived, setHideArchived] = React.useState(true);
   const [lowOnly, setLowOnly] = React.useState(false);
+  const [fullscreen, setFullscreen] = React.useState(false);
+  React.useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen]);
   const [pageSize, setPageSize] = React.useState(50);
   const [page, setPage] = React.useState(1);
   React.useEffect(() => setPage(1), [cat, q, hideFixed, hideArchived, lowOnly, pageSize]);
@@ -618,7 +625,7 @@ export function PricingShell({
         <EmptyBox title="В каталоге пока нет товаров" hint="Добавьте товары в разделе «Товары»." href="/admin/catalog/products" cta="Перейти в каталог" />
       ) : (
         <>
-          <div className="hidden max-h-[calc(100vh-220px)] overflow-auto rounded-xl border border-border/60 bg-white lg:block">
+          <div className={cn("hidden overflow-auto border border-border/60 bg-white lg:block", fullscreen ? "fixed inset-0 z-[60] max-h-screen rounded-none" : "max-h-[calc(100vh-220px)] rounded-xl")}>
             <table className="w-full table-fixed text-[13px]" style={{ minWidth: COL_W_CHECK + COL_W_IMG + COL_W_ACTION + colOrder.reduce((s, k) => s + colWidths[k], 0) }}>
               <colgroup>
                 <col style={{ width: COL_W_CHECK }} />
@@ -669,7 +676,16 @@ export function PricingShell({
                       </th>
                     );
                   })}
-                  <th className="px-3 py-2.5"></th>
+                  <th className="px-2 py-2.5 text-right">
+                    <button
+                      type="button"
+                      onClick={() => setFullscreen((f) => !f)}
+                      title={fullscreen ? "Свернуть (Esc)" : "Развернуть на весь экран"}
+                      className="inline-flex size-7 items-center justify-center rounded-sm border border-border bg-white text-ink-subtle hover:bg-surface hover:text-ink"
+                    >
+                      {fullscreen ? <Minimize2 className="h-3.5 w-3.5" strokeWidth={1.75} /> : <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.75} />}
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -681,8 +697,7 @@ export function PricingShell({
                     {g.items.map((r) => (
                       <tr
                         key={r.id}
-                        onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button,input,label")) toggleSel(r.id); }}
-                        className={cn("cursor-pointer select-none border-t border-border/40 align-middle transition-colors hover:bg-surface/50 [&>td]:px-3 [&>td]:py-2", sel.has(r.id) && "bg-ink/[0.06]")}
+                        className={cn("border-t border-border/40 align-middle transition-colors hover:bg-surface/50 [&>td]:px-3 [&>td]:py-2", sel.has(r.id) && "bg-ink/[0.06]")}
                       >
                         <td><input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} aria-label="Выбрать" className="size-4" /></td>
                         <td>
@@ -711,7 +726,7 @@ export function PricingShell({
           <div className="space-y-3 lg:hidden">
             {paged.length === 0 ? <div className="rounded-lg border border-border/60 bg-white px-4 py-8 text-center text-ink-muted">Нет товаров по фильтру.</div> : paged.map((r) => {
               return (
-                <div key={r.id} onClick={(e) => { if (!(e.target as HTMLElement).closest("a,button,input,label")) toggleSel(r.id); }} className={cn("cursor-pointer select-none rounded-xl border border-border/60 bg-white p-3", sel.has(r.id) && "ring-1 ring-ink/30")}>
+                <div key={r.id} className={cn("rounded-xl border border-border/60 bg-white p-3", sel.has(r.id) && "ring-1 ring-ink/30")}>
                   <div className="flex items-start gap-3">
                     <input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} className="mt-1.5 size-4" />
                     <span className="inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-white">{r.image ? <Image src={r.image} alt="" width={36} height={36} unoptimized className="size-9 object-contain" /> : null}</span>
