@@ -312,6 +312,20 @@ export function PricingShell({
   const pageClamped = Math.min(page, pages);
   const paged = sorted.slice((pageClamped - 1) * pageSize, pageClamped * pageSize);
 
+  // Пагинация (переиспользуется снаружи и в липком футере полноэкранного режима)
+  const paginationNode = pages > 1 ? (
+    <div className="flex items-center justify-center gap-1.5">
+      <button type="button" disabled={pageClamped <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface disabled:opacity-40"><ChevronLeft className="h-4 w-4" /> Назад</button>
+      {Array.from({ length: pages }, (_, i) => i + 1).filter((p) => Math.abs(p - pageClamped) <= 2 || p === 1 || p === pages).map((p, i, arr) => (
+        <React.Fragment key={p}>
+          {i > 0 && p - arr[i - 1] > 1 ? <span className="px-1 text-ink-subtle">…</span> : null}
+          <button type="button" onClick={() => setPage(p)} className={cn("inline-flex h-9 min-w-9 items-center justify-center rounded-lg border px-2 text-[13px] tabular-nums", p === pageClamped ? "border-ink bg-ink text-white" : "border-border bg-white text-ink hover:bg-surface")}>{p}</button>
+        </React.Fragment>
+      ))}
+      <button type="button" disabled={pageClamped >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface disabled:opacity-40">Вперёд <ChevronRight className="h-4 w-4" /></button>
+    </div>
+  ) : null;
+
   const groups = React.useMemo(() => {
     const order = new Map(categories.map((c, i) => [c.slug, i]));
     const map = new Map<string, PricingRow[]>();
@@ -598,8 +612,8 @@ export function PricingShell({
       </div>
 
       {/* ── Плавающая bulk-плашка ── */}
-      {sel.size > 0 ? (
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-ink/95 text-white shadow-[0_-8px_30px_rgba(0,0,0,0.28)] backdrop-blur lg:left-[264px]">
+      {mounted && sel.size > 0 ? createPortal((
+        <div className={cn("fixed bottom-0 left-0 right-0 z-[110] border-t border-white/10 bg-ink/95 text-white shadow-[0_-8px_30px_rgba(0,0,0,0.28)] backdrop-blur", fullscreen ? "left-0" : "lg:left-[264px]")}>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-2 px-4 py-2.5 lg:px-8">
             <span className="inline-flex items-center gap-2 text-[13px] font-medium">
               <span className="rounded-full bg-white/15 px-2 py-0.5 text-[12px] tabular-nums">{sel.size}</span>
@@ -621,7 +635,7 @@ export function PricingShell({
             </div>
           </div>
         </div>
-      ) : null}
+      ), document.body) : null}
 
       {/* ── Таблица / карточки ── */}
       {localRows.length === 0 ? (
@@ -725,6 +739,11 @@ export function PricingShell({
                 {paged.length === 0 ? <tr><td colSpan={colOrder.length + 3} className="px-4 py-10 text-center text-ink-muted">Нет товаров по фильтру.</td></tr> : null}
               </tbody>
             </table>
+            {fullscreen && paginationNode ? (
+              <div className="sticky bottom-0 z-10 flex justify-center border-t border-border/60 bg-white/95 py-2.5 backdrop-blur">
+                {paginationNode}
+              </div>
+            ) : null}
           </div>
           );
           return mounted && fullscreen ? createPortal(desktopTable, document.body) : desktopTable;
@@ -756,19 +775,8 @@ export function PricingShell({
             })}
           </div>
 
-          {/* пагинация */}
-          {pages > 1 ? (
-            <div className="flex items-center justify-center gap-1.5">
-              <button type="button" disabled={pageClamped <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface disabled:opacity-40"><ChevronLeft className="h-4 w-4" /> Назад</button>
-              {Array.from({ length: pages }, (_, i) => i + 1).filter((p) => Math.abs(p - pageClamped) <= 2 || p === 1 || p === pages).map((p, i, arr) => (
-                <React.Fragment key={p}>
-                  {i > 0 && p - arr[i - 1] > 1 ? <span className="px-1 text-ink-subtle">…</span> : null}
-                  <button type="button" onClick={() => setPage(p)} className={cn("inline-flex h-9 min-w-9 items-center justify-center rounded-lg border px-2 text-[13px] tabular-nums", p === pageClamped ? "border-ink bg-ink text-white" : "border-border bg-white text-ink hover:bg-surface")}>{p}</button>
-                </React.Fragment>
-              ))}
-              <button type="button" disabled={pageClamped >= pages} onClick={() => setPage((p) => Math.min(pages, p + 1))} className="inline-flex h-9 items-center gap-1 rounded-lg border border-border bg-white px-3 text-[13px] text-ink hover:bg-surface disabled:opacity-40">Вперёд <ChevronRight className="h-4 w-4" /></button>
-            </div>
-          ) : null}
+          {/* пагинация (в обычном режиме; в полноэкранном — липкий футер внутри таблицы) */}
+          {!fullscreen ? paginationNode : null}
         </>
       )}
 
