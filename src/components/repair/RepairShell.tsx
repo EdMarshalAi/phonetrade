@@ -148,12 +148,15 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
   const [error, setError] = React.useState<string | null>(null);
   const [done, setDone] = React.useState(false);
   const [helpOpen, setHelpOpen] = React.useState(false);
+  const [manualOpen, setManualOpen] = React.useState(false);
+  const [manualValue, setManualValue] = React.useState("");
+  const [exactModel, setExactModel] = React.useState("");
 
   const activeCat = DEVICE_CATEGORIES.find((c) => c.key === cat)!;
   const activeSeries = activeCat.series?.find((s) => s.key === seriesKey) ?? null;
   const catIssues = issuesFor(cat);
 
-  const setCategory = (k: DeviceCategoryKey) => { setCat(k); setSeriesKey(null); };
+  const setCategory = (k: DeviceCategoryKey) => { setCat(k); setSeriesKey(null); setManualOpen(false); setManualValue(""); setExactModel(""); };
   const pickDevice = (d: string) => { setDevice(d); setIssues([]); setStep(2); ymReachGoal("repair_open"); };
   const toggleIssue = (k: string) => setIssues((s) => (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]));
 
@@ -164,7 +167,8 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
     if (!cRules) { setError("Подтвердите, что ознакомились с правилами ремонтных работ"); return; }
     if (!authed && !cPd) { setError("Необходимо дать согласие на обработку персональных данных"); return; }
     setBusy(true);
-    const res = await submitRepairRequest({ device: device!, category: cat, issues, comment, name, phone, consentMarketing: marketing });
+    const finalDevice = activeCat.exactModel && exactModel.trim() ? `${device} ${exactModel.trim()}` : device!;
+    const res = await submitRepairRequest({ device: finalDevice, category: cat, issues, comment, name, phone, consentMarketing: marketing });
     setBusy(false);
     if (res.error) { setError(res.error); return; }
     applyAll(); // дал согласие на ПДн → применяем все cookie (вкл. аналитику)
@@ -210,6 +214,24 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
               ))}
             </div>
 
+            {activeCat.manual && manualOpen ? (
+              <div className="mt-4">
+                <button type="button" onClick={() => { setManualOpen(false); setManualValue(""); }} className="mb-3 inline-flex items-center gap-1.5 text-[13px] font-medium text-ink-muted hover:text-ink">
+                  <ChevronLeft className="size-4" /> Назад к моделям
+                </button>
+                {activeCat.manual.image ? (
+                  <div className="mb-3 overflow-hidden rounded-2xl border border-border/60 bg-surface">
+                    <Image src={activeCat.manual.image} alt="Где найти модель MacBook на крышке" width={640} height={640} className="mx-auto h-auto w-full max-w-sm object-contain" />
+                  </div>
+                ) : null}
+                <p className="mb-2 text-[13.5px] font-medium text-ink">{activeCat.manual.hint}</p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input value={manualValue} onChange={(e) => setManualValue(e.target.value)} placeholder="Например, MacBook Pro A1502" className="h-11 flex-1 rounded-xl border border-border bg-white px-3.5 text-[14px] text-ink outline-none placeholder:text-ink-subtle focus:border-ink/40" />
+                  <button type="button" disabled={!manualValue.trim()} onClick={() => pickDevice(manualValue.trim())} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-6 text-[14px] font-medium text-white transition-colors hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-50">Далее <ChevronRight className="size-4" /></button>
+                </div>
+              </div>
+            ) : (
+              <>
             {activeCat.series ? (
               activeSeries ? (
                 <div className="mt-4">
@@ -264,6 +286,13 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
                 {(activeCat.models ?? []).map((m) => <DeviceTile key={m} label={m} image={deviceImage(m)} onClick={() => pickDevice(m)} />)}
               </div>
             )}
+            {activeCat.manual ? (
+              <button type="button" onClick={() => setManualOpen(true)} className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-dashed border-border px-4 py-2 text-[13px] font-medium text-ink-muted transition-colors hover:border-ink/40 hover:text-ink">
+                {activeCat.manual.label}
+              </button>
+            ) : null}
+              </>
+            )}
           </div>
         ) : null}
 
@@ -274,6 +303,13 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
               <p className="text-[13px] font-medium text-ink-subtle">Шаг 2 · Что чинить</p>
               <span className="truncate rounded-full bg-surface px-3 py-1 text-[12px] font-medium text-ink">{device}</span>
             </div>
+            {activeCat.exactModel ? (
+              <label className="mt-3 block">
+                <span className="mb-1.5 block text-[13px] font-medium text-ink">{activeCat.exactModel.label}</span>
+                <input value={exactModel} onChange={(e) => setExactModel(e.target.value)} placeholder={activeCat.exactModel.placeholder}
+                  className="h-11 w-full rounded-xl border border-border bg-white px-3.5 text-[14px] text-ink outline-none placeholder:text-ink-subtle focus:border-ink/40" />
+              </label>
+            ) : null}
             <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {catIssues.map((it) => {
                 const on = issues.includes(it.key);

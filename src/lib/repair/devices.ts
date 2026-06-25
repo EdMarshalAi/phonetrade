@@ -29,6 +29,10 @@ export interface DeviceCategory {
   groups?: DeviceModelGroup[];
   /** Для остальных типов: плоский список моделей. */
   models?: string[];
+  /** Кнопка «другие модели» → ручной ввод модели (с картинкой-подсказкой). */
+  manual?: { label: string; hint: string; image?: string };
+  /** Поле «точная модель» на шаге «что чинить» (например для Android). */
+  exactModel?: { label: string; placeholder: string };
 }
 
 /** Серии iPhone — начиная с iPhone 8 (по требованию). cover = модель для фото. */
@@ -83,6 +87,11 @@ export const DEVICE_CATEGORIES: DeviceCategory[] = [
       "MacBook Pro 16 (M4)", "MacBook Pro 14 (M4)", "MacBook Pro 16 (M3)", "MacBook Pro 14 (M3)",
       "MacBook Pro 13 (M2)", "MacBook Pro 13 (M1)",
     ],
+    manual: {
+      label: "Другие модели",
+      hint: "Впишите модель своего MacBook с крышки",
+      image: "https://giwehapapi.beget.app/storage/v1/object/public/product-images/repair/macbook-model-help.jpg",
+    },
   },
   {
     key: "watch",
@@ -91,19 +100,20 @@ export const DEVICE_CATEGORIES: DeviceCategory[] = [
       "Apple Watch Ultra 2", "Apple Watch Ultra",
       "Apple Watch Series 10", "Apple Watch Series 9", "Apple Watch Series 8", "Apple Watch Series 7",
       "Apple Watch Series 6", "Apple Watch Series 5", "Apple Watch Series 4", "Apple Watch Series 3",
-      "Apple Watch SE (2022)", "Apple Watch SE",
+      "Apple Watch SE 3", "Apple Watch SE 2", "Apple Watch SE",
     ],
   },
   {
     key: "airpods",
     title: "AirPods",
-    models: ["AirPods Pro 2", "AirPods Pro", "AirPods 4", "AirPods 3", "AirPods 2", "AirPods", "AirPods Max"],
+    models: ["AirPods Max"],
   },
   {
     key: "phone",
-    title: "Другой смартфон",
+    title: "Android",
     freeInput: true,
     models: ["Samsung", "Xiaomi", "Honor", "Huawei", "Realme", "OPPO", "vivo", "Google Pixel", "OnePlus", "Tecno", "Другой смартфон"],
+    exactModel: { label: "Точная модель", placeholder: "например, Samsung S25" },
   },
   {
     key: "other",
@@ -182,7 +192,8 @@ export const DEVICE_IMAGES: Record<string, string> = {
   "Apple Watch Series 5": W + "apple-watch-series-5.jpg",
   "Apple Watch Series 4": W + "apple-watch-series-4.jpg",
   "Apple Watch Series 3": W + "apple-watch-series-4.jpg",
-  "Apple Watch SE (2022)": W + "apple-watch-se-2022.jpg",
+  "Apple Watch SE 3": W + "apple-watch-se-2022.jpg",
+  "Apple Watch SE 2": W + "apple-watch-se-2022.jpg",
   "Apple Watch SE": W + "apple-watch-se.jpg",
   // AirPods
   "AirPods Pro 2": P + "AP-WHI-01.jpg",
@@ -272,7 +283,6 @@ export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
     { key: "battery", label: "Замена аккумулятора" },
     { key: "crown", label: "Кнопка / колёсико Digital Crown" },
     { key: "side_button", label: "Боковая кнопка" },
-    { key: "strap", label: "Ремешок / крепление" },
     { key: "back", label: "Задняя крышка / датчики" },
     { key: "water", label: "Попадание влаги" },
     { key: "no_power", label: "Не включается / не заряжается" },
@@ -300,7 +310,6 @@ export const ISSUES_BY_CATEGORY: Record<DeviceCategoryKey, RepairIssue[]> = {
     { key: "no_power", label: "Не включается" },
     { key: "buttons", label: "Кнопки" },
     { key: "board", label: "Ремонт платы" },
-    { key: "software", label: "Прошивка / ПО" },
     { key: "other", label: "Другая проблема" },
   ],
   other: [
