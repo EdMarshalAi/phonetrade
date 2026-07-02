@@ -4,6 +4,17 @@ const nextConfig: NextConfig = {
   output: "standalone",
   devIndicators: false,
   poweredByHeader: false, // не светим x-powered-by: Next.js
+  // Каннибализация блога: дубли по теме склеиваем 301/308 на канонический пост
+  // (выбран по трафику) — консолидируем сигнал, убираем «мигание» в выдаче Яндекса.
+  async redirects() {
+    const pairs: [string, string][] = [
+      ["kakoy-iphone-vybrat-2026", "kakoy-iphone-vybrat-2026-sravnenie"],
+      ["bu-ili-novyj-iphone", "new-or-used-iphone-belgorod-trade-in"],
+      ["macbook-air-ili-pro-belgorod", "macbook-air-ili-macbook-pro-2026"],
+      ["kakoy-ipad-vybrat-belgorod", "kak-vybrat-ipad-2026"],
+    ];
+    return pairs.map(([from, to]) => ({ source: `/blog/${from}`, destination: `/blog/${to}`, permanent: true }));
+  },
   // Базовые security-заголовки (без строгого CSP — чтобы не сломать YM/inline JSON-LD).
   async headers() {
     return [
