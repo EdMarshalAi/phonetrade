@@ -47,7 +47,8 @@ export function CatalogHero({ title, description, total, parent = null }: Props)
         </nav>
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <h1 className="text-4xl md:text-5xl font-semibold tracking-[-0.03em] text-ink">
-            {title}
+            {/* Локальный интент в H1 — усиливает гео-релевантность; не дублируем «Белгород», если он уже в названии */}
+            {/белгород/i.test(title) ? title : `${title} в Белгороде`}
           </h1>
           <span className="text-xs uppercase tracking-[0.16em] text-ink-subtle">
             {formatTotal(total)}

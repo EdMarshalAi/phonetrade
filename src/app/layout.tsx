@@ -22,7 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "PhoneTrade — Магазин техники Apple в Белгороде",
+    default: "Купить технику Apple в Белгороде — iPhone, iPad, Mac · PhoneTrade",
     template: "%s · PhoneTrade",
   },
   description:

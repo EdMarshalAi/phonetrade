@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils/cn";
 import { ymReachGoal } from "@/lib/analytics/metrika";
 import { useCookieConsent } from "@/components/legal/CookieConsent";
 import { DEVICE_CATEGORIES, issuesFor, deviceImage, type DeviceCategoryKey } from "@/lib/repair/devices";
+import { REPAIR_FAQ } from "@/lib/repair/faq";
 import { submitRepairRequest } from "@/lib/repair/repair-actions";
 
 const HERO_IMAGE = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/repair/hero-broken-iphone.png";
@@ -104,6 +105,24 @@ export function RepairShell({ initialPhone, initialName, authed }: { initialPhon
       {/* ── Квиз ── */}
       <section id="repair-quiz" className="container-page py-14 md:py-20">
         <RepairQuiz authed={!!authed} initialName={initialName} initialPhone={initialPhone} />
+      </section>
+
+      {/* ── FAQ (видимый; синхронизирован с FAQPage-разметкой в repair/page.tsx) ── */}
+      <section className="container-page pb-16 md:pb-24">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-2xl font-semibold tracking-tight text-ink md:text-3xl">Частые вопросы о ремонте</h2>
+          <div className="mt-6 divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/60 bg-white">
+            {REPAIR_FAQ.map((f) => (
+              <details key={f.q} className="group px-5 py-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-medium text-ink">
+                  {f.q}
+                  <ChevronRight className="size-4 shrink-0 text-ink-subtle transition-transform group-open:rotate-90" />
+                </summary>
+                <p className="mt-2 text-[14px] leading-relaxed text-ink-muted">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
       </section>
     </>
   );

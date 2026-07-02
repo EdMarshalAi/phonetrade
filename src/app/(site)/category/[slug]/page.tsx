@@ -30,11 +30,13 @@ export async function generateMetadata({ params }: { params: Promise<RouteParams
     meta.description?.trim() ||
     `${meta.title} в Белгороде: купить с гарантией, доставка по городу и самовывоз, Trade-in и рассрочка. PhoneTrade — ул. Попова, 36.`;
   const ogTitle = meta.meta_title?.trim() || `${fallbackTitle} · PhoneTrade`;
+  const ogImage = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/content/store-belgorod.jpg";
   return {
     title,
     description,
     alternates: { canonical },
-    openGraph: { title: ogTitle, description, url: canonical, type: "website" },
+    // images явно: переопределение openGraph на странице глушит наследование картинки из layout.
+    openGraph: { title: ogTitle, description, url: canonical, type: "website", images: [{ url: ogImage, width: 1400, height: 1400, alt: `${meta.title} — PhoneTrade Белгород` }] },
   };
 }
 

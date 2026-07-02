@@ -54,7 +54,7 @@ export default async function SiteLayout({
   const sameAs = Array.isArray(c.contacts)
     ? (c.contacts as { href?: string }[])
         .map((x) => x.href || "")
-        .filter((h) => /vk\.com|t\.me|telegram|wa\.me|whatsapp|ok\.ru|instagram|youtube|dzen|yandex\.ru\/maps|yandex\.ru\/profile|2gis\.(ru|com)|go\.2gis|maps\.app\.goo|google\.[a-z.]+\/maps|g\.page|zoon\.ru|flamp\.ru/i.test(h))
+        .filter((h) => /vk\.com|t\.me|telegram|wa\.me|whatsapp|ok\.ru|instagram|youtube|dzen|yandex\.ru\/maps|yandex\.ru\/profile|2gis\.(ru|com)|go\.2gis|maps\.apple|maps\.app\.goo|google\.[a-z.]+\/maps|g\.page|zoon\.ru|flamp\.ru/i.test(h))
     : ["https://vk.com/phonetradebel", "https://t.me/phonetradebel", "https://wa.me/79040988877"];
   const orgLd = {
     "@context": "https://schema.org",

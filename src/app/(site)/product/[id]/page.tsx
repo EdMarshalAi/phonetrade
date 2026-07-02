@@ -80,6 +80,25 @@ export default async function ProductPage({
             availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
             itemCondition: product.isUsed ? "https://schema.org/UsedCondition" : "https://schema.org/NewCondition",
             seller: { "@id": `${base}/#organization` },
+            // Доставка и возврат — для Google Merchant free listings / rich results.
+            shippingDetails: {
+              "@type": "OfferShippingDetails",
+              shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "RUB" },
+              shippingDestination: { "@type": "DefinedRegion", addressCountry: "RU" },
+              deliveryTime: {
+                "@type": "ShippingDeliveryTime",
+                handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" },
+                transitTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 2, unitCode: "DAY" },
+              },
+            },
+            hasMerchantReturnPolicy: {
+              "@type": "MerchantReturnPolicy",
+              applicableCountry: "RU",
+              returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+              merchantReturnDays: 14,
+              returnMethod: "https://schema.org/ReturnInStore",
+              returnFees: "https://schema.org/FreeReturn",
+            },
           },
         }
       : {}),
