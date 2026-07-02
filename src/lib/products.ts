@@ -203,12 +203,15 @@ export async function getSitemapProducts(): Promise<{ id: string; updatedAt: str
   if (!supabase) return ALL_PRODUCTS.map((p) => ({ id: p.id, updatedAt: null, image: p.image ?? null }));
   const { data, error } = await supabase
     .from("products")
-    .select("id,updated_at,image")
+    .select("id,updated_at,image,is_indexable")
     .eq("status", "published")
     .is("deleted_at", null)
     .limit(5000);
   if (error || !data) return ALL_PRODUCTS.map((p) => ({ id: p.id, updatedAt: null, image: p.image ?? null }));
-  return (data as { id: string; updated_at: string | null; image: string | null }[]).map((r) => ({ id: r.id, updatedAt: r.updated_at, image: r.image ?? null }));
+  // Не включаем в sitemap товары с robots:noindex (is_indexable=false) — иначе конфликт с карточкой.
+  return (data as { id: string; updated_at: string | null; image: string | null; is_indexable: boolean | null }[])
+    .filter((r) => r.is_indexable !== false)
+    .map((r) => ({ id: r.id, updatedAt: r.updated_at, image: r.image ?? null }));
 }
 
 const CATEGORY_SEARCH_LABEL: Record<string, string> = {

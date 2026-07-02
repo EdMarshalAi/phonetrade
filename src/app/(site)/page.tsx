@@ -8,9 +8,11 @@ import { BrandMarquee } from "@/components/home/BrandMarquee";
 import { BlogTeaser } from "@/components/home/BlogTeaser";
 import { WhyAndFaq } from "@/components/home/WhyAndFaq";
 
+const OG_IMAGE = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/content/store-belgorod.jpg";
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
-  openGraph: { url: "/" },
+  // Задаём og:image явно: переопределение openGraph на странице глушит наследование images из корневого layout.
+  openGraph: { url: "/", images: [{ url: OG_IMAGE, width: 1400, height: 1400, alt: "PhoneTrade — магазин техники Apple в Белгороде, ул. Попова, 36" }] },
 };
 import {
   getCategories,

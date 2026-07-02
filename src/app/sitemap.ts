@@ -20,19 +20,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const now = new Date();
 
+  // У статики и категорий нет надёжной «даты изменения» — НЕ ставим lastModified,
+  // иначе при ISR (revalidate=3600) она каждый час = now → ложный сигнал «весь сайт переписан».
   const staticRoutes: MetadataRoute.Sitemap = [
-    { url: abs("/"), lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: abs("/catalog"), lastModified: now, changeFrequency: "daily", priority: 0.9 },
-    { url: abs("/new"), lastModified: now, changeFrequency: "daily", priority: 0.8 },
-    { url: abs("/used"), lastModified: now, changeFrequency: "daily", priority: 0.7 },
-    { url: abs("/trade-in"), lastModified: now, changeFrequency: "monthly", priority: 0.6 },
-    { url: abs("/repair"), lastModified: now, changeFrequency: "monthly", priority: 0.7 },
-    { url: abs("/blog"), lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    { url: abs("/"), changeFrequency: "daily", priority: 1 },
+    { url: abs("/catalog"), changeFrequency: "daily", priority: 0.9 },
+    { url: abs("/new"), changeFrequency: "daily", priority: 0.8 },
+    { url: abs("/used"), changeFrequency: "daily", priority: 0.7 },
+    { url: abs("/repair"), changeFrequency: "monthly", priority: 0.7 },
+    { url: abs("/blog"), changeFrequency: "weekly", priority: 0.6 },
   ];
 
   const categoryRoutes: MetadataRoute.Sitemap = categories.map((c) => ({
     url: abs(`/category/${c.slug}`),
-    lastModified: now,
     changeFrequency: "daily",
     priority: 0.8,
   }));
@@ -60,5 +60,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
-  return [...staticRoutes, ...categoryRoutes, ...productRoutes, ...pageRoutes, ...blogRoutes];
+  // Дедуп по URL (первая запись выигрывает) — защита от пересечения хардкод-роутов
+  // и опубликованных static_pages (напр. /trade-in существует и там, и там).
+  const all = [...staticRoutes, ...categoryRoutes, ...productRoutes, ...pageRoutes, ...blogRoutes];
+  const seen = new Set<string>();
+  return all.filter((r) => (seen.has(r.url) ? false : (seen.add(r.url), true)));
 }

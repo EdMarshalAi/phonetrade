@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { pingIndexNow } from "@/lib/seo/indexnow";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { requireAdmin, type AdminRole } from "@/lib/admin/auth";
 import { writeAudit, type AuditAction } from "@/lib/admin/audit";
@@ -33,6 +34,8 @@ export async function adminMutation<T>(opts: {
   for (const path of opts.revalidate ?? []) {
     revalidatePath(path);
   }
+  // Уведомляем IndexNow (Яндекс/Bing) об изменённых публичных URL — мгновенный переобход.
+  void pingIndexNow(opts.revalidate ?? []);
   return result;
 }
 

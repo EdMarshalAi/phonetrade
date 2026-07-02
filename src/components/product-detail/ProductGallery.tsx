@@ -69,6 +69,7 @@ export function ProductGallery({ product }: Props) {
               sizes="(min-width: 1024px) 55vw, 90vw"
               className="object-contain p-8 md:p-12"
               priority
+              fetchPriority="high"
             />
           </motion.div>
         </AnimatePresence>
