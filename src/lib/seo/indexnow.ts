@@ -25,12 +25,18 @@ export async function pingIndexNow(paths: string[]): Promise<void> {
     );
     if (urlList.length === 0) return;
     const host = new URL(SITE_URL).host;
-    await fetch("https://api.indexnow.org/indexnow", {
-      method: "POST",
-      headers: { "Content-Type": "application/json; charset=utf-8" },
-      body: JSON.stringify({ host, key: INDEXNOW_KEY, keyLocation: `${SITE_URL}/${INDEXNOW_KEY}.txt`, urlList }),
-      signal: AbortSignal.timeout(5000),
-    });
+    const body = JSON.stringify({ host, key: INDEXNOW_KEY, keyLocation: `${SITE_URL}/${INDEXNOW_KEY}.txt`, urlList });
+    // Шлём напрямую в Яндекс (приоритет) и Bing — агрегатор api.indexnow.org капризен к ключу.
+    await Promise.allSettled(
+      ["https://yandex.com/indexnow", "https://www.bing.com/indexnow"].map((endpoint) =>
+        fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+          body,
+          signal: AbortSignal.timeout(5000),
+        })
+      )
+    );
   } catch {
     /* IndexNow — вспомогательный сигнал, молча игнорируем сбои */
   }
