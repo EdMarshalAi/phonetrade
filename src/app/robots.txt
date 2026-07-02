@@ -7,6 +7,7 @@ Disallow: /auth
 Disallow: /search
 Clean-param: color&memory&sort&model&sim&condition
 Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&yclid&gclid&from
+Clean-param: page&etext&url&butrub&tubl&tuble&tuble3
 
 Host: https://phonetrade31.ru
 Sitemap: https://phonetrade31.ru/sitemap.xml
