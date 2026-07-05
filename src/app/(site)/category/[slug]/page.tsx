@@ -114,7 +114,7 @@ export default async function CategoryPage({ params }: { params: Promise<RoutePa
     "@type": "ItemList",
     name: `${title} в Белгороде`,
     numberOfItems: products.length,
-    itemListElement: products.slice(0, 50).map((p, i) => ({ "@type": "ListItem", position: i + 1, url: `${base}/product/${p.id}`, name: p.title })),
+    itemListElement: products.slice(0, 50).map((p, i) => ({ "@type": "ListItem", position: i + 1, url: `${base}/product/${p.id}`, name: p.title, ...(p.image ? { image: p.image } : {}) })),
   };
   // FAQ по категории (видимый блок ниже + FAQPage — из одного источника).
   const faq = categoryFaq(title);

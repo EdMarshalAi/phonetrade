@@ -57,6 +57,15 @@ export function CatalogHero({ title, description, total, parent = null }: Props)
         <p className="mt-3 text-sm md:text-base text-ink-muted max-w-2xl">
           {description}
         </p>
+        {/* Строка доверия (above-fold): локальные сигналы + citable-факты для нейро-поиска */}
+        <ul className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-2 text-[12px] text-ink-muted md:text-[13px]">
+          {["Оригинал, проверка по серийнику", "Гарантия и чек", "Trade-in", "Рассрочка 6/12/24 мес", "Самовывоз ул. Попова, 36"].map((t, i) => (
+            <li key={t} className="flex items-center gap-2">
+              {i > 0 ? <span aria-hidden className="text-ink-subtle/50">·</span> : null}
+              <span className="whitespace-nowrap rounded-full bg-surface px-3 py-1">{t}</span>
+            </li>
+          ))}
+        </ul>
       </div>
     </section>
   );
