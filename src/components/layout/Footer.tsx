@@ -174,6 +174,24 @@ export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | nul
           </ul>
         </div>
 
+        <div className="mt-8 w-full">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-onDark-muted">Ремонт техники Apple по Белгородской области</p>
+          <ul className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1.5 text-[13px] text-onDark-muted">
+            {[
+              ["/remont-apple-staryj-oskol", "Старый Оскол"],
+              ["/remont-apple-gubkin", "Губкин"],
+              ["/remont-apple-shebekino", "Шебекино"],
+              ["/remont-apple-alekseevka", "Алексеевка"],
+              ["/remont-apple-valujki", "Валуйки"],
+              ["/remont-apple-novyj-oskol", "Новый Оскол"],
+            ].map(([href, label]) => (
+              <li key={href}>
+                <a href={href} className="hover:text-white underline-offset-4 hover:underline transition-colors">{label}</a>
+              </li>
+            ))}
+          </ul>
+        </div>
+
         <p className="mt-8 md:mt-10 w-full text-[10px] md:text-[10.5px] leading-[1.5] tracking-tight text-onDark-muted">
           Копирование материалов сайта возможно только по письменному согласию
           PhoneTrade. Сервисный центр — постгарантийный (неавторизованный).
