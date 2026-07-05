@@ -1,4 +1,5 @@
 import * as React from "react";
+import Link from "next/link";
 import type { Product } from "@/lib/data/products";
 import type { InfoBlock } from "@/lib/content";
 import { ProductBreadcrumbs } from "@/components/product-detail/ProductBreadcrumbs";
@@ -39,6 +40,24 @@ export function ProductDetailShell({ product, related, variants, productBlocks }
           <div className="mt-10 md:mt-14">
             <ProductTrust blocks={productBlocks} />
           </div>
+
+          {/* Перелинковка на money-страницы (T23): ремонт, Trade-in, категория, Б/У */}
+          <nav aria-label="Полезное" className="mt-8 flex flex-wrap gap-2 text-[13px]">
+            {[
+              { href: "/repair", label: "Ремонт техники Apple" },
+              { href: "/trade-in", label: "Trade-in — обмен с доплатой" },
+              ...(product.categorySlug ? [{ href: `/category/${product.categorySlug}`, label: "Смотреть всю категорию" }] : []),
+              ...(!product.isUsed && /iphone/i.test(product.categorySlug ?? "") ? [{ href: "/used", label: "Б/У iPhone" }] : []),
+            ].map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="rounded-full border border-border/60 bg-white px-4 py-1.5 text-ink-muted transition-colors hover:border-ink hover:text-ink"
+              >
+                {l.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </section>
 
