@@ -109,7 +109,7 @@ export function RepairShell({ initialPhone, initialName, authed }: { initialPhon
 
       {/* ── FAQ (видимый; синхронизирован с FAQPage-разметкой в repair/page.tsx) ── */}
       <section className="container-page pb-16 md:pb-24">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-6xl">
           <h2 className="text-2xl font-semibold tracking-tight text-ink md:text-3xl">Частые вопросы о ремонте</h2>
           <div className="mt-6 divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/60 bg-white">
             {REPAIR_FAQ.map((f) => (
@@ -213,7 +213,7 @@ function RepairQuiz({ authed, initialName, initialPhone }: { authed: boolean; in
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <div className="mb-6 text-center">
         <h2 className="text-2xl font-semibold tracking-tight text-ink md:text-3xl">Что у вас сломалось?</h2>
         <p className="mt-2 text-[15px] text-ink-muted">Соберём заявку за минуту — выберите устройство и поломку.</p>
