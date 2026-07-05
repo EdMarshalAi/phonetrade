@@ -122,6 +122,25 @@ export function RepairShell({ initialPhone, initialName, authed }: { initialPhon
               </details>
             ))}
           </div>
+
+          {/* Ремонт по городам области — ссылки только на профильной странице ремонта */}
+          <div className="mt-10">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-ink-subtle">Ремонт техники Apple по Белгородской области</p>
+            <ul className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1.5 text-[13px] text-ink-muted">
+              {[
+                ["/remont-apple-staryj-oskol", "Старый Оскол"],
+                ["/remont-apple-gubkin", "Губкин"],
+                ["/remont-apple-shebekino", "Шебекино"],
+                ["/remont-apple-alekseevka", "Алексеевка"],
+                ["/remont-apple-valujki", "Валуйки"],
+                ["/remont-apple-novyj-oskol", "Новый Оскол"],
+              ].map(([href, label]) => (
+                <li key={href}>
+                  <a href={href} className="underline-offset-4 transition-colors hover:text-ink hover:underline">{label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
     </>
