@@ -24,9 +24,11 @@ export const metadata: Metadata = {
 const faqLd = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
+  inLanguage: "ru",
   mainEntity: REPAIR_FAQ.map((f) => ({
     "@type": "Question",
     name: f.q,
+    inLanguage: "ru",
     acceptedAnswer: { "@type": "Answer", text: f.a },
   })),
 };

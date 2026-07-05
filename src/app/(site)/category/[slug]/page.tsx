@@ -121,7 +121,8 @@ export default async function CategoryPage({ params }: { params: Promise<RoutePa
   const faqLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+    inLanguage: "ru",
+    mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, inLanguage: "ru", acceptedAnswer: { "@type": "Answer", text: f.a } })),
   };
 
   return (

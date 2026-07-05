@@ -7,6 +7,9 @@ import { TradeInSteps } from "@/components/home/TradeInSteps";
 import { BrandMarquee } from "@/components/home/BrandMarquee";
 import { BlogTeaser } from "@/components/home/BlogTeaser";
 import { WhyAndFaq } from "@/components/home/WhyAndFaq";
+import { HomeFaq } from "@/components/home/HomeFaq";
+import { HOME_FAQ } from "@/lib/home-faq";
+import { jsonLdScript } from "@/lib/utils/json-ld";
 
 const OG_IMAGE = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/content/store-belgorod.jpg";
 export const metadata: Metadata = {
@@ -184,6 +187,18 @@ export default async function HomePage() {
       <BrandMarquee items={brandItems} />
       <BlogTeaser posts={blogPosts} />
       {blocks.advantages ? <WhyAndFaq features={features} /> : null}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: jsonLdScript([{
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            inLanguage: "ru",
+            mainEntity: HOME_FAQ.map((f) => ({ "@type": "Question", name: f.q, inLanguage: "ru", acceptedAnswer: { "@type": "Answer", text: f.a } })),
+          }]),
+        }}
+      />
+      <HomeFaq />
     </>
   );
 }

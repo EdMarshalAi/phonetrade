@@ -48,9 +48,11 @@ export function faqPageLd(pairs: FaqPair[]): Record<string, unknown> | null {
   return {
     "@context": "https://schema.org",
     "@type": "FAQPage",
+    inLanguage: "ru",
     mainEntity: pairs.map((p) => ({
       "@type": "Question",
       name: p.q,
+      inLanguage: "ru",
       acceptedAnswer: { "@type": "Answer", text: p.a },
     })),
   };
