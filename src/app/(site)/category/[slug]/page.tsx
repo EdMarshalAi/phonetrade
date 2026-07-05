@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { ChevronDown } from "lucide-react";
 import type { FilterFacet, CategoryConfig, SortKey } from "@/lib/catalog/category-config";
+import { categoryFaq } from "@/lib/catalog/category-faq";
 import { extractFacetOptions } from "@/lib/catalog/filters";
 import { getProductsByCategory, getCategories, getProductCountsByCategory } from "@/lib/products";
 import { getCategoryMeta } from "@/lib/content";
@@ -114,10 +116,17 @@ export default async function CategoryPage({ params }: { params: Promise<RoutePa
     numberOfItems: products.length,
     itemListElement: products.slice(0, 50).map((p, i) => ({ "@type": "ListItem", position: i + 1, url: `${base}/product/${p.id}`, name: p.title })),
   };
+  // FAQ по категории (видимый блок ниже + FAQPage — из одного источника).
+  const faq = categoryFaq(title);
+  const faqLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+  };
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript([breadcrumbLd, itemListLd]) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript([breadcrumbLd, itemListLd, faqLd]) }} />
       <CatalogShell
         config={config}
         products={products}
@@ -127,6 +136,22 @@ export default async function CategoryPage({ params }: { params: Promise<RoutePa
         breadcrumbParent={breadcrumbParent}
         defaultSort={(meta?.default_sort as SortKey) ?? "price-asc"}
       />
+      <section className="container-page pb-16 md:pb-24">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-2xl font-semibold tracking-tight text-ink md:text-3xl">Частые вопросы</h2>
+          <div className="mt-6 divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/60 bg-white">
+            {faq.map((f) => (
+              <details key={f.q} className="group px-5 py-4">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-medium text-ink">
+                  {f.q}
+                  <ChevronDown className="size-4 shrink-0 text-ink-subtle transition-transform group-open:rotate-180" />
+                </summary>
+                <p className="mt-2 text-[14px] leading-relaxed text-ink-muted">{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
     </>
   );
 }

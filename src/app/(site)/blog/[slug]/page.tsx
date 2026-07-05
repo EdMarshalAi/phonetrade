@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, Eye } from "lucide-react";
-import { getBlogPost } from "@/lib/content";
+import { getBlogPost, getRelatedBlogPosts } from "@/lib/content";
 import { jsonLdScript } from "@/lib/utils/json-ld";
 import { faqFromHtml, faqPageLd } from "@/lib/utils/faq-schema";
 import { sanitizeRichHtml } from "@/lib/utils/sanitize-html";
@@ -37,6 +37,7 @@ export default async function BlogPostPage({
   const { slug } = await params;
   const post = await getBlogPost(slug);
   if (!post) notFound();
+  const related = await getRelatedBlogPosts(post.category_id, slug, 3);
 
   const base = process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru";
   const articleLd = {
@@ -46,8 +47,9 @@ export default async function BlogPostPage({
     description: post.excerpt || undefined,
     image: post.cover_url || undefined,
     datePublished: post.published_at || undefined,
-    dateModified: post.published_at || undefined,
-    author: { "@type": "Organization", name: "PhoneTrade" },
+    // Реальная дата изменения (не дублируем datePublished) — сигнал свежести.
+    dateModified: post.updated_at || post.published_at || undefined,
+    author: { "@type": "Organization", name: "PhoneTrade", url: base },
     publisher: { "@id": `${base}/#organization` },
     mainEntityOfPage: `${base}/blog/${slug}`,
   };
@@ -90,6 +92,24 @@ export default async function BlogPostPage({
             className="prose prose-neutral mt-8 max-w-none"
             dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(post.content) }}
           />
+        ) : null}
+
+        {related.length > 0 ? (
+          <aside className="mt-14 border-t border-border/60 pt-8">
+            <h2 className="text-xl font-semibold tracking-tight text-ink">Похожие статьи</h2>
+            <div className="mt-5 grid gap-4 sm:grid-cols-3">
+              {related.map((r) => (
+                <Link key={r.slug} href={`/blog/${r.slug}`} className="group block overflow-hidden rounded-2xl border border-border/60 bg-white transition-shadow hover:shadow-md">
+                  {r.cover_url ? (
+                    <span className="relative block aspect-[16/9] overflow-hidden bg-surface">
+                      <Image src={r.cover_url} alt={r.title} fill className="object-cover transition-transform group-hover:scale-[1.03]" sizes="(max-width:640px) 100vw, 33vw" />
+                    </span>
+                  ) : null}
+                  <span className="block p-4 text-[14px] font-medium leading-snug text-ink group-hover:text-ink">{r.title}</span>
+                </Link>
+              ))}
+            </div>
+          </aside>
         ) : null}
       </div>
     </article>

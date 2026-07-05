@@ -519,6 +519,7 @@ export interface BlogPostCard {
   category_id?: string | null;
   category?: string | null;
   views?: number;
+  updated_at?: string | null;
 }
 
 export async function getBlogPosts(limit?: number): Promise<BlogPostCard[]> {
@@ -547,13 +548,45 @@ export async function getBlogPost(slug: string): Promise<BlogPostCard | null> {
   if (!supabase) return null;
   const { data } = await supabase
     .from("blog_posts")
-    .select("id,slug,title,excerpt,cover_url,published_at,content,category_id,views_count")
+    .select("id,slug,title,excerpt,cover_url,published_at,updated_at,content,category_id,views_count")
     .eq("slug", slug)
     .eq("status", "published")
     .maybeSingle();
   if (!data) return null;
   const r = data as Record<string, unknown>;
   return { ...(data as BlogPostCard), views: (r.views_count as number) ?? 0 };
+}
+
+/** Похожие статьи: та же категория, кроме текущей. Фолбэк — свежие, если в категории мало. */
+export async function getRelatedBlogPosts(categoryId: string | null | undefined, excludeSlug: string, limit = 3): Promise<BlogPostCard[]> {
+  if (!supabase) return [];
+  const base = supabase
+    .from("blog_posts")
+    .select("id,slug,title,excerpt,cover_url,published_at,views_count")
+    .eq("status", "published")
+    .neq("slug", excludeSlug)
+    .order("published_at", { ascending: false, nullsFirst: false });
+  const { data: same } = categoryId ? await base.eq("category_id", categoryId).limit(limit) : { data: [] };
+  const rows = (same as Record<string, unknown>[]) ?? [];
+  if (rows.length < limit) {
+    const { data: fresh } = await supabase
+      .from("blog_posts")
+      .select("id,slug,title,excerpt,cover_url,published_at,views_count")
+      .eq("status", "published")
+      .neq("slug", excludeSlug)
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .limit(limit + rows.length);
+    const seen = new Set(rows.map((r) => r.slug));
+    for (const r of ((fresh as Record<string, unknown>[]) ?? [])) {
+      if (rows.length >= limit) break;
+      if (!seen.has(r.slug)) { rows.push(r); seen.add(r.slug as string); }
+    }
+  }
+  return rows.slice(0, limit).map((r) => ({
+    id: r.id as string, slug: r.slug as string, title: r.title as string,
+    excerpt: (r.excerpt as string) ?? null, cover_url: (r.cover_url as string) ?? null,
+    published_at: (r.published_at as string) ?? null, views: (r.views_count as number) ?? 0,
+  }));
 }
 
 /** Управляемая контакт-ссылка (иконка пресет/загруженная, где показывать). */
