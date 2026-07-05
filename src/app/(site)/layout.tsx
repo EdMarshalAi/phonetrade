@@ -61,6 +61,8 @@ export default async function SiteLayout({
     "@type": ["Store", "ElectronicsStore"],
     "@id": `${SITE_URL}/#organization`,
     name: (c.name as string) || "PhoneTrade",
+    // Кириллические варианты бренда — по «фонтрейд» Яндекс должен узнавать нас.
+    alternateName: ["ФонТрейд", "Фонтрейд", "ФонТрейд Белгород", "PhoneTrade Белгород"],
     legalName: (c.legal_entity as string) || undefined,
     description: "Магазин техники Apple в Белгороде: iPhone, iPad, Mac, Apple Watch, AirPods. Trade-in, Б/У, гарантия и сервис.",
     url: SITE_URL,

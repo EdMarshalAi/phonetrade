@@ -193,6 +193,7 @@ export function Footer({ contacts, legalLinks }: { contacts?: ShopContacts | nul
         </div>
 
         <p className="mt-8 md:mt-10 w-full text-[10px] md:text-[10.5px] leading-[1.5] tracking-tight text-onDark-muted">
+          PhoneTrade (ФонТрейд) — магазин техники Apple в Белгороде.
           Копирование материалов сайта возможно только по письменному согласию
           PhoneTrade. Сервисный центр — постгарантийный (неавторизованный).
           Apple, Mac, iMac, MacBook, Pro, Air, Retina, macOS, iPhone, iPad и
