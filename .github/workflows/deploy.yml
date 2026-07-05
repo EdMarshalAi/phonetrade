@@ -92,3 +92,14 @@ jobs:
         run: |
           ssh deploy-target \
             "cd '$DEPLOY_PATH' && SUPABASE_SERVICE_ROLE_KEY='$SVC' bash -c '(pm2 reload ecosystem.config.js --update-env || pm2 start ecosystem.config.js) && pm2 save'"
+
+      # SEO drift-гейт: проверяем эталонные URL на критичные регрессии (4xx, пропавший
+      # title/canonical, случайный noindex). Не роняем деплой (он уже прошёл) — но
+      # подсвечиваем проблему в CI как warning-пост-проверку.
+      - name: SEO smoke (drift-гейт)
+        if: env.SKIP_DEPLOY != 'true'
+        continue-on-error: true
+        run: |
+          echo "Ждём подъёма приложения..."
+          sleep 20
+          node scripts/seo-smoke.mjs
