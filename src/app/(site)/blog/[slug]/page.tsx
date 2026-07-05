@@ -21,11 +21,15 @@ export async function generateMetadata({
   const post = await getBlogPost(slug);
   if (!post) return {};
   const canonical = `/blog/${slug}`;
+  // Отдельная мета поста (если задана в админке) приоритетнее excerpt/заголовка.
+  const title = post.meta_title?.trim() || post.title;
+  const description = post.meta_description?.trim() || post.excerpt || undefined;
+  const ogImage = post.og_image_url || post.cover_url || undefined;
   return {
-    title: post.title,
-    description: post.excerpt || undefined,
+    title,
+    description,
     alternates: { canonical },
-    openGraph: { title: post.title, description: post.excerpt || undefined, url: canonical, type: "article", images: post.cover_url ? [post.cover_url] : undefined },
+    openGraph: { title, description, url: canonical, type: "article", images: ogImage ? [ogImage] : undefined },
   };
 }
 

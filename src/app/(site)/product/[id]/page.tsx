@@ -65,7 +65,8 @@ export default async function ProductPage({
     "@type": "Product",
     name: product.title,
     image: productImages(product),
-    description: `${product.title} — купить в Белгороде в PhoneTrade: гарантия, доставка и самовывоз.`,
+    // Уникальное описание (его читают LLM/сниппеты), не шаблон — фолбэк на гео-строку.
+    description: product.shortDescription || product.metaDescription || `${product.title} — купить в Белгороде в PhoneTrade: гарантия, доставка и самовывоз.`,
     sku: product.sku || product.id,
     brand: { "@type": "Brand", name: product.brand && product.brand !== "Other" ? product.brand : brandName },
     // Offer рендерим только при наличии цены (Offer без price/priceSpecification невалиден).

@@ -520,6 +520,9 @@ export interface BlogPostCard {
   category?: string | null;
   views?: number;
   updated_at?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  og_image_url?: string | null;
 }
 
 export async function getBlogPosts(limit?: number): Promise<BlogPostCard[]> {
@@ -548,7 +551,7 @@ export async function getBlogPost(slug: string): Promise<BlogPostCard | null> {
   if (!supabase) return null;
   const { data } = await supabase
     .from("blog_posts")
-    .select("id,slug,title,excerpt,cover_url,published_at,updated_at,content,category_id,views_count")
+    .select("id,slug,title,excerpt,cover_url,og_image_url,published_at,updated_at,content,category_id,views_count,meta_title,meta_description")
     .eq("slug", slug)
     .eq("status", "published")
     .maybeSingle();
