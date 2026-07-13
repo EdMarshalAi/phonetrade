@@ -339,7 +339,7 @@ export function PricingShell({
       case "product":
         return (
           <div className="min-w-0">
-            <Link href={`/admin/catalog/products/${r.id}/edit`} className="block truncate font-medium text-ink hover:underline">{r.title}</Link>
+            <Link href={`/admin/catalog/products/${r.id}/edit`} prefetch={false} className="block truncate font-medium text-ink hover:underline">{r.title}</Link>
             <div className="truncate text-[11.5px] text-ink-subtle">{[r.sku, r.color, r.memory].filter(Boolean).join(" · ") || "—"}{r.is_used ? " · Б/У" : ""}</div>
           </div>
         );
@@ -753,7 +753,7 @@ export function PricingShell({
                     <input type="checkbox" checked={sel.has(r.id)} onChange={() => toggleSel(r.id)} className="mt-1.5 size-4" />
                     <span className="inline-flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-white">{r.image ? <Image src={r.image} alt="" width={36} height={36} unoptimized className="size-9 object-contain" /> : null}</span>
                     <div className="min-w-0 flex-1">
-                      <Link href={`/admin/catalog/products/${r.id}/edit`} className="block truncate text-[14px] font-medium text-ink">{r.title}</Link>
+                      <Link href={`/admin/catalog/products/${r.id}/edit`} prefetch={false} className="block truncate text-[14px] font-medium text-ink">{r.title}</Link>
                       <div className="truncate text-[11.5px] text-ink-subtle">{[r.sku, r.color, r.memory].filter(Boolean).join(" · ") || "—"}</div>
                     </div>
                     <button type="button" onClick={() => recalcOne(r.id)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-sm border border-border text-ink-subtle"><RefreshCw className="h-4 w-4" /></button>
