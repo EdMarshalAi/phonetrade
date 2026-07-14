@@ -233,7 +233,8 @@ jobs:
              pm2 delete '$CANDIDATE_NAME' >/dev/null 2>&1 || true
              rm -f '$CANDIDATE_WATCHDOG_MARKER'
              cd '$RELEASE_PATH'
-             SUPABASE_SERVICE_ROLE_KEY='$SVC' pm2 startOrReload ecosystem.config.js --update-env"
+             pm2 delete phonetrade >/dev/null 2>&1 || true
+             SUPABASE_SERVICE_ROLE_KEY='$SVC' pm2 start ecosystem.config.js --only phonetrade --update-env"
 
       - name: SEO smoke against live domain
         env:
@@ -265,7 +266,8 @@ jobs:
           ssh deploy-target \
             "set -eu
              cd '$PREVIOUS_RELEASE'
-             SUPABASE_SERVICE_ROLE_KEY='$SVC' pm2 startOrReload ecosystem.config.js --update-env
+             pm2 delete phonetrade >/dev/null 2>&1 || true
+             SUPABASE_SERVICE_ROLE_KEY='$SVC' pm2 start ecosystem.config.js --only phonetrade --update-env
              pm2 delete '$CANDIDATE_NAME' >/dev/null 2>&1 || true
              rm -f '$CANDIDATE_WATCHDOG_MARKER'
              ln -sfn '$PREVIOUS_RELEASE' '${DEPLOY_PATH}-current.next'
