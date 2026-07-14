@@ -3,6 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { ImagePlaceholder } from "@/components/ui/ImagePlaceholder";
 import { cn } from "@/lib/utils/cn";
 import type { Category } from "@/lib/data/products";
+import { categoryPath } from "@/lib/catalog/category-path";
 
 type Props = {
   category: Category;
@@ -20,7 +21,7 @@ export function CategoryTile({ category, size = "md", className }: Props) {
 
   return (
     <a
-      href={`/category/${category.slug}`}
+      href={categoryPath(category.slug)}
       className={cn(
         "group relative flex flex-col justify-between rounded-3xl bg-white border border-border/60 overflow-hidden",
         "transition-all duration-300 ease-[var(--ease-apple)] hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)]",

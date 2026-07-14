@@ -10,6 +10,9 @@ module.exports = {
       instances: 1,
       exec_mode: "fork",
       max_memory_restart: "512M",
+      // Next.js `after()` завершает почту/Telegram уже после HTTP-ответа.
+      // Даём этим callbacks корректно завершиться при reload во время деплоя.
+      kill_timeout: 30000,
       env: {
         NODE_ENV: "production",
         PORT: 3000,

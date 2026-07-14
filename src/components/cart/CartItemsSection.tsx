@@ -2,12 +2,14 @@
 
 import * as React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Heart, Minus, Plus, Trash2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils/format-price";
 import { MAX_QTY } from "@/lib/cart/constants";
 import type { CartItem } from "@/lib/cart/types";
 import { useFavorites } from "@/components/providers/FavoritesProvider";
 import { cn } from "@/lib/utils/cn";
+import { resolveProductAvailability } from "@/lib/product-commerce";
 
 type Props = {
   items: CartItem[];
@@ -16,9 +18,10 @@ type Props = {
   onClear?: () => void;
   /** База цены выбранного способа оплаты — наличные/СБП или картой. */
   base?: "cash" | "card";
+  allowZeroStock: boolean;
 };
 
-export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash" }: Props) {
+export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash", allowZeroStock }: Props) {
   const { has: favHas, toggle: favToggle } = useFavorites();
   const [confirmClear, setConfirmClear] = React.useState(false);
   if (items.length === 0) {
@@ -28,12 +31,12 @@ export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash
         <p className="mt-2 text-sm text-ink-muted">
           Загляните в каталог — там много новых iPhone, MacBook и AirPods.
         </p>
-        <a
+        <Link
           href="/category/iphone"
           className="inline-flex items-center mt-6 h-11 px-6 rounded-full bg-ink text-white text-sm font-medium hover:bg-ink/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 focus-visible:ring-offset-2"
         >
           В каталог
-        </a>
+        </Link>
       </div>
     );
   }
@@ -44,6 +47,8 @@ export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash
         const linePrice = (base === "card" ? product.priceCard : product.priceCash) * qty;
         const priceLabel = base === "card" ? "Картой" : "Наличные";
         const isFavorite = favHas(product.id);
+        const availability = resolveProductAvailability(product, allowZeroStock);
+        const reachedKnownStock = !allowZeroStock && product.stock != null && qty >= product.stock;
 
         const photoEl = (
           <a
@@ -64,8 +69,18 @@ export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px]">
               <span className="inline-flex items-center gap-1.5 text-ink-muted">
-                <span aria-hidden className={cn("size-1.5 rounded-full", product.inStock ? "bg-emerald-500" : "bg-ink/30")} />
-                {product.inStock ? "В наличии" : "Уточняйте наличие"}
+                <span
+                  aria-hidden
+                  className={cn(
+                    "size-1.5 rounded-full",
+                    availability.kind === "in-stock"
+                      ? "bg-emerald-500"
+                      : availability.kind === "backorder"
+                        ? "bg-amber-500"
+                        : "bg-ink/30"
+                  )}
+                />
+                {availability.label}
               </span>
               {product.sku ? <span className="text-ink-subtle">· Арт. {product.sku}</span> : null}
             </div>
@@ -90,7 +105,7 @@ export function CartItemsSection({ items, onQty, onRemove, onClear, base = "cash
               <Minus className="size-4" />
             </button>
             <input type="text" inputMode="numeric" aria-label="Количество" value={qty} onChange={(e) => { const next = parseInt(e.target.value.replace(/\D/g, ""), 10); if (!Number.isNaN(next)) onQty(product.id, next); }} className="w-7 bg-transparent text-center text-[15px] font-semibold tabular-nums text-ink outline-none" />
-            <button type="button" aria-label="Увеличить количество" onClick={() => onQty(product.id, qty + 1)} disabled={qty >= MAX_QTY} className="inline-flex size-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface hover:text-ink disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40">
+            <button type="button" aria-label="Увеличить количество" onClick={() => onQty(product.id, qty + 1)} disabled={!availability.canOrder || reachedKnownStock || qty >= MAX_QTY} className="inline-flex size-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface hover:text-ink disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40">
               <Plus className="size-4" />
             </button>
           </div>

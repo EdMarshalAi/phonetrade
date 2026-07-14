@@ -7,7 +7,8 @@ on:
 
 concurrency:
   group: deploy-main
-  cancel-in-progress: true
+  # Деплои и миграции выполняются последовательно.
+  cancel-in-progress: false
 
 # Несекретные параметры сервера — здесь, чтобы в GitHub нужен был только
 # приватный ключ (SSH_PRIVATE_KEY) и две публичные переменные Supabase.
@@ -19,7 +20,9 @@ env:
 
 jobs:
   deploy:
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,8 +33,36 @@ jobs:
           node-version: "22"
           cache: npm
 
+      - name: Validate required secrets
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          missing=0
+          for name in SSH_PRIVATE_KEY NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Не задан обязательный secret: $name"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
       - name: Install deps
         run: npm ci
+
+      - name: SEO regression tests
+        run: npm run test:seo
+
+      # Полный lint пока имеет накопленный legacy-долг в старой админке и
+      # одноразовых import-скриптах. Критичный storefront/SEO/checkout контур
+      # обязан оставаться чистым уже сейчас.
+      - name: Critical storefront lint
+        run: npm run lint:critical
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
 
       - name: Build (standalone)
         run: npm run build
@@ -47,15 +78,7 @@ jobs:
           if [ -d public ]; then cp -r public .next/standalone/public; fi
           cp ecosystem.config.js .next/standalone/ecosystem.config.js
 
-      - name: Check deploy key
-        run: |
-          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
-            echo "::warning::Деплой пропущен — нет секрета SSH_PRIVATE_KEY. Сборка прошла успешно."
-            echo "SKIP_DEPLOY=true" >> "$GITHUB_ENV"
-          fi
-
       - name: Setup SSH
-        if: env.SKIP_DEPLOY != 'true'
         run: |
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           # printf '%s\n' гарантирует завершающий перевод строки —
@@ -76,30 +99,188 @@ jobs:
             BatchMode yes
           EOF
 
-      - name: Rsync standalone to server
-        if: env.SKIP_DEPLOY != 'true'
+      - name: Prepare isolated release
         run: |
+          release_path="${DEPLOY_PATH}-releases/${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          previous_release="$(ssh deploy-target \
+            "if [ -L '${DEPLOY_PATH}-current' ]; then readlink -f '${DEPLOY_PATH}-current'; elif [ -f '${DEPLOY_PATH}/ecosystem.config.js' ]; then printf '%s' '${DEPLOY_PATH}'; fi")"
+          case "$previous_release" in
+            "$DEPLOY_PATH"|"${DEPLOY_PATH}-releases/"*) ;;
+            *) echo "::error::Не найден безопасный предыдущий release: $previous_release"; exit 1 ;;
+          esac
+          echo "RELEASE_PATH=$release_path" >> "$GITHUB_ENV"
+          echo "PREVIOUS_RELEASE=$previous_release" >> "$GITHUB_ENV"
           ssh deploy-target \
-            "mkdir -p '$DEPLOY_PATH'; command -v rsync >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y rsync)"
+            "mkdir -p '$release_path'; command -v rsync >/dev/null 2>&1 || (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y rsync)"
+
+      - name: Rsync standalone to isolated release
+        run: |
           rsync -az --delete -e "ssh" \
             .next/standalone/ \
-            "deploy-target:$DEPLOY_PATH/"
+            "deploy-target:$RELEASE_PATH/"
 
-      - name: Restart with PM2
-        if: env.SKIP_DEPLOY != 'true'
+      # Миграция аддитивна: старый release продолжает работать с ней. Новый код
+      # переключается на RPC только после успешного применения файла целиком.
+      - name: Apply storefront transaction migration
+        run: |
+          ssh deploy-target \
+            "docker exec -i supabase-db psql -v ON_ERROR_STOP=1 -U postgres -d postgres" \
+            < supabase/migrations/0022_storefront_order_transaction.sql
+
+      # PostgREST может увидеть новую RPC не мгновенно из-за schema cache. Проба
+      # намеренно отправляет невалидный payload: функция падает до любых записей,
+      # а ожидаемый ORDER_PAYLOAD_INVALID подтверждает, что RPC уже доступна.
+      - name: Wait for storefront RPC in PostgREST
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SVC: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          probe_body="$RUNNER_TEMP/storefront-rpc-probe.json"
+          rpc_url="${SUPABASE_URL%/}/rest/v1/rpc/create_storefront_order"
+          ready=0
+          for attempt in $(seq 1 20); do
+            : > "$probe_body"
+            status="$(curl -sS -o "$probe_body" -w '%{http_code}' \
+              --connect-timeout 5 \
+              --max-time 10 \
+              -X POST "$rpc_url" \
+              -H "apikey: $SVC" \
+              -H "Authorization: Bearer $SVC" \
+              -H "Content-Type: application/json" \
+              --data '{"p_order":null,"p_items":null,"p_promo_code":null,"p_promo_had_effect":false}' \
+              || true)"
+            if [ "$status" = "400" ] && grep -q 'ORDER_PAYLOAD_INVALID' "$probe_body"; then
+              ready=1
+              break
+            fi
+            echo "RPC ещё не готова (попытка $attempt/20, HTTP ${status:-000})"
+            sleep 3
+          done
+          if [ "$ready" != "1" ]; then
+            echo "::error::PostgREST не увидел create_storefront_order или вернул неожиданный ответ"
+            sed -n '1,20p' "$probe_body"
+            exit 1
+          fi
+
+      # Кандидат работает отдельным несохранённым PM2-процессом только на
+      # loopback:3001. Уникальное имя и watchdog не дают осиротевшему процессу
+      # пережить потерю GitHub runner и задеть следующий последовательный deploy.
+      - name: Start isolated candidate on port 3001
+        env:
+          SVC: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          candidate_name="phonetrade-candidate-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          watchdog_marker="/tmp/${candidate_name}.watchdog"
+          echo "CANDIDATE_NAME=$candidate_name" >> "$GITHUB_ENV"
+          echo "CANDIDATE_WATCHDOG_MARKER=$watchdog_marker" >> "$GITHUB_ENV"
+          echo "CANDIDATE_STARTED=1" >> "$GITHUB_ENV"
+          ssh deploy-target \
+            "set -eu
+             pm2 delete '/^phonetrade-candidate-/' >/dev/null 2>&1 || true
+             command -v ss >/dev/null 2>&1
+             if ss -H -ltn '( sport = :3001 )' | grep -q .; then
+               echo 'Порт 3001 уже занят неизвестным процессом; кандидат не запущен' >&2
+               exit 1
+             fi
+             touch '$watchdog_marker'
+             nohup sh -c 'sleep 900; if [ -f \"$watchdog_marker\" ]; then pm2 delete \"$candidate_name\" >/dev/null 2>&1 || true; rm -f \"$watchdog_marker\"; fi' >/dev/null 2>&1 </dev/null &
+             cd '$RELEASE_PATH'
+             NODE_ENV=production PORT=3001 HOSTNAME=127.0.0.1 SUPABASE_SERVICE_ROLE_KEY='$SVC' \
+               pm2 start server.js --name '$candidate_name' --cwd '$RELEASE_PATH' \
+                 --max-memory-restart 512M --update-env"
+
+      - name: Open candidate SSH tunnel
+        run: |
+          tunnel_socket="/tmp/phonetrade-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.sock"
+          echo "CANDIDATE_TUNNEL=$tunnel_socket" >> "$GITHUB_ENV"
+          ssh -f -N -M -S "$tunnel_socket" \
+            -o ExitOnForwardFailure=yes \
+            -o ServerAliveInterval=15 \
+            -o ServerAliveCountMax=3 \
+            -L 127.0.0.1:3011:127.0.0.1:3001 \
+            deploy-target
+
+      - name: SEO smoke against isolated candidate
+        env:
+          SMOKE_BASE: http://127.0.0.1:3011
+          SMOKE_CANONICAL_ORIGIN: https://phonetrade31.ru
+        run: |
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 3 "$SMOKE_BASE/" >/dev/null; then
+              ready=1
+              break
+            fi
+            echo "Кандидат ещё не готов (попытка $attempt/30)"
+            sleep 2
+          done
+          if [ "$ready" != "1" ]; then
+            echo "::error::Кандидат не поднялся на 127.0.0.1:3001"
+            ssh deploy-target "pm2 logs '$CANDIDATE_NAME' --nostream --lines 100" || true
+            exit 1
+          fi
+          node scripts/seo-smoke.mjs
+
+      # Только уже проверенный кандидат занимает production-порт. Состояние PM2
+      # пока не сохраняем: при ошибке live-smoke возвращаем предыдущий release.
+      - name: Switch live PM2 to verified candidate
+        env:
+          SVC: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "ROLLBACK_REQUIRED=1" >> "$GITHUB_ENV"
+          ssh deploy-target \
+            "set -eu
+             pm2 delete '$CANDIDATE_NAME' >/dev/null 2>&1 || true
+             rm -f '$CANDIDATE_WATCHDOG_MARKER'
+             cd '$RELEASE_PATH'
+             SUPABASE_SERVICE_ROLE_KEY='$SVC' pm2 startOrReload ecosystem.config.js --update-env"
+
+      - name: SEO smoke against live domain
+        env:
+          SMOKE_BASE: https://phonetrade31.ru
+          SMOKE_CANONICAL_ORIGIN: https://phonetrade31.ru
+        run: |
+          echo "Ждём переключения production-приложения..."
+          sleep 10
+          node scripts/seo-smoke.mjs
+
+      - name: Activate verified release
+        run: |
+          ssh deploy-target \
+            "set -eu
+             ln -sfn '$RELEASE_PATH' '${DEPLOY_PATH}-current.next'
+             mv -Tf '${DEPLOY_PATH}-current.next' '${DEPLOY_PATH}-current'
+             pm2 delete '$CANDIDATE_NAME' >/dev/null 2>&1 || true
+             rm -f '$CANDIDATE_WATCHDOG_MARKER'
+             pm2 save"
+          echo "ROLLBACK_REQUIRED=0" >> "$GITHUB_ENV"
+
+      # Если live reload/smoke/activation упали или workflow отменён, возвращаем
+      # PM2 и current-ссылку на заведомо рабочую папку.
+      - name: Roll back failed or cancelled live switch
+        if: ${{ (failure() || cancelled()) && env.ROLLBACK_REQUIRED == '1' && env.PREVIOUS_RELEASE != '' }}
         env:
           SVC: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           ssh deploy-target \
-            "cd '$DEPLOY_PATH' && SUPABASE_SERVICE_ROLE_KEY='$SVC' bash -c '(pm2 reload ecosystem.config.js --update-env || pm2 start ecosystem.config.js) && pm2 save'"
+            "set -eu
+             cd '$PREVIOUS_RELEASE'
+             SUPABASE_SERVICE_ROLE_KEY='$SVC' pm2 startOrReload ecosystem.config.js --update-env
+             pm2 delete '$CANDIDATE_NAME' >/dev/null 2>&1 || true
+             rm -f '$CANDIDATE_WATCHDOG_MARKER'
+             ln -sfn '$PREVIOUS_RELEASE' '${DEPLOY_PATH}-current.next'
+             mv -Tf '${DEPLOY_PATH}-current.next' '${DEPLOY_PATH}-current'
+             pm2 save"
 
-      # SEO drift-гейт: проверяем эталонные URL на критичные регрессии (4xx, пропавший
-      # title/canonical, случайный noindex). Не роняем деплой (он уже прошёл) — но
-      # подсвечиваем проблему в CI как warning-пост-проверку.
-      - name: SEO smoke (drift-гейт)
-        if: env.SKIP_DEPLOY != 'true'
-        continue-on-error: true
+      # Штатный cleanup закрывает tunnel и снимает watchdog. При жёсткой потере
+      # runner watchdog сам удалит только уникальный candidate через 15 минут.
+      - name: Clean up isolated candidate
+        if: ${{ always() && env.CANDIDATE_STARTED == '1' }}
         run: |
-          echo "Ждём подъёма приложения..."
-          sleep 20
-          node scripts/seo-smoke.mjs
+          ssh deploy-target \
+            "pm2 delete '$CANDIDATE_NAME' >/dev/null 2>&1 || true; rm -f '$CANDIDATE_WATCHDOG_MARKER'" \
+            || true
+          if [ -n "${CANDIDATE_TUNNEL:-}" ] && [ -S "$CANDIDATE_TUNNEL" ]; then
+            ssh -S "$CANDIDATE_TUNNEL" -O exit deploy-target || true
+          fi
+          rm -f "${CANDIDATE_TUNNEL:-}"

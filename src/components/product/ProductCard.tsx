@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils/cn";
 import { useCart } from "@/components/providers/CartProvider";
 import { useFavorites } from "@/components/providers/FavoritesProvider";
 import type { Product } from "@/lib/data/products";
+import { resolveProductAvailability } from "@/lib/product-commerce";
 
 type Props = {
   product: Product;
@@ -21,7 +22,8 @@ type Props = {
 
 export function ProductCard({ product, className }: Props) {
   const { add } = useCart();
-  const { display, options: optionDefs } = useCardSettings();
+  const { display, options: optionDefs, allowZeroStock } = useCardSettings();
+  const availability = resolveProductAvailability(product, allowZeroStock);
   const ptype = product.isUsed ? "used" : "new";
   const cardOptions = optionDefs
     .filter((o) => display.options.includes(o.key) && ((o.applies_to ?? "both") === "both" || o.applies_to === ptype))
@@ -47,6 +49,7 @@ export function ProductCard({ product, className }: Props) {
 
   const buy = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!availability.canOrder) return;
     void add(product);
     setAdded(true);
     if (addedTimer.current) window.clearTimeout(addedTimer.current);
@@ -208,6 +211,9 @@ export function ProductCard({ product, className }: Props) {
           </div>
         ) : null}
       </div>
+      {availability.kind !== "in-stock" ? (
+        <p className="mt-2 text-[12px] font-medium text-ink-muted">{availability.label}</p>
+      ) : null}
       {display.credit && product.installmentFrom ? (
         <div className="mb-4 mt-2 text-[12px] text-ink-subtle">
           В кредит — от <span className="font-medium text-ink">{formatPrice(product.installmentFrom)}/мес</span>
@@ -223,13 +229,14 @@ export function ProductCard({ product, className }: Props) {
           className="flex-1 rounded-2xl"
           aria-label={`Купить ${product.title}`}
           onClick={buy}
+          disabled={!availability.canOrder}
         >
           {added ? (
             <span className="inline-flex items-center gap-1.5">
               <Check className="size-[18px]" strokeWidth={2.25} /> В корзине
             </span>
           ) : (
-            "Купить"
+            availability.kind === "backorder" ? "Заказать" : availability.canOrder ? "Купить" : "Нет в наличии"
           )}
         </Button>
         {favEnabled && (

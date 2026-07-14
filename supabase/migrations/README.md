@@ -16,12 +16,19 @@ helper `is_admin()` из 0001; 0004 добавляет FK на `customers`):
 0005_content.sql                     -- hero/bento/advantages/trade-in/blog/pages/menu
 0006_promotions_settings_analytics.sql -- promo_codes, settings, integrations, redirects, page_views, search_queries
 0007_storage.sql                     -- Storage-бакеты + политики
+...
+0022_storefront_order_transaction.sql -- idempotent заказ + строки + клиент + stock + promo в одной транзакции
 ```
 
 Все файлы идемпотентны (`if not exists` / `drop policy if exists`) — повторное
 применение безопасно.
 
-## Как применить к живой БД (после ревью)
+## Как применять к живой БД
+
+Production не правится вручную: актуальную `0022` применяет
+`.github/workflows/deploy.yml` после проверок и до запуска изолированного
+candidate. Команды ниже оставлены только для первичной установки или аварийного
+восстановления с отдельным явным подтверждением владельца.
 
 Вариант A — MCP (по одному файлу):
 `mcp__phonetrade-supabase__apply_migration` с содержимым файла.
@@ -40,3 +47,10 @@ done
 
 `schema.sql` в корне `supabase/` остаётся базовой схемой публичного сайта;
 эти миграции — слой админки поверх неё.
+
+`0022_storefront_order_transaction.sql` повторно применяется GitHub Actions
+перед запуском candidate-release. Миграция транзакционная и обратно совместимая:
+предыдущий release продолжает работать, если дальнейший deploy откатится.
+Функция повторно проверяет и блокирует товары/промокод, атомарно фиксирует
+клиента, строки, историю и hard-stock, а повтор того же attempt UUID возвращает
+созданный заказ без повторного списания и статистики.

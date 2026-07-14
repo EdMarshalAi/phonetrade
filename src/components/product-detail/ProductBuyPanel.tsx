@@ -8,10 +8,12 @@ import { cn } from "@/lib/utils/cn";
 import { useCart } from "@/components/providers/CartProvider";
 import { useFavorites } from "@/components/providers/FavoritesProvider";
 import type { Product } from "@/lib/data/products";
+import { resolveProductAvailability } from "@/lib/product-commerce";
 
 type Props = {
   product: Product;
   variants: { colors: Product[]; memories: Product[]; sims: Product[] };
+  allowZeroStock: boolean;
 };
 
 // Подбор цвета-плашки по названию (RU/EN). Порядок важен: специфичные токены
@@ -48,12 +50,14 @@ function colorSwatchClass(colorName: string): string {
   return "bg-surface border border-border";
 }
 
-export function ProductBuyPanel({ product, variants }: Props) {
+export function ProductBuyPanel({ product, variants, allowZeroStock }: Props) {
   const { add } = useCart();
   const { enabled: favEnabled, has: favHas, toggle: favToggle } = useFavorites();
   const [added, setAdded] = React.useState(false);
+  const availability = resolveProductAvailability(product, allowZeroStock);
 
   const handleAdd = () => {
+    if (!availability.canOrder) return;
     void add(product);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1800);
@@ -276,11 +280,27 @@ export function ProductBuyPanel({ product, variants }: Props) {
           </div>
         ) : null}
 
+        <div className="mb-4 flex items-center gap-2 text-[13px] text-ink-muted">
+          <span
+            aria-hidden
+            className={cn(
+              "size-2 rounded-full",
+              availability.kind === "in-stock"
+                ? "bg-emerald-500"
+                : availability.kind === "backorder"
+                  ? "bg-amber-500"
+                  : "bg-ink/30"
+            )}
+          />
+          <span>{availability.label}</span>
+        </div>
+
         <div className="flex gap-2">
           <Button
             variant="primary"
             size="lg"
             onClick={handleAdd}
+            disabled={!availability.canOrder}
             className="flex-1 rounded-2xl"
           >
             {added ? (
@@ -289,7 +309,12 @@ export function ProductBuyPanel({ product, variants }: Props) {
               </>
             ) : (
               <>
-                <ShoppingBag className="size-4" aria-hidden />В корзину
+                <ShoppingBag className="size-4" aria-hidden />
+                {availability.canOrder
+                  ? availability.kind === "backorder"
+                    ? "Заказать"
+                    : "В корзину"
+                  : "Нет в наличии"}
               </>
             )}
           </Button>

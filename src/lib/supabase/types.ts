@@ -1,4 +1,10 @@
 import type { Category, CategorySlug, Product, Sim } from "@/lib/data/products";
+import {
+  resolveProductAvailability,
+  resolveProductBrand,
+  syncProductSeoContent,
+  syncProductSeoText,
+} from "@/lib/product-commerce";
 
 /** Строка таблицы public.products (snake_case). */
 export type ProductRow = {
@@ -54,6 +60,12 @@ export type CategoryRow = {
 };
 
 export function rowToProduct(r: ProductRow): Product {
+  const brandInput = { brand: r.brand, title: r.title, categorySlug: r.category_slug };
+  const resolvedBrand = resolveProductBrand(brandInput);
+  const availability = resolveProductAvailability(
+    { stock: r.stock, inStock: r.in_stock, isAvailable: r.is_available },
+    false
+  );
   return {
     id: r.id,
     title: r.title,
@@ -75,26 +87,26 @@ export function rowToProduct(r: ProductRow): Product {
     badge: r.badge ?? undefined,
     badges: Array.isArray(r.badges) ? r.badges : undefined,
     options: r.options ?? undefined,
-    shortDescription: r.short_description ?? undefined,
+    shortDescription: syncProductSeoContent(r.short_description, r.price_cash, brandInput) || undefined,
     metaTitle: r.meta_title ?? undefined,
-    metaDescription: r.meta_description ?? undefined,
+    metaDescription: syncProductSeoText(r.meta_description, r.price_cash) || undefined,
     ogImageUrl: r.og_image_url ?? undefined,
     canonicalUrl: r.canonical_url ?? undefined,
     isIndexable: r.is_indexable ?? undefined,
     sku: r.sku ?? undefined,
-    brand: r.brand ?? undefined,
+    brand: resolvedBrand ?? undefined,
     condition: r.condition ?? undefined,
     conditionText: r.condition_text ?? undefined,
     battery: r.battery ?? undefined,
     isUsed: r.is_used,
     isNew: r.is_new,
     rating: r.rating ?? undefined,
-    inStock: r.in_stock,
+    inStock: availability.physicalInStock,
     stock: r.stock ?? undefined,
     isAvailable: r.is_available ?? undefined,
     relatedProductIds: Array.isArray(r.related_product_ids) ? r.related_product_ids : undefined,
     variantGroupId: r.variant_group_id ?? undefined,
-    descriptionHtml: r.description_html ?? undefined,
+    descriptionHtml: syncProductSeoContent(r.description_html, r.price_cash, brandInput) || undefined,
   };
 }
 

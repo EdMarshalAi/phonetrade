@@ -5,13 +5,14 @@ import { ArrowUpRight } from "lucide-react";
 import { getCategories } from "@/lib/products";
 import { getProductsByCategory } from "@/lib/products";
 import { plural } from "@/lib/utils/plural";
+import { categoryPath } from "@/lib/catalog/category-path";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Каталог Apple — все категории",
+  title: "Каталог техники — все категории",
   description:
-    "Весь ассортимент Apple в Белгороде: iPhone, iPad, Mac, Apple Watch, AirPods и аксессуары. Гарантия, доставка и самовывоз — PhoneTrade.",
+    "Каталог техники PhoneTrade в Белгороде: смартфоны, планшеты, ноутбуки, часы, наушники, игровые приставки и аксессуары. Гарантия, доставка и самовывоз.",
   alternates: { canonical: "/catalog" },
   openGraph: { url: "/catalog" },
 };
@@ -40,18 +41,18 @@ export default async function CatalogPage() {
         </nav>
 
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h1 className="text-4xl font-semibold tracking-[-0.03em] text-ink md:text-5xl">Каталог Apple</h1>
+          <h1 className="text-4xl font-semibold tracking-[-0.03em] text-ink md:text-5xl">Каталог техники</h1>
           <span className="text-xs uppercase tracking-[0.16em] text-ink-subtle">{categories.length} категорий</span>
         </div>
         <p className="mt-3 max-w-2xl text-sm text-ink-muted md:text-base">
-          Вся техника Apple с гарантией, проверкой и сервисом в Белгороде. Выберите категорию.
+          Техника разных брендов с гарантией, проверкой и сервисом в Белгороде. Выберите категорию.
         </p>
 
         <ul className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 md:gap-5">
           {items.map((c) => (
             <li key={c.slug}>
               <Link
-                href={`/category/${c.slug}`}
+                href={categoryPath(c.slug)}
                 className="group flex h-full flex-col overflow-hidden rounded-3xl border border-border/60 bg-white transition-all duration-300 ease-[var(--ease-apple)] hover:-translate-y-0.5 hover:border-ink/25 hover:shadow-[0_18px_40px_-22px_rgba(0,0,0,0.10)]"
               >
                 <div className="relative aspect-[16/10] overflow-hidden bg-surface">

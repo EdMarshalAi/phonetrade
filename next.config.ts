@@ -13,7 +13,10 @@ const nextConfig: NextConfig = {
       ["macbook-air-ili-pro-belgorod", "macbook-air-ili-macbook-pro-2026"],
       ["kakoy-ipad-vybrat-belgorod", "kak-vybrat-ipad-2026"],
     ];
-    return pairs.map(([from, to]) => ({ source: `/blog/${from}`, destination: `/blog/${to}`, permanent: true }));
+    return [
+      ...pairs.map(([from, to]) => ({ source: `/blog/${from}`, destination: `/blog/${to}`, permanent: true })),
+      { source: "/category/iphone-used", destination: "/used", permanent: true },
+    ];
   },
   // Базовые security-заголовки (без строгого CSP — чтобы не сломать YM/inline JSON-LD).
   async headers() {

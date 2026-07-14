@@ -6,7 +6,7 @@ import { blogPostSchema, type BlogPostInput } from "@/lib/admin/schemas";
 
 const CONTENT = ["admin", "content"] as const;
 
-function normalize(input: BlogPostInput) {
+function normalize(input: BlogPostInput, updatedAt = new Date().toISOString()) {
   const category_id = input.category_id && input.category_id !== "" ? input.category_id : null;
   const tags = input.tags
     ? input.tags
@@ -14,8 +14,6 @@ function normalize(input: BlogPostInput) {
         .map((t) => t.trim())
         .filter(Boolean)
     : [];
-  const published_at =
-    input.status === "published" ? new Date().toISOString() : null;
   return {
     title: input.title.trim(),
     excerpt: input.excerpt || null,
@@ -26,8 +24,7 @@ function normalize(input: BlogPostInput) {
     status: input.status,
     meta_title: input.meta_title || null,
     meta_description: input.meta_description || null,
-    ...(input.status === "published" ? { published_at } : {}),
-    updated_at: new Date().toISOString(),
+    updated_at: updatedAt,
   };
 }
 
@@ -47,9 +44,11 @@ export async function createBlogPost(input: BlogPostInput): Promise<{ error?: st
       changes: parsed.data,
       revalidate: ["/blog", "/"],
       run: async (db) => {
+        const now = new Date().toISOString();
         const { error } = await db.from("blog_posts").insert({
           slug: parsed.data.slug,
-          ...normalize(parsed.data),
+          ...normalize(parsed.data, now),
+          published_at: parsed.data.status === "published" ? now : null,
         });
         if (error) throw error;
       },
@@ -72,9 +71,22 @@ export async function updateBlogPost(id: string, input: BlogPostInput): Promise<
       changes: parsed.data,
       revalidate: ["/blog", "/"],
       run: async (db) => {
+        const { data: current, error: currentError } = await db
+          .from("blog_posts")
+          .select("published_at")
+          .eq("id", id)
+          .maybeSingle();
+        if (currentError) throw currentError;
+        if (!current) throw new Error("Статья не найдена");
+
+        const now = new Date().toISOString();
+        const firstPublishedAt = parsed.data.status === "published" && !current.published_at ? now : null;
         const { error } = await db
           .from("blog_posts")
-          .update(normalize(parsed.data))
+          .update({
+            ...normalize(parsed.data, now),
+            ...(firstPublishedAt ? { published_at: firstPublishedAt } : {}),
+          })
           .eq("id", id);
         if (error) throw error;
       },

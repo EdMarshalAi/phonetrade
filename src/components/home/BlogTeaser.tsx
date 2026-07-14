@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Image from "next/image";
-import { ArrowRight, Eye } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { motion, type Variants } from "motion/react";
 import { cn } from "@/lib/utils/cn";
 
@@ -18,7 +18,6 @@ type Post = {
   id: string;
   title: string;
   date: string;
-  views: number;
   category: string;
   image: string;
   href: string;
@@ -41,7 +40,6 @@ const POSTS: Post[] = [
     id: "ip17e-vs-ip17",
     title: "iPhone 17e vs iPhone 17: какой выбрать?",
     date: "15 мая",
-    views: 2112,
     category: "iPhone",
     image: "https://picsum.photos/seed/iphone17e/1400/900",
     href: "/blog/iphone-17e-vs-17",
@@ -51,7 +49,6 @@ const POSTS: Post[] = [
     title:
       "Обзор XREAL One Pro: очки, которые превращают смартфон в личный экран",
     date: "14 мая",
-    views: 759,
     category: "Гаджеты",
     image: "https://picsum.photos/seed/xreal-glasses/900/700",
     href: "/blog/xreal-one-pro",
@@ -60,7 +57,6 @@ const POSTS: Post[] = [
     id: "studio-display",
     title: "Apple Studio Display и Studio Display XDR: какой выбрать в 2026",
     date: "8 мая",
-    views: 562,
     category: "Mac",
     image: "https://picsum.photos/seed/studio-display/900/700",
     href: "/blog/studio-display-2026",
@@ -69,7 +65,6 @@ const POSTS: Post[] = [
     id: "watch-s10-review",
     title: "Apple Watch Series 10: главные изменения и стоит ли обновляться",
     date: "3 мая",
-    views: 1284,
     category: "Apple Watch",
     image: "https://picsum.photos/seed/apple-watch-10/900/700",
     href: "/blog/apple-watch-10-review",
@@ -78,7 +73,6 @@ const POSTS: Post[] = [
     id: "ipad-air-m3",
     title: "iPad Air на M3: рабочая лошадка для творческих задач",
     date: "28 апреля",
-    views: 870,
     category: "iPad",
     image: "https://picsum.photos/seed/ipad-air-m3/900/700",
     href: "/blog/ipad-air-m3",
@@ -87,7 +81,6 @@ const POSTS: Post[] = [
     id: "mac-mini-m4",
     title: "Mac mini M4 для дома: компактный сервер и медиацентр",
     date: "21 апреля",
-    views: 1430,
     category: "Mac",
     image: "https://picsum.photos/seed/mac-mini-m4/900/700",
     href: "/blog/mac-mini-m4",
@@ -109,11 +102,9 @@ const cardVariants: Variants = {
 
 function MetaRow({
   date,
-  views,
   tone = "light",
 }: {
   date: string;
-  views: number;
   tone?: "light" | "dark";
 }) {
   return (
@@ -124,10 +115,6 @@ function MetaRow({
       )}
     >
       <span>{date}</span>
-      <span className="inline-flex items-center gap-1.5">
-        <Eye className="size-3.5" aria-hidden />
-        <span className="tabular-nums">{views.toLocaleString("ru-RU")}</span>
-      </span>
     </div>
   );
 }
@@ -240,7 +227,6 @@ export function BlogTeaser({ posts }: { posts?: BlogTeaserPost[] }) {
                   <div className="mt-3">
                     <MetaRow
                       date={featured.date}
-                      views={featured.views}
                       tone="dark"
                     />
                   </div>
@@ -280,7 +266,7 @@ export function BlogTeaser({ posts }: { posts?: BlogTeaserPost[] }) {
                     {p.title}
                   </h3>
                   <div className="mt-auto pt-3">
-                    <MetaRow date={p.date} views={p.views} />
+                    <MetaRow date={p.date} />
                   </div>
                 </div>
               </motion.a>

@@ -5,12 +5,19 @@ import {
   getRelatedProducts,
   getVariantsForProduct,
   getCategories,
+  getAllowZeroStock,
 } from "@/lib/products";
 import { getProductBlocks } from "@/lib/content";
 import { ProductDetailShell } from "@/components/product-detail/ProductDetailShell";
 import { productImages } from "@/lib/utils/product-images";
 import { jsonLdScript } from "@/lib/utils/json-ld";
 import { faqFromHtml, faqPageLd } from "@/lib/utils/faq-schema";
+import {
+  resolveProductAvailability,
+  resolveProductBrand,
+  syncProductSeoContent,
+} from "@/lib/product-commerce";
+import { categoryPath } from "@/lib/catalog/category-path";
 
 type RouteParams = { id: string };
 
@@ -23,7 +30,11 @@ export async function generateMetadata({
   const product = await getProductById(id);
   if (!product) return {};
   const title = product.metaTitle || `${product.title} — купить в Белгороде`;
-  const description = product.metaDescription || product.shortDescription || `Купить ${product.title} в Белгороде с гарантией PhoneTrade.`;
+  const description = syncProductSeoContent(
+    product.metaDescription || product.shortDescription || `Купить ${product.title} в Белгороде с гарантией PhoneTrade.`,
+    product.priceCash,
+    product
+  );
   const imgs = productImages(product);
   const canonical = `/product/${product.id}`;
   const indexable = product.isIndexable !== false;
@@ -46,29 +57,38 @@ export default async function ProductPage({
   const product = await getProductById(id);
   if (!product) notFound();
 
-  const [related, variants, productBlocks, allCats] = await Promise.all([
+  const [related, variants, productBlocks, allCats, allowZeroStock] = await Promise.all([
     getRelatedProducts(product, 8),
     getVariantsForProduct(product),
     getProductBlocks(),
     getCategories().catch(() => []),
+    getAllowZeroStock(),
   ]);
+
+  const syncedMetaDescription = syncProductSeoContent(product.metaDescription, product.priceCash, product);
+  const syncedShortDescription = syncProductSeoContent(product.shortDescription, product.priceCash, product);
+  const syncedDescriptionHtml = syncProductSeoContent(product.descriptionHtml, product.priceCash, product);
+  const renderedProduct = {
+    ...product,
+    metaDescription: syncedMetaDescription || product.metaDescription,
+    shortDescription: syncedShortDescription || product.shortDescription,
+    descriptionHtml: syncedDescriptionHtml || product.descriptionHtml,
+  };
 
   // Schema.org Product (JSON-LD) — расширенные сниппеты в поиске.
   const base = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");
-  const inStock = product.stock == null || product.stock > 0;
-  const brandName = /samsung/i.test(product.title) ? "Samsung" : /яндекс|station|станц/i.test(product.title) ? "Яндекс" : /sony|playstation|dualsense/i.test(product.title) ? "Sony" : "Apple";
+  const availability = resolveProductAvailability(product, allowZeroStock);
+  const brandName = resolveProductBrand(product);
   const price = product.priceCash;
-  // priceValidUntil — конец след. года (рекомендация Google для Offer).
-  const priceValidUntil = `${new Date().getFullYear() + 1}-12-31`;
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.title,
     image: productImages(product),
     // Уникальное описание (его читают LLM/сниппеты), не шаблон — фолбэк на гео-строку.
-    description: product.shortDescription || product.metaDescription || `${product.title} — купить в Белгороде в PhoneTrade: гарантия, доставка и самовывоз.`,
+    description: syncedShortDescription || syncedMetaDescription || `${product.title} — купить в Белгороде в PhoneTrade: гарантия, доставка и самовывоз.`,
     sku: product.sku || product.id,
-    brand: { "@type": "Brand", name: product.brand && product.brand !== "Other" ? product.brand : brandName },
+    ...(brandName ? { brand: { "@type": "Brand", name: brandName } } : {}),
     // Offer рендерим только при наличии цены (Offer без price/priceSpecification невалиден).
     ...(price && price > 0
       ? {
@@ -77,29 +97,9 @@ export default async function ProductPage({
             url: `${base}/product/${product.id}`,
             priceCurrency: "RUB",
             price,
-            priceValidUntil,
-            availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+            availability: availability.schemaAvailability,
             itemCondition: product.isUsed ? "https://schema.org/UsedCondition" : "https://schema.org/NewCondition",
             seller: { "@id": `${base}/#organization` },
-            // Доставка и возврат — для Google Merchant free listings / rich results.
-            shippingDetails: {
-              "@type": "OfferShippingDetails",
-              shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "RUB" },
-              shippingDestination: { "@type": "DefinedRegion", addressCountry: "RU" },
-              deliveryTime: {
-                "@type": "ShippingDeliveryTime",
-                handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 1, unitCode: "DAY" },
-                transitTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 2, unitCode: "DAY" },
-              },
-            },
-            hasMerchantReturnPolicy: {
-              "@type": "MerchantReturnPolicy",
-              applicableCountry: "RU",
-              returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
-              merchantReturnDays: 14,
-              returnMethod: "https://schema.org/ReturnInStore",
-              returnFees: "https://schema.org/FreeReturn",
-            },
           },
         }
       : {}),
@@ -111,8 +111,8 @@ export default async function ProductPage({
   const crumbs = [
     { name: "Главная", url: `${base}/` },
     { name: "Каталог", url: `${base}/catalog` },
-    ...(parent ? [{ name: parent.title, url: `${base}/category/${parent.slug}` }] : []),
-    ...(cat ? [{ name: cat.title, url: `${base}/category/${cat.slug}` }] : []),
+    ...(parent ? [{ name: parent.title, url: `${base}${categoryPath(parent.slug)}` }] : []),
+    ...(cat ? [{ name: cat.title, url: `${base}${categoryPath(cat.slug)}` }] : []),
     { name: product.title, url: `${base}/product/${product.id}` },
   ];
   const breadcrumbLd = {
@@ -122,17 +122,18 @@ export default async function ProductPage({
   };
 
   // FAQPage из FAQ-блока описания (rich-сниппет «вопросы-ответы» в выдаче).
-  const faqLd = faqPageLd(faqFromHtml(product.descriptionHtml));
+  const faqLd = faqPageLd(faqFromHtml(syncedDescriptionHtml));
   const schemas = [jsonLd, breadcrumbLd, ...(faqLd ? [faqLd] : [])];
 
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(schemas) }} />
       <ProductDetailShell
-        product={product}
+        product={renderedProduct}
         related={related}
         variants={variants}
         productBlocks={productBlocks}
+        allowZeroStock={allowZeroStock}
       />
     </>
   );

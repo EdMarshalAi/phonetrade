@@ -9,15 +9,17 @@ import { ProductTrust } from "@/components/product-detail/ProductTrust";
 import { ProductRelated } from "@/components/product-detail/ProductRelated";
 import { ProductDescription } from "@/components/product-detail/ProductDescription";
 import { sanitizeRichHtml } from "@/lib/utils/sanitize-html";
+import { categoryPath } from "@/lib/catalog/category-path";
 
 type Props = {
   product: Product;
   related: Product[];
   variants: { colors: Product[]; memories: Product[]; sims: Product[] };
   productBlocks: InfoBlock[];
+  allowZeroStock: boolean;
 };
 
-export function ProductDetailShell({ product, related, variants, productBlocks }: Props) {
+export function ProductDetailShell({ product, related, variants, productBlocks, allowZeroStock }: Props) {
   return (
     <>
       <section className="bg-bg">
@@ -33,7 +35,7 @@ export function ProductDetailShell({ product, related, variants, productBlocks }
               <ProductGallery product={product} />
             </div>
             <div className="lg:col-span-5">
-              <ProductBuyPanel product={product} variants={variants} />
+              <ProductBuyPanel product={product} variants={variants} allowZeroStock={allowZeroStock} />
             </div>
           </div>
 
@@ -46,7 +48,7 @@ export function ProductDetailShell({ product, related, variants, productBlocks }
             {[
               { href: "/repair", label: "Ремонт техники Apple" },
               { href: "/trade-in", label: "Trade-in — обмен с доплатой" },
-              ...(product.categorySlug ? [{ href: `/category/${product.categorySlug}`, label: "Смотреть всю категорию" }] : []),
+              ...(product.categorySlug ? [{ href: categoryPath(product.categorySlug), label: "Смотреть всю категорию" }] : []),
               ...(!product.isUsed && /iphone/i.test(product.categorySlug ?? "") ? [{ href: "/used", label: "Б/У iPhone" }] : []),
             ].map((l) => (
               <Link

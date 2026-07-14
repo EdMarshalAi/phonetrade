@@ -12,6 +12,7 @@ import { CookieConsentProvider } from "@/components/legal/CookieConsent";
 import { getShopContacts, getNavCategoryTree, getMenu, getProductBadges, getCardDisplay, getProductOptions, getMetrikaSettings, getSiteMaintenance } from "@/lib/content";
 import { getAdminUser } from "@/lib/admin/auth";
 import { getCodeSnippets } from "@/lib/integrations/snippets";
+import { getAllowZeroStock } from "@/lib/products";
 import { ConversionClicks } from "@/components/analytics/ConversionClicks";
 import Image from "next/image";
 import Link from "next/link";
@@ -26,7 +27,7 @@ export default async function SiteLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [contacts, navTree, topMenu, mainMenu, footerMenu, badges, cardDisplay, cardOptions, metrika, maintenance, codeSnippets] = await Promise.all([
+  const [contacts, navTree, topMenu, mainMenu, footerMenu, badges, cardDisplay, cardOptions, allowZeroStock, metrika, maintenance, codeSnippets] = await Promise.all([
     getShopContacts(),
     getNavCategoryTree(),
     getMenu("top"),
@@ -35,6 +36,7 @@ export default async function SiteLayout({
     getProductBadges(),
     getCardDisplay(),
     getProductOptions(),
+    getAllowZeroStock(),
     getMetrikaSettings(),
     getSiteMaintenance(),
     getCodeSnippets(),
@@ -117,7 +119,7 @@ export default async function SiteLayout({
         <CartProvider>
           <FavoritesProvider>
             <BadgeRegistryProvider badges={badges}>
-            <CardSettingsProvider display={cardDisplay} options={cardOptions}>
+            <CardSettingsProvider display={cardDisplay} options={cardOptions} allowZeroStock={allowZeroStock}>
               <CookieConsentProvider metrikaId={metrika.id} metrikaForce={metrika.collectWithoutConsent} codeSnippets={codeSnippets}>
                 <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(orgLd) }} />
                 <div className="flex min-h-dvh flex-col">

@@ -5,6 +5,7 @@ import { searchProducts, getCategories } from "@/lib/products";
 import { ProductCard } from "@/components/product/ProductCard";
 import { SearchTracker } from "@/components/catalog/SearchTracker";
 import { plural } from "@/lib/utils/plural";
+import { categoryPath } from "@/lib/catalog/category-path";
 
 export const dynamic = "force-dynamic";
 
@@ -109,7 +110,7 @@ async function NoResults({ query }: { query: string }) {
         {categories.slice(0, 7).map((c) => (
           <Link
             key={c.slug}
-            href={`/category/${c.slug}`}
+            href={categoryPath(c.slug)}
             className="inline-flex h-9 items-center rounded-full border border-border/70 bg-white px-4 text-sm text-ink transition-colors hover:border-ink/30 hover:bg-surface"
           >
             {c.title}

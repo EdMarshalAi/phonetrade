@@ -1,11 +1,16 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { productImages } from "@/lib/utils/product-images";
+import {
+  resolveProductAvailability,
+  resolveProductBrand,
+  syncProductSeoContent,
+} from "@/lib/product-commerce";
 
 /**
  * YML-фид (Yandex Market Language) для выгрузки каталога во ВКонтакте/Яндекс.
  * Отдаёт ВСЕ опубликованные новые товары в наличии с актуальными ценами:
- * <price> — наличными (выгодная цена), <oldprice> — картой (выше, показывает
- * выгоду), картинки из Storage, бренд и характеристики (цвет/память/SIM/гарантия).
+ * <price> — актуальная цена наличными, <oldprice> — только реальная старая
+ * цена товара, картинки из Storage, бренд и характеристики.
  * Цены берём готовыми из БД (формула считает их server-side) — фид всегда свежий.
  * URL фида: {SITE}/api/feed/yml — её отдаём в рекламный кабинет ВК.
  * Спека: https://yandex.ru/support/direct/ru/feeds/requirements-yml
@@ -34,11 +39,19 @@ export async function GET() {
   const db = createSupabaseAdminClient();
 
   // Настройки фида из админки (категории + включать ли Б/У).
-  const { data: prefRow } = await db.from("shop_settings").select("value").eq("key", "yml_feed_prefs").maybeSingle();
+  const { data: prefRow, error: prefsError } = await db.from("shop_settings").select("value").eq("key", "yml_feed_prefs").maybeSingle();
+  if (prefsError) {
+    console.error("[yml] preferences:", prefsError);
+    return new Response("YML feed temporarily unavailable", { status: 503 });
+  }
   const prefs = (prefRow?.value ?? {}) as { categories?: string[] | null; includeUsed?: boolean };
   const includeUsed = prefs.includeUsed !== false; // по умолчанию Б/У включены
 
-  const { data: cats } = await db.from("categories").select("slug,title,parent_slug").order("slug");
+  const { data: cats, error: categoriesError } = await db.from("categories").select("slug,title,parent_slug").order("slug");
+  if (categoriesError || !cats) {
+    console.error("[yml] categories:", categoriesError);
+    return new Response("YML feed temporarily unavailable", { status: 503 });
+  }
   const catList = (cats ?? []) as { slug: string; title: string; parent_slug: string | null }[];
 
   // Раскрываем выбранные ГЛАВНЫЕ категории на их подкатегории.
@@ -53,16 +66,21 @@ export async function GET() {
   let pq = db
     .from("products")
     .select(
-      "id,sku,title,category_slug,brand,color,memory,sim,price_cash,price_card,image,gallery,short_description,description_html,warranty_months,in_stock,options,type"
+      "id,sku,title,category_slug,brand,color,memory,sim,price_cash,price_old,image,gallery,short_description,description_html,warranty_months,stock,in_stock,is_available,options,type"
     )
     .eq("status", "published")
+    .is("deleted_at", null)
     .or("is_available.is.null,is_available.eq.true")
     .gt("price_cash", 0)
     .order("category_slug")
     .limit(5000);
   if (!includeUsed) pq = pq.neq("type", "used");
   if (catFilter) pq = pq.in("category_slug", catFilter);
-  const { data: prods } = await pq;
+  const { data: prods, error: productsError } = await pq;
+  if (productsError || !prods) {
+    console.error("[yml] products:", productsError);
+    return new Response("YML feed temporarily unavailable", { status: 503 });
+  }
 
   // Категории → числовые id (требование YML). Стабильно по алфавиту slug.
   const catId = new Map<string, number>();
@@ -84,17 +102,33 @@ export async function GET() {
       if (!cId) return null; // без категории offer невалиден
 
       const cash = Math.round(Number(p.price_cash));
-      const card = p.price_card != null ? Math.round(Number(p.price_card)) : null;
-      // oldprice показываем только если карта дороже наличных ≥5% (требование YML).
-      const oldprice = card && card > cash * 1.05 ? card : null;
+      const priceOld = p.price_old != null ? Math.round(Number(p.price_old)) : null;
+      const oldprice = priceOld && priceOld > cash ? priceOld : null;
 
       const pics = productImages({ image: (p.image as string) ?? "", gallery: (p.gallery as string[]) ?? undefined })
         .filter((u) => /^https?:\/\//.test(u))
         .slice(0, 5);
 
-      const desc = (p.short_description as string)?.trim() || stripHtml(p.description_html).slice(0, 2900);
-      const brand = (p.brand as string)?.trim();
-      const available = p.in_stock !== false;
+      const rawDescription =
+        (p.short_description as string)?.trim() || stripHtml(p.description_html);
+      const desc = syncProductSeoContent(rawDescription, cash, {
+        brand: p.brand as string | null,
+        title: p.title as string,
+        categorySlug: p.category_slug as string,
+      }).slice(0, 2900);
+      const brand = resolveProductBrand({
+        brand: p.brand as string | null,
+        title: p.title as string,
+        categorySlug: p.category_slug as string,
+      });
+      const availability = resolveProductAvailability(
+        {
+          stock: p.stock as number | null,
+          inStock: p.in_stock as boolean | null,
+          isAvailable: p.is_available as boolean | null,
+        },
+        false
+      );
 
       const params: string[] = [];
       const addParam = (name: string, value: unknown) => {
@@ -112,7 +146,7 @@ export async function GET() {
       }
 
       const lines = [
-        `    <offer id="${esc(id)}" available="${available}">`,
+        `    <offer id="${esc(id)}" available="${availability.feedAvailable}">`,
         `      <url>${esc(`${SITE}/product/${id}`)}</url>`,
         `      <price>${cash}</price>`,
         oldprice ? `      <oldprice>${oldprice}</oldprice>` : "",

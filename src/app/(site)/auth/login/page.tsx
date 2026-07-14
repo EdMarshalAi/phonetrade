@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   title: "Вход и регистрация",
   description:
     "Войдите или зарегистрируйтесь в PhoneTrade, чтобы следить за заказами и копить бонусы.",
+  robots: { index: false, follow: false },
 };
 
 export default async function LoginPage() {

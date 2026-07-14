@@ -7,7 +7,8 @@ import { pluralizeItems } from "@/lib/utils/plural";
 import { resolveIcon } from "@/lib/admin/icons";
 import type { CartItem, CheckoutState } from "@/lib/cart/types";
 import type { InfoBlock, CartDeliveryOption, CartPaymentMethod } from "@/lib/content";
-import { computePromoDiscount, type ValidatedPromo } from "@/lib/cart/promo";
+import type { ValidatedPromo } from "@/lib/cart/promo";
+import { calculateCartTotals } from "@/lib/cart/totals";
 import { cn } from "@/lib/utils/cn";
 
 export type Consent = { oferta: boolean; pd: boolean; marketing: boolean };
@@ -24,6 +25,7 @@ type Props = {
   promo: ValidatedPromo | null;
   onApplyPromo: (code: string) => Promise<string | null>;
   onClearPromo: () => void;
+  disabled?: boolean;
 };
 
 const CREDIT_MONTHS = 24;
@@ -40,10 +42,10 @@ export function OrderSummary({
   promo,
   onApplyPromo,
   onClearPromo,
+  disabled = false,
 }: Props) {
   const deliveryOpt = delivery.find((d) => d.key === state.delivery);
   const paymentOpt = payments.find((p) => p.key === state.payment);
-  const base = paymentOpt?.priceBase === "card" ? "card" : "cash";
   const DELIVERY_LABEL: Record<string, string> = Object.fromEntries(
     delivery.map((d) => [d.key, d.label])
   );
@@ -52,20 +54,17 @@ export function OrderSummary({
   const [promoPending, setPromoPending] = React.useState(false);
 
   const totalQty = items.reduce((acc, i) => acc + i.qty, 0);
-  // Сумма по выбранной базе цены (наличными/картой) выбранного способа оплаты.
-  const subtotal = items.reduce(
-    (acc, i) => acc + (base === "card" ? i.product.priceCard : i.product.priceCash) * i.qty,
-    0
-  );
+  const totals = calculateCartTotals({ items, payment: paymentOpt, delivery: deliveryOpt, promo });
+  const {
+    base,
+    subtotal,
+    surcharge: surchargeAmount,
+    delivery: deliveryPrice,
+    promoDiscount,
+    promoNote,
+    total,
+  } = totals;
   const surchargePct = paymentOpt?.surcharge ?? 0;
-  const surchargeAmount = surchargePct > 0 ? Math.round((subtotal * surchargePct) / 100) : 0;
-  const deliveryPrice =
-    deliveryOpt && deliveryOpt.price > 0 && !(deliveryOpt.freeFrom > 0 && subtotal >= deliveryOpt.freeFrom)
-      ? deliveryOpt.price
-      : 0;
-  const promoCalc = computePromoDiscount(promo, items, base);
-  const promoDiscount = promoCalc.amount;
-  const total = Math.max(0, subtotal + surchargeAmount + deliveryPrice - promoDiscount);
   const monthly = Math.ceil(total / CREDIT_MONTHS);
 
   const applyPromo = async () => {
@@ -195,15 +194,16 @@ export function OrderSummary({
             </div>
           )}
           {promoError && <p className="mt-1.5 text-[12px] text-sale">{promoError}</p>}
-          {promo && promoDiscount === 0 && promoCalc.note && (
-            <p className="mt-1.5 text-[12px] text-ink-muted">{promoCalc.note}</p>
+          {promo && promoDiscount === 0 && promoNote && (
+            <p className="mt-1.5 text-[12px] text-ink-muted">{promoNote}</p>
           )}
         </div>
 
         <button
           type="button"
           onClick={onSubmit}
-          className="inline-flex w-full items-center justify-center gap-2 h-12 px-7 rounded-2xl bg-ink text-white text-sm font-medium hover:bg-ink/85 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 focus-visible:ring-offset-2"
+          disabled={disabled}
+          className="inline-flex w-full items-center justify-center gap-2 h-12 px-7 rounded-2xl bg-ink text-white text-sm font-medium hover:bg-ink/85 transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 focus-visible:ring-offset-2"
         >
           Подтвердить заказ
         </button>
@@ -211,6 +211,11 @@ export function OrderSummary({
         {attempted && errorCount > 0 && (
           <p className="mt-2 text-[12px] text-sale text-center" role="alert">
             Заполните выделенные поля, чтобы продолжить
+          </p>
+        )}
+        {disabled && items.length > 0 && (
+          <p className="mt-2 text-[12px] text-sale text-center" role="alert">
+            Проверьте доступность товаров или дождитесь завершения оформления
           </p>
         )}
       </div>

@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase/client";
 import { getProductsByCategory } from "@/lib/products";
 import type { CategorySlug, Product } from "@/lib/data/products";
+import { categoryPath } from "@/lib/catalog/category-path";
 
 export interface HomeCategoryRail {
   slug: string;
@@ -53,7 +54,10 @@ export async function getMenu(location: "top" | "main" | "footer"): Promise<Menu
     .eq("menu_location", location)
     .eq("is_visible", true)
     .order("sort_order", { ascending: true });
-  return ((data ?? []) as { title: string; link_url: string | null }[]).map((m) => ({ title: m.title, href: m.link_url || "#" }));
+  return ((data ?? []) as { title: string; link_url: string | null }[]).map((m) => ({
+    title: m.title,
+    href: m.link_url === "/category/iphone-used" ? categoryPath("iphone-used") : (m.link_url || "#"),
+  }));
 }
 
 export interface NavCategory {
@@ -114,11 +118,13 @@ export interface CategoryMeta {
 /** Мета категории из БД (название, описание, иконка, SEO-текст, фильтры, SEO-мета, базовая сортировка). */
 export async function getCategoryMeta(slug: string): Promise<CategoryMeta | null> {
   if (!supabase) return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("categories")
     .select("title,description,subtitle,icon_url,seo_text,available_filters,meta_title,meta_description,default_sort")
     .eq("slug", slug)
+    .eq("is_published", true)
     .maybeSingle();
+  if (error) throw error;
   if (!data) return null;
   const d = data as Record<string, unknown>;
   return {
@@ -311,15 +317,21 @@ function mergeDelivery(d: Partial<CartDeliveryOption>, i: number): CartDeliveryO
   };
 }
 
-export async function getCartSettings(): Promise<CartSettings> {
-  if (!supabase) return DEFAULT_CART_SETTINGS;
-  const { data } = await supabase.from("shop_settings").select("value").eq("key", "cart").maybeSingle();
-  const v = data?.value as Partial<CartSettings> | undefined;
-  if (!v) return DEFAULT_CART_SETTINGS;
+/** Нормализует JSON настроек корзины одинаково для витрины и Server Action. */
+export function normalizeCartSettings(value: unknown): CartSettings {
+  const v = (value ?? {}) as Partial<CartSettings>;
   return {
     payments: v.payments?.length ? v.payments.map(mergePayment) : DEFAULT_CART_SETTINGS.payments,
     delivery: v.delivery?.length ? v.delivery.map(mergeDelivery) : DEFAULT_CART_SETTINGS.delivery,
   };
+}
+
+export async function getCartSettings(): Promise<CartSettings> {
+  if (!supabase) return DEFAULT_CART_SETTINGS;
+  const { data, error } = await supabase.from("shop_settings").select("value").eq("key", "cart").maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Не найдена настройка корзины shop_settings.cart");
+  return normalizeCartSettings(data.value);
 }
 
 export interface MetrikaSettings {
@@ -529,12 +541,13 @@ export async function getBlogPosts(limit?: number): Promise<BlogPostCard[]> {
   if (!supabase) return [];
   let q = supabase
     .from("blog_posts")
-    .select("id,slug,title,excerpt,cover_url,published_at,views_count,blog_categories(title)")
+    .select("id,slug,title,excerpt,cover_url,published_at,updated_at,views_count,blog_categories(title)")
     .eq("status", "published")
     .order("published_at", { ascending: false, nullsFirst: false });
   if (limit) q = q.limit(limit);
-  const { data } = await q;
-  if (!data) return [];
+  const { data, error } = await q;
+  if (error) throw error;
+  if (!data) throw new Error("Не удалось загрузить опубликованные статьи");
   return (data as Record<string, unknown>[]).map((r) => ({
     id: r.id as string,
     slug: r.slug as string,
@@ -542,6 +555,7 @@ export async function getBlogPosts(limit?: number): Promise<BlogPostCard[]> {
     excerpt: (r.excerpt as string) ?? null,
     cover_url: (r.cover_url as string) ?? null,
     published_at: (r.published_at as string) ?? null,
+    updated_at: (r.updated_at as string) ?? null,
     views: (r.views_count as number) ?? 0,
     category: (r.blog_categories as { title?: string } | null)?.title ?? null,
   }));
@@ -549,12 +563,13 @@ export async function getBlogPosts(limit?: number): Promise<BlogPostCard[]> {
 
 export async function getBlogPost(slug: string): Promise<BlogPostCard | null> {
   if (!supabase) return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("blog_posts")
     .select("id,slug,title,excerpt,cover_url,og_image_url,published_at,updated_at,content,category_id,views_count,meta_title,meta_description")
     .eq("slug", slug)
     .eq("status", "published")
     .maybeSingle();
+  if (error) throw error;
   if (!data) return null;
   const r = data as Record<string, unknown>;
   return { ...(data as BlogPostCard), views: (r.views_count as number) ?? 0 };
@@ -661,24 +676,39 @@ export interface StaticPageRow {
   meta_description: string | null;
 }
 
+export function normalizePublishedCopy(value: string | null): string | null {
+  return value?.replace(/в Старый Осколе/gu, "в Старом Осколе") ?? null;
+}
+
 export async function getStaticPage(slug: string): Promise<StaticPageRow | null> {
   if (!supabase) return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("static_pages")
     .select("slug,title,content,meta_title,meta_description")
     .eq("slug", slug)
     .eq("status", "published")
     .maybeSingle();
-  return (data as StaticPageRow) ?? null;
+  if (error) throw error;
+  if (!data) return null;
+  const page = data as StaticPageRow;
+  return {
+    ...page,
+    title: normalizePublishedCopy(page.title) ?? page.title,
+    content: normalizePublishedCopy(page.content),
+    meta_title: normalizePublishedCopy(page.meta_title),
+    meta_description: normalizePublishedCopy(page.meta_description),
+  };
 }
 
 /** Опубликованные страницы для sitemap (slug + дата изменения). */
 export async function getPublishedPageSlugs(): Promise<{ slug: string; updatedAt: string | null }[]> {
   if (!supabase) return [];
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("static_pages")
     .select("slug,updated_at")
     .eq("status", "published")
     .limit(1000);
-  return ((data as { slug: string; updated_at: string | null }[]) ?? []).map((r) => ({ slug: r.slug, updatedAt: r.updated_at }));
+  if (error) throw error;
+  if (!data) throw new Error("Не удалось загрузить опубликованные страницы");
+  return (data as { slug: string; updated_at: string | null }[]).map((r) => ({ slug: r.slug, updatedAt: r.updated_at }));
 }

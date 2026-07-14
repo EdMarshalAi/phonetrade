@@ -15,6 +15,18 @@ import {
   type ProductRow,
   type CategoryRow,
 } from "@/lib/supabase/types";
+import { cache } from "react";
+
+// Каталог передаётся в Client Component целиком ради локальных фильтров.
+// Не сериализуем тяжёлые SEO-тексты, specs/highlights и служебные поля: карточке,
+// фильтрам и добавлению в корзину достаточно этого набора.
+const CATALOG_PRODUCT_SELECT = [
+  "id", "title", "category_slug", "model", "color", "memory", "sim",
+  "image", "gallery", "price_cash", "price_card", "price_old",
+  "installment_from", "installment_partner", "badge", "badges", "options",
+  "condition", "condition_text", "battery", "is_used", "is_new",
+  "in_stock", "stock", "is_available", "sku", "brand",
+].join(",");
 
 /**
  * Data access layer — components MUST consume these getters, not the mock
@@ -25,14 +37,16 @@ import {
 
 /**
  * Разрешена ли продажа/показ товаров с нулевым остатком (shop_settings.product_availability).
- * По умолчанию true — ничего не скрываем, пока магазин не настроит.
+ * Без Supabase локальные mock-данные доступны. При ошибке production-чтения
+ * действуем fail-closed и не разрешаем заказывать явный нулевой остаток.
  */
-export async function getAllowZeroStock(): Promise<boolean> {
+export const getAllowZeroStock = cache(async (): Promise<boolean> => {
   if (!supabase) return true;
-  const { data } = await supabase.from("shop_settings").select("value").eq("key", "product_availability").maybeSingle();
+  const { data, error } = await supabase.from("shop_settings").select("value").eq("key", "product_availability").maybeSingle();
+  if (error || !data) return false;
   const v = data?.value as { allow_zero_stock?: boolean } | null;
   return v?.allow_zero_stock !== false;
-}
+});
 
 /** Скрывает товары с явным нулевым остатком, если показ запрещён. null/undefined остаток = «уточняйте» → видим. */
 function hideZeroStock(products: Product[], allow: boolean): Product[] {
@@ -40,61 +54,67 @@ function hideZeroStock(products: Product[], allow: boolean): Product[] {
   return products.filter((p) => p.stock == null || p.stock > 0);
 }
 
-export async function getCategories(): Promise<Category[]> {
+export const getCategories = cache(async (): Promise<Category[]> => {
   if (!supabase) return CATEGORIES;
   const { data, error } = await supabase
     .from("categories")
     .select("*")
     .eq("is_published", true)
     .order("sort", { ascending: true });
-  if (error || !data || data.length === 0) return CATEGORIES;
+  if (error) throw error;
+  if (!data) throw new Error("Не удалось загрузить категории");
   return (data as CategoryRow[]).map(rowToCategory);
-}
+});
 
 export async function getFeaturedIphones(): Promise<Product[]> {
   if (!supabase) return FEATURED_IPHONES;
   const { data, error } = await supabase
     .from("products")
-    .select("*")
+    .select(CATALOG_PRODUCT_SELECT)
     .eq("category_slug", "iphone")
     .eq("status", "published")
     .is("deleted_at", null)
     .order("sort", { ascending: true })
     .limit(8);
-  if (error || !data || data.length === 0) return FEATURED_IPHONES;
-  return hideZeroStock((data as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
+  if (error) throw error;
+  if (!data) throw new Error("Не удалось загрузить товары iPhone");
+  return hideZeroStock((data as unknown as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
 }
 
 export async function getFeaturedCatalog(): Promise<Product[]> {
   if (!supabase) return FEATURED_CATALOG;
   const { data, error } = await supabase
     .from("products")
-    .select("*")
+    .select(CATALOG_PRODUCT_SELECT)
     .in("category_slug", ["ipad", "mac", "watch"])
     .eq("status", "published")
     .is("deleted_at", null)
     .order("sort", { ascending: true })
     .limit(8);
-  if (error || !data || data.length === 0) return FEATURED_CATALOG;
-  return hideZeroStock((data as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
+  if (error) throw error;
+  if (!data) throw new Error("Не удалось загрузить каталог");
+  return hideZeroStock((data as unknown as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
 }
 
 export async function getUsedProducts(): Promise<Product[]> {
   if (!supabase) return USED_IPHONES;
   const { data, error } = await supabase
     .from("products")
-    .select("*")
+    .select(CATALOG_PRODUCT_SELECT)
     .eq("is_used", true)
     .eq("status", "published")
     .is("deleted_at", null)
     .order("sort", { ascending: true });
-  if (error || !data || data.length === 0) return USED_IPHONES;
-  return hideZeroStock((data as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
+  if (error) throw error;
+  if (!data) throw new Error("Не удалось загрузить Б/У товары");
+  return hideZeroStock((data as unknown as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
 }
 
 export async function getHeroProduct(): Promise<Product> {
   const iphones = await getFeaturedIphones();
-  return iphones[0] ?? FEATURED_IPHONES[3];
+  if (iphones[0]) return iphones[0];
+  if (!supabase) return FEATURED_IPHONES[3];
+  throw new Error("Нет опубликованного hero-товара");
 }
 
 /** Количество опубликованных товаров по каждому category_slug (для чипов подкатегорий). */
@@ -115,13 +135,19 @@ export async function getProductCountsByCategory(): Promise<Record<string, numbe
     }
   }
   // Б/У товары (type='used') — у них свои категории (…-used), посчитаем тоже
-  const { data: usedData } = await supabase
+  const { data: usedData, error: usedError } = await supabase
     .from("products")
     .select("category_slug")
     .eq("status", "published")
     .is("deleted_at", null)
     .eq("type", "used")
     .limit(10000);
+  // Частичный результат опаснее отсутствующего: sitemap воспримет пропущенные
+  // категории как пустые. При любой ошибке отдаём исключение, а вызывающий код
+  // сохраняет текущую индексную политику.
+  if (error) throw error;
+  if (usedError) throw usedError;
+  if (!data || !usedData) throw new Error("Не удалось получить полный счётчик категорий");
   if (usedData) {
     for (const r of usedData as { category_slug: string | null }[]) {
       if (r.category_slug) counts[r.category_slug] = (counts[r.category_slug] ?? 0) + 1;
@@ -137,33 +163,78 @@ export async function getProductsByCategory(
 
   let base;
   if (slug === "used") {
-    base = supabase.from("products").select("*").eq("is_used", true);
+    base = supabase.from("products").select(CATALOG_PRODUCT_SELECT).eq("is_used", true);
   } else {
     // Двухуровневый каталог: для родительской категории собираем товары всех её серий.
-    const { data: children } = await supabase.from("categories").select("slug").eq("parent_slug", slug);
-    const childSlugs = (children ?? []).map((c) => c.slug as string);
+    const { data: children, error: childrenError } = await supabase
+      .from("categories")
+      .select("slug")
+      .eq("parent_slug", slug)
+      .eq("is_published", true);
+    if (childrenError) throw childrenError;
+    if (!children) throw new Error(`Не удалось загрузить дочерние категории ${slug}`);
+    const childSlugs = children.map((c) => c.slug as string);
     base = childSlugs.length > 0
-      ? supabase.from("products").select("*").in("category_slug", [slug, ...childSlugs])
-      : supabase.from("products").select("*").eq("category_slug", slug);
+      ? supabase.from("products").select(CATALOG_PRODUCT_SELECT).in("category_slug", [slug, ...childSlugs])
+      : supabase.from("products").select(CATALOG_PRODUCT_SELECT).eq("category_slug", slug);
   }
   const { data, error } = await base
     .eq("status", "published")
     .is("deleted_at", null)
     .order("sort", { ascending: true });
-  if (error || !data) return mockByCategory(slug);
-  return hideZeroStock((data as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
+  if (error) throw error;
+  if (!data) throw new Error(`Не удалось загрузить категорию ${slug}`);
+  return hideZeroStock((data as unknown as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
 }
 
-export async function getProductById(id: string): Promise<Product | undefined> {
+export const getProductById = cache(async (id: string): Promise<Product | undefined> => {
   if (!supabase) return ALL_PRODUCTS.find((p) => p.id === id);
   const { data, error } = await supabase
     .from("products")
     .select("*")
     .eq("id", id)
+    .eq("status", "published")
     .is("deleted_at", null)
     .maybeSingle();
-  if (error) return ALL_PRODUCTS.find((p) => p.id === id);
+  // Ошибка БД не должна превращаться в ложную карточку из mock-каталога или
+  // SEO-404. Пусть Next вернёт временную серверную ошибку, а не неверный 200.
+  if (error) throw error;
   return data ? rowToProduct(data as ProductRow) : undefined;
+});
+
+/**
+ * Количество опубликованных товаров, доступных по маршруту категории.
+ * `null` означает ошибку чтения: в этом случае нельзя автоматически ставить
+ * noindex, чтобы временный сбой БД не изменил индексную политику страницы.
+ */
+export async function getCategoryProductCount(slug: string): Promise<number | null> {
+  if (!supabase) return mockByCategory(slug as CategorySlug).length;
+
+  if (slug === "used") {
+    const { count, error } = await supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("is_used", true)
+      .eq("status", "published")
+      .is("deleted_at", null);
+    return error ? null : (count ?? 0);
+  }
+
+  const { data: children, error: childrenError } = await supabase
+    .from("categories")
+    .select("slug")
+    .eq("parent_slug", slug)
+    .eq("is_published", true);
+  if (childrenError) return null;
+
+  const slugs = [slug, ...(children ?? []).map((c) => c.slug as string)];
+  const { count, error } = await supabase
+    .from("products")
+    .select("id", { count: "exact", head: true })
+    .in("category_slug", slugs)
+    .eq("status", "published")
+    .is("deleted_at", null);
+  return error ? null : (count ?? 0);
 }
 
 export async function getRelatedProducts(
@@ -175,43 +246,48 @@ export async function getRelatedProducts(
   // Только явно выбранные в админке сопутствующие товары (без авто-подбора).
   const ids = product.relatedProductIds ?? [];
   if (ids.length === 0) return [];
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("products")
-    .select("*")
+    .select(CATALOG_PRODUCT_SELECT)
     .in("id", ids)
     .eq("status", "published")
     .is("deleted_at", null);
-  const byId = new Map((data as ProductRow[] | null ?? []).map((r) => [r.id, rowToProduct(r)]));
-  return ids.map((id) => byId.get(id)).filter((p): p is Product => !!p).slice(0, limit);
+  if (error) throw error;
+  if (!data) throw new Error("Не удалось загрузить сопутствующие товары");
+  const byId = new Map((data as unknown as ProductRow[]).map((r) => [r.id, rowToProduct(r)]));
+  const ordered = ids.map((id) => byId.get(id)).filter((p): p is Product => !!p);
+  return hideZeroStock(ordered, await getAllowZeroStock()).slice(0, limit);
 }
 
 export async function getNewProducts(): Promise<Product[]> {
   if (!supabase) return ALL_PRODUCTS.filter((p) => p.isNew);
   const { data, error } = await supabase
     .from("products")
-    .select("*")
+    .select(CATALOG_PRODUCT_SELECT)
     .eq("is_new", true)
     .eq("status", "published")
     .is("deleted_at", null)
     .order("sort", { ascending: true });
-  if (error || !data) return ALL_PRODUCTS.filter((p) => p.isNew);
-  return hideZeroStock((data as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
+  if (error) throw error;
+  if (!data) throw new Error("Не удалось загрузить новинки");
+  return hideZeroStock((data as unknown as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
 }
 
-/** Лёгкий список опубликованных товаров для sitemap (id + дата изменения). */
-export async function getSitemapProducts(): Promise<{ id: string; updatedAt: string | null; image: string | null }[]> {
-  if (!supabase) return ALL_PRODUCTS.map((p) => ({ id: p.id, updatedAt: null, image: p.image ?? null }));
+/** Лёгкий список опубликованных товаров для sitemap. */
+export async function getSitemapProducts(): Promise<{ id: string; image: string | null }[]> {
+  if (!supabase) return ALL_PRODUCTS.map((p) => ({ id: p.id, image: p.image ?? null }));
   const { data, error } = await supabase
     .from("products")
-    .select("id,updated_at,image,is_indexable")
+    .select("id,image,is_indexable")
     .eq("status", "published")
     .is("deleted_at", null)
     .limit(5000);
-  if (error || !data) return ALL_PRODUCTS.map((p) => ({ id: p.id, updatedAt: null, image: p.image ?? null }));
+  if (error) throw error;
+  if (!data) throw new Error("Не удалось загрузить товары для sitemap");
   // Не включаем в sitemap товары с robots:noindex (is_indexable=false) — иначе конфликт с карточкой.
-  return (data as { id: string; updated_at: string | null; image: string | null; is_indexable: boolean | null }[])
+  return (data as { id: string; image: string | null; is_indexable: boolean | null }[])
     .filter((r) => r.is_indexable !== false)
-    .map((r) => ({ id: r.id, updatedAt: r.updated_at, image: r.image ?? null }));
+    .map((r) => ({ id: r.id, image: r.image ?? null }));
 }
 
 const CATEGORY_SEARCH_LABEL: Record<string, string> = {
@@ -244,11 +320,13 @@ export async function searchProducts(query: string): Promise<Product[]> {
   } else {
     const { data, error } = await supabase
       .from("products")
-      .select("*")
+      .select(CATALOG_PRODUCT_SELECT)
       .eq("status", "published")
       .is("deleted_at", null)
       .limit(1000);
-    pool = error || !data ? ALL_PRODUCTS : (data as ProductRow[]).map(rowToProduct);
+    if (error) throw error;
+    if (!data) throw new Error("Не удалось выполнить поиск по каталогу");
+    pool = (data as unknown as ProductRow[]).map(rowToProduct);
   }
 
   const allow = supabase ? await getAllowZeroStock() : true;
@@ -282,9 +360,12 @@ export async function getVariantsForProduct(product: Product): Promise<{
   const { data, error } = await supabase
     .from("products")
     .select("*")
-    .eq("variant_group_id", product.variantGroupId);
-  if (error || !data || data.length === 0) return { colors: [], memories: [], sims: [] };
-  const siblings = (data as ProductRow[]).map(rowToProduct);
+    .eq("variant_group_id", product.variantGroupId)
+    .eq("status", "published")
+    .is("deleted_at", null);
+  if (error) throw error;
+  if (!data || data.length === 0) return { colors: [], memories: [], sims: [] };
+  const siblings = hideZeroStock((data as ProductRow[]).map(rowToProduct), await getAllowZeroStock());
   // Оси выбора независимы: фиксируем две координаты, варьируем третью —
   // переключение цвета сохраняет память и SIM и т.д. SIM-переключатель
   // на витрине скрыт, если в группе один вариант SIM (старые модели/Б/У).

@@ -21,6 +21,7 @@ type CartContextValue = {
   setQty: (productId: string, qty: number) => Promise<void>;
   remove: (productId: string) => Promise<void>;
   clear: () => Promise<void>;
+  refresh: () => Promise<void>;
 };
 
 const CartContext = React.createContext<CartContextValue | null>(null);
@@ -51,12 +52,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     await clearCart();
     setItems([]);
   }, []);
+  const refresh = React.useCallback(async () => {
+    setItems(await getCart());
+  }, []);
 
   const count = items.reduce((acc, i) => acc + i.qty, 0);
 
   const value = React.useMemo<CartContextValue>(
-    () => ({ items, count, ready, add, setQty, remove, clear }),
-    [items, count, ready, add, setQty, remove, clear]
+    () => ({ items, count, ready, add, setQty, remove, clear, refresh }),
+    [items, count, ready, add, setQty, remove, clear, refresh]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

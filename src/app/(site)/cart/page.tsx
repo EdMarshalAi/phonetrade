@@ -1,10 +1,12 @@
+import type { Metadata } from "next";
 import { CartShell } from "@/components/cart/CartShell";
 import { getCartSettings, getCheckoutBlocks } from "@/lib/content";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Корзина и оформление",
   description:
     "Оформление заказа в PhoneTrade — без регистрации или с быстрым входом.",
+  robots: { index: false, follow: false },
 };
 
 export default async function CartPage() {

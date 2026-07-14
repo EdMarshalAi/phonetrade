@@ -1,7 +1,7 @@
 /**
  * Публикует статьи-кластеры (наушники/часы/ноутбук/сравнения/PS5) из JSON,
  * подготовленных субагентами. Обложки — из фото товара coverCategory, старт-
- * просмотры 10–15k. Идемпотентно (upsert по slug).
+ * просмотры не подделывает. Идемпотентно (upsert по slug).
  * Запуск: npx tsx scripts/seo-cluster-content-2026-07.ts
  */
 import { readFileSync } from "node:fs";
@@ -37,12 +37,11 @@ async function main() {
   let ok = 0;
   for (const a of articles) {
     const cover = await coverFor(db, a.coverCategory);
-    const views = 10000 + Math.floor(Math.random() * 5001);
     const row = {
       slug: a.slug, title: a.title, excerpt: a.excerpt, content: a.content_html,
       cover_url: cover, og_image_url: cover, category_id: a.category_id, tags: a.tags ?? [],
       status: "published", meta_title: a.meta_title, meta_description: a.meta_description,
-      views_count: views, published_at: now, updated_at: now,
+      published_at: now, updated_at: now,
     };
     const { data: ex } = await db.from("blog_posts").select("id").eq("slug", a.slug).maybeSingle();
     if (ex?.id) {
@@ -52,7 +51,7 @@ async function main() {
     } else {
       const { error } = await db.from("blog_posts").insert({ id: randomUUID(), created_at: now, ...row });
       if (error) { console.warn("ins fail", a.slug, error.message); continue; }
-      console.log(`✓ ${a.slug} (cover ${cover ? "✓" : "✗"}, ${views})`);
+      console.log(`✓ ${a.slug} (cover ${cover ? "✓" : "✗"})`);
     }
     ok++;
   }

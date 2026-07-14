@@ -2,7 +2,7 @@
  * SEO-доводка карточек товаров (аудит C5):
  *  1) meta_title  — length-aware ≤60 (keyword «Белгород» сохраняется, пока влезает);
  *  2) meta_description — пересборка ≤160 (раньше резалось до 300 → обрезки в выдаче);
- *  3) description_html — уникальный per-unit лид-абзац (конфигурация/цена/состояние/
+ *  3) description_html — уникальный per-unit лид-абзац (конфигурация/состояние/
  *     аккумулятор) перед общей модельной копией, чтобы 74 одинаковых тела на 317
  *     товаров стали уникальными по первому экрану. Идемпотентно (маркер <!--ul-->).
  * НЕ переписывает модельную копию (E-E-A-T), только добавляет честный лид.
@@ -17,8 +17,6 @@ function loadEnv() {
   for (const l of raw.split("\n")) { const m = l.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/); if (m && !process.env[m[1]]) process.env[m[1]] = m[2]; }
 }
 
-const fmtPrice = (n: number | null) => (n ? `${Math.round(n).toLocaleString("ru-RU")} ₽` : null);
-
 function hookFor(cat: string, isUsed: boolean): string {
   if (cat.startsWith("iphone")) return isUsed ? "смартфон Apple iPhone, проверенный Б/У" : "флагманский смартфон Apple iPhone";
   if (cat.startsWith("samsung")) return "флагманский смартфон Samsung Galaxy";
@@ -31,7 +29,7 @@ function hookFor(cat: string, isUsed: boolean): string {
   if (cat === "apple-pencil") return "стилус Apple Pencil";
   if (cat === "mac-accessories") return "аксессуар для Mac";
   if (cat === "audio-accessories") return "аудио-аксессуар";
-  return "оригинальный аксессуар Apple";
+  return "оригинальная техника";
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -52,8 +50,8 @@ function buildMetaTitle(title: string): string {
 }
 
 // meta_description ≤160: выбираем самый длинный вариант, который влезает.
-function buildMetaDesc(title: string, price: string | null, hookCap: string): string {
-  const base = `Купить ${title} в Белгороде${price ? ` за ${price}` : ""}`;
+function buildMetaDesc(title: string, hookCap: string): string {
+  const base = `Купить ${title} в Белгороде`;
   const tails = [
     ` — ${hookCap}. Гарантия, доставка и самовывоз. PhoneTrade.`,
     `. Гарантия, доставка по городу и самовывоз. PhoneTrade.`,
@@ -68,17 +66,16 @@ function buildMetaDesc(title: string, price: string | null, hookCap: string): st
 }
 
 // Уникальный лид-абзац для description_html.
-function buildLead(p: any, price: string | null): string {
+function buildLead(p: any): string {
   const t = String(p.title).trim();
-  const priceFrag = price ? ` за ${price} наличными` : "";
   if (p.type === "used") {
     const raw = (p.condition_text && String(p.condition_text).trim()) || "отличное, проверено";
     const c = raw.replace(/\s+/g, " ").replace(/\.+$/, "");
     const condText = /^состояни/i.test(c) ? c : `состояние — ${c}`;
     const bat = p.battery != null ? `, аккумулятор ${p.battery}%` : "";
-    return `<p><strong>${t}</strong> — проверенный Б/У: ${condText}${bat}. Купить в Белгороде${priceFrag}: Apple ID отвязан, действует гарантия магазина. Доставка по городу и самовывоз с ул. Попова, 36, рассрочка и Trade-in.</p>`;
+    return `<p><strong>${t}</strong> — проверенный Б/У: ${condText}${bat}. Купить в Белгороде: устройство проверено, действует гарантия магазина. Доставка по городу и самовывоз с ул. Попова, 36, рассрочка и Trade-in.</p>`;
   }
-  return `<p><strong>${t}</strong> — оригинал Apple с гарантией магазина и проверкой при выдаче. Купить в Белгороде${priceFrag}: доставка по городу и самовывоз с ул. Попова, 36, рассрочка, кредит и Trade-in.</p>`;
+  return `<p><strong>${t}</strong> — ${hookFor(String(p.category_slug || ""), false)} с гарантией магазина и проверкой при выдаче. Купить в Белгороде: доставка по городу и самовывоз с ул. Попова, 36, рассрочка, кредит и Trade-in.</p>`;
 }
 
 const MARK = "<!--ul-->";
@@ -88,7 +85,7 @@ async function main() {
   const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
   const { data, error } = await db
     .from("products")
-    .select("id,title,category_slug,type,price_cash,condition_text,battery,description_html")
+    .select("id,title,category_slug,type,condition_text,battery,description_html")
     .is("deleted_at", null)
     .limit(5000);
   if (error) throw error;
@@ -99,16 +96,14 @@ async function main() {
     const title = String(p.title).trim();
     const isUsed = p.type === "used";
     const hookCap = cap(hookFor(p.category_slug as string, isUsed));
-    const price = fmtPrice(p.price_cash);
-
     const meta_title = buildMetaTitle(title);
-    const meta_description = buildMetaDesc(title, price, hookCap);
+    const meta_description = buildMetaDesc(title, hookCap);
 
     // description_html: снять старый лид (если был) и поставить свежий.
     let body = String(p.description_html || "");
     const i = body.indexOf(MARK);
     if (i >= 0) body = body.slice(i + MARK.length);
-    const description_html = body.trim().length > 0 ? `${buildLead(p, price)}${MARK}${body}` : body;
+    const description_html = body.trim().length > 0 ? `${buildLead(p)}${MARK}${body}` : body;
 
     if (meta_title.length > 60) console.warn(`! mt>60 ${p.id}: ${meta_title.length}`);
     if (meta_description.length > 160) console.warn(`! md>160 ${p.id}: ${meta_description.length}`);

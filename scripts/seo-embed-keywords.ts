@@ -1,11 +1,11 @@
 /**
  * SEO-зашивка ключей по семантике (Белгород) поверх существующей меты.
  * Для КАЖДОГО товара:
- *  1) meta_description — пересборка ≤160 с ценой + русской памятью + интентом
+ *  1) meta_description — пересборка ≤160 с русской памятью + интентом
  *     (купить/в наличии/рассрочка) + гео (Белгород + доставка по области) + CTA;
  *  2) description_html — добавляет идемпотентный SEO-блок (маркер <!--seo-kw-->):
  *     H2 с конфигурацией, естественный абзац с разговорными/транслит формами
- *     модели + память РУ + цена + интент, и FAQ (закрывает «сколько стоит / какие
+ *     модели + память РУ + интент, и FAQ (закрывает «сколько стоит / какие
  *     цвета и память / рассрочка / доставка» + даёт основу для FAQPage-schema).
  * meta_title не трогаем (уже ≤60 с «Белгород»). Конкурентов не упоминаем.
  * Запуск: npx tsx scripts/seo-embed-keywords.ts            (всё)
@@ -23,7 +23,6 @@ loadEnv();
 const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
 
 const SAMPLE = process.argv.includes("--sample");
-const rub = (n: number | null) => (n ? `${Math.round(n).toLocaleString("ru-RU")} ₽` : "");
 const memRU = (m: string | null) => {
   if (!m) return "";
   const s = m.toUpperCase().replace(/\s+/g, "");
@@ -57,13 +56,12 @@ function modelForms(model: string, cat: string): { ru: string; bare: string; en:
 function clamp(s: string, n: number): string { return s.length <= n ? s : s.slice(0, n - 1).trimEnd() + "…"; }
 
 function buildMetaDesc(p: any): string {
-  const price = rub(p.price_cash);
   const mem = memRU(p.memory);
   const conf = [p.model, mem, p.color].filter(Boolean).join(" ");
-  // цена + гео + интент + CTA, ≤160
+  // Гео + интент + CTA, без изменяемой цены в статическом тексте.
   const variants = [
-    `Купить ${conf} в Белгороде${price ? ` за ${price}` : ""}. Оригинал, гарантия, рассрочка, доставка по городу и области, самовывоз — ул. Попова, 36.`,
-    `${conf} в наличии в Белгороде${price ? ` — ${price}` : ""}. Оригинал, гарантия, рассрочка и Trade-in, доставка по области, самовывоз. Звоните!`,
+    `Купить ${conf} в Белгороде. Оригинальная техника, гарантия, рассрочка, доставка по городу и области, самовывоз — ул. Попова, 36.`,
+    `${conf} в PhoneTrade в Белгороде. Гарантия, рассрочка и Trade-in, доставка по области и самовывоз. Уточните наличие онлайн.`,
   ];
   const idx = (p.id || "").length % variants.length;
   return clamp(variants[idx], 160);
@@ -72,18 +70,17 @@ function buildMetaDesc(p: any): string {
 function buildSeoBlock(p: any): string {
   const f = modelForms(p.model || p.title, p.category_slug || "");
   const mem = memRU(p.memory), memU = memEN(p.memory);
-  const price = rub(p.price_cash);
   const color = p.color || "";
   const confTitle = [p.model, mem, color].filter(Boolean).join(" ");
   const isIphone = (p.category_slug || "").startsWith("iphone");
   const isUsed = p.type === "used";
 
   const lead = isIphone
-    ? `Хотите купить ${f.ru}${mem ? ` на ${mem}` : ""}${color ? ` в цвете «${color}»` : ""} в Белгороде? У нас ${f.bare}${memU ? ` (${memU})` : ""} — ${isUsed ? "проверенный Б/У с гарантией" : "оригинальный, новый, с гарантией"}${price ? `, цена за наличные — ${price}` : ""}. Доступны рассрочка и Trade-in, доставка по Белгороду и области (Старый Оскол, Губкин, Шебекино) и самовывоз — ул. Попова, 36.`
-    : `Купить ${f.ru}${mem ? ` ${mem}` : ""}${color ? `, цвет «${color}»` : ""} в Белгороде${price ? ` — ${price}` : ""}. Оригинал, гарантия, рассрочка, доставка по городу и области, самовывоз (ул. Попова, 36).`;
+    ? `Хотите купить ${f.ru}${mem ? ` на ${mem}` : ""}${color ? ` в цвете «${color}»` : ""} в Белгороде? У нас ${f.bare}${memU ? ` (${memU})` : ""} — ${isUsed ? "проверенный Б/У с гарантией" : "оригинальный, новый, с гарантией"}. Актуальная цена указана в карточке. Доступны рассрочка и Trade-in, доставка по Белгороду и области (Старый Оскол, Губкин, Шебекино) и самовывоз — ул. Попова, 36.`
+    : `Купить ${f.ru}${mem ? ` ${mem}` : ""}${color ? `, цвет «${color}»` : ""} в Белгороде. Актуальная цена указана в карточке товара. Гарантия, рассрочка, доставка по городу и области, самовывоз (ул. Попова, 36).`;
 
   const faq = [
-    `<p><strong>Сколько стоит ${f.bare}${mem ? ` ${mem}` : ""} в Белгороде?</strong> Цена за наличные — ${price || "уточняйте"}; доступны рассрочка и оплата картой.</p>`,
+    `<p><strong>Сколько стоит ${f.bare}${mem ? ` ${mem}` : ""} в Белгороде?</strong> Актуальная цена за наличные и картой указана в верхней части карточки; также доступна рассрочка.</p>`,
     isIphone ? `<p><strong>Это оригинал?</strong> Да, ${isUsed ? "проверенный Б/У" : "новый оригинальный"} ${f.ru} с проверкой по серийному номеру и гарантией.</p>` : `<p><strong>Это оригинал?</strong> Да, оригинальная техника с гарантией.</p>`,
     `<p><strong>Доставка и самовывоз?</strong> Доставка по Белгороду и области, самовывоз — ул. Попова, 36. Trade-in: примем ваше старое устройство в зачёт.</p>`,
   ].join("\n");
@@ -99,7 +96,7 @@ async function main() {
   let from = 0; const page = 1000; const all: any[] = [];
   for (;;) {
     const { data, error } = await db.from("products")
-      .select("id,title,model,memory,color,price_cash,category_slug,type,status,meta_description,description_html")
+      .select("id,title,model,memory,color,category_slug,type,status,meta_description,description_html")
       .eq("status", "published").is("deleted_at", null)
       .range(from, from + page - 1);
     if (error) throw error;

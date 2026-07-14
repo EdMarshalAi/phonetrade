@@ -17,7 +17,7 @@ function isEligible(promo: ValidatedPromo, item: CartItem): boolean {
   return false;
 }
 
-export type PromoCalc = { amount: number; note?: string };
+export type PromoCalc = { amount: number; note?: string; freeShipping?: boolean };
 
 /**
  * Считает скидку промокода по текущей корзине и базе цены (наличные/карта).
@@ -29,7 +29,6 @@ export function computePromoDiscount(
   base: "cash" | "card"
 ): PromoCalc {
   if (!promo) return { amount: 0 };
-  if (promo.discountType === "free_shipping") return { amount: 0, note: "Бесплатная доставка" };
 
   const subtotal = items.reduce(
     (s, i) => s + (base === "card" ? i.product.priceCard : i.product.priceCash) * i.qty,
@@ -44,6 +43,9 @@ export function computePromoDiscount(
     .reduce((s, i) => s + (base === "card" ? i.product.priceCard : i.product.priceCash) * i.qty, 0);
 
   if (eligibleBase <= 0) return { amount: 0, note: "Промокод не применим к товарам в корзине" };
+  if (promo.discountType === "free_shipping") {
+    return { amount: 0, note: "Бесплатная доставка", freeShipping: true };
+  }
 
   const amount =
     promo.discountType === "percent"

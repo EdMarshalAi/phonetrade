@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Eye } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { getBlogPost, getRelatedBlogPosts } from "@/lib/content";
 import { jsonLdScript } from "@/lib/utils/json-ld";
 import { faqFromHtml, faqPageLd } from "@/lib/utils/faq-schema";
@@ -80,10 +80,6 @@ export default async function BlogPostPage({
         <h1 className="mt-5 text-3xl font-semibold tracking-tight text-ink md:text-4xl">{post.title}</h1>
         <div className="mt-2 flex items-center gap-3 text-[13px] text-ink-subtle">
           {post.published_at ? <span>{new Date(post.published_at).toLocaleDateString("ru-RU")}</span> : null}
-          <span className="inline-flex items-center gap-1.5">
-            <Eye className="size-3.5" aria-hidden />
-            <span className="tabular-nums">{(post.views ?? 0).toLocaleString("ru-RU")}</span>
-          </span>
         </div>
         <BlogViewPing slug={slug} />
         {post.cover_url ? (

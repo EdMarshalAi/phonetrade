@@ -7,7 +7,7 @@ import { TradeInQuiz } from "@/components/trade-in/TradeInQuiz";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Trade-in iPhone в Белгороде — узнать цену за 2 минуты | PhoneTrade",
+  title: "Trade-in iPhone в Белгороде — узнать цену за 2 минуты",
   description:
     "Сдайте старый iPhone и получите деньги или скидку на новый. Оценка онлайн за 2 минуты, выкуп в Белгороде с гарантией. Принимаем iPhone от 8 до 16 Pro Max.",
   alternates: { canonical: "/trade-in" },
@@ -47,7 +47,7 @@ export default async function TradeInPage() {
         <div className="container-page py-10 text-center md:py-14">
           <span className="inline-flex items-center rounded-full border border-white/20 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-white/70">Trade-in</span>
           <h1 className="mx-auto mt-4 max-w-3xl text-3xl font-semibold leading-[1.05] tracking-[-0.03em] text-white md:text-5xl">
-            Сдай старый — забери новый
+            Trade-in iPhone в Белгороде
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-[15px] leading-relaxed text-white/65 md:text-[17px]">
             Узнайте цену вашего iPhone за 2 минуты онлайн — получите деньги или скидку на новый.

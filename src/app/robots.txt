@@ -1,6 +1,10 @@
-# AI-краулеры и нейро-поиск (Яндекс-нейро, Google AI, ChatGPT, Perplexity, Claude)
-# — явно разрешаем каталог и блог, закрываем приватное. Это ворота в AI-выдачу.
-User-agent: YandexBot
+User-agent: Yandex
+Allow: /
+Disallow: /admin
+Clean-param: color&memory&sort&model&sim&condition&min&max&battery
+Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&yclid&gclid&from
+Clean-param: page&etext&url&butrub&tubl&tuble&tuble3&phone&teh&aks&w&q&tubl6
+
 User-agent: GPTBot
 User-agent: OAI-SearchBot
 User-agent: ChatGPT-User
@@ -19,13 +23,5 @@ Disallow: /search
 User-agent: *
 Allow: /
 Disallow: /admin
-Disallow: /account
-Disallow: /cart
-Disallow: /auth
-Disallow: /search
-Clean-param: color&memory&sort&model&sim&condition
-Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&yclid&gclid&from
-Clean-param: page&etext&url&butrub&tubl&tuble&tuble3
 
-Host: https://phonetrade31.ru
 Sitemap: https://phonetrade31.ru/sitemap.xml

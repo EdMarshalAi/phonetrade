@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "lint:critical": "eslint next.config.ts scripts/seo-smoke.mjs tests/seo-regression.test.ts src/lib/product-commerce.ts src/lib/products.ts src/lib/content.ts src/lib/supabase/types.ts src/lib/cart/totals.ts src/lib/cart/promo.ts src/lib/cart/promo-actions.ts src/lib/cart/order-actions.ts src/lib/cart/cart-actions.ts src/components/cart/CartShell.tsx src/components/cart/CartItemsSection.tsx src/app/sitemap.ts src/app/api/feed/yml/route.ts 'src/app/(site)/product/[id]/page.tsx' 'src/app/(site)/category/[slug]/page.tsx' 'src/app/(site)/account/layout.tsx' 'src/app/(site)/account/AccountClientLayout.tsx' 'src/app/(site)/auth/login/page.tsx' 'src/app/(site)/cart/page.tsx' 'src/app/admin/(panel)/content/blog/actions.ts'",
+    "test:seo": "node --import tsx --test tests/seo-regression.test.ts",
     "seed": "tsx scripts/seed-supabase.ts",
     "seed:admin": "tsx scripts/seed-admin.ts",
     "seed:content": "tsx scripts/seed-content.ts",

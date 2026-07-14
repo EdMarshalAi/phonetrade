@@ -14,8 +14,6 @@ function loadEnv() {
   for (const l of raw.split("\n")) { const m = l.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/); if (m && !process.env[m[1]]) process.env[m[1]] = m[2]; }
 }
 
-const fmtPrice = (n: number | null) => (n ? `${Math.round(n).toLocaleString("ru-RU").replace(/ /g, " ")} ₽` : null);
-
 // Категория → как называем тип товара в тексте
 function hookFor(cat: string, isUsed: boolean): string {
   if (cat.startsWith("iphone")) return isUsed ? "смартфон Apple iPhone, проверенный Б/У" : "флагманский смартфон Apple iPhone";
@@ -29,7 +27,7 @@ function hookFor(cat: string, isUsed: boolean): string {
   if (cat === "apple-pencil") return "стилус Apple Pencil";
   if (cat === "mac-accessories") return "аксессуар для Mac";
   if (cat === "audio-accessories") return "аудио-аксессуар";
-  return "оригинальный аксессуар Apple";
+  return "оригинальная техника";
 }
 
 async function main() {
@@ -37,7 +35,7 @@ async function main() {
   const db = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
   const { data, error } = await db
     .from("products")
-    .select("id,title,category_slug,type,price_cash,condition_text,battery")
+    .select("id,title,category_slug,type,condition_text,battery")
     .is("deleted_at", null)
     .limit(5000);
   if (error) throw error;
@@ -47,18 +45,17 @@ async function main() {
     const title = String(p.title).trim();
     const isUsed = p.type === "used";
     const hook = hookFor(p.category_slug as string, isUsed);
-    const price = fmtPrice(p.price_cash);
     const used = isUsed
       ? ` Состояние: ${p.condition_text && String(p.condition_text).trim() ? String(p.condition_text).trim() : "отличное, проверено"}${p.battery != null ? `, аккумулятор ${p.battery}%` : ""}.`
       : "";
 
     const short_description =
-      `${title} — ${hook}. Купить и заказать в Белгороде: ${price ? `цена ${price} наличными, ` : ""}гарантия, проверка перед выдачей, доставка по городу и самовывоз.${used}`.slice(0, 320);
+      `${title} — ${hook}. Купить и заказать в Белгороде: актуальная цена в карточке, гарантия, проверка перед выдачей, доставка по городу и самовывоз.${used}`.slice(0, 320);
 
     const meta_title = `${title} — купить в Белгороде`.slice(0, 70);
 
     const meta_description =
-      `Купить ${title} в Белгороде${price ? ` по цене ${price}` : ""}. ${hook[0].toUpperCase() + hook.slice(1)}. Гарантия, доставка по городу и самовывоз. Заказать в PhoneTrade — техника в наличии.`.slice(0, 300);
+      `Купить ${title} в Белгороде. ${hook[0].toUpperCase() + hook.slice(1)}. Актуальная цена в карточке, гарантия, доставка по городу и самовывоз.`.slice(0, 300);
 
     await db.from("products").update({ short_description, meta_title, meta_description, updated_at: new Date().toISOString() }).eq("id", p.id);
     n++;

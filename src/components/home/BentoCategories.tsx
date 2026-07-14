@@ -4,6 +4,7 @@ import { BentoCard, type BentoCardSize } from "@/components/ui/BentoCard";
 import { MotionReveal } from "@/components/ui/MotionReveal";
 import type { Category } from "@/lib/data/products";
 import type { BentoTileRow } from "@/lib/content";
+import { categoryPath } from "@/lib/catalog/category-path";
 
 type Props = {
   categories: Category[];
@@ -65,7 +66,7 @@ export function BentoCategories({ categories, tiles }: Props) {
               // (custom_image_url) — это главный источник. Если не задана — берём
               // картинку категории как фолбэк.
               const image = t.custom_image_url || t.category_image || null;
-              const href = t.category_slug ? `/category/${t.category_slug}` : "#";
+              const href = t.category_slug ? categoryPath(t.category_slug) : "#";
               return (
                 <BentoCard
                   key={t.id}
@@ -109,7 +110,7 @@ export function BentoCategories({ categories, tiles }: Props) {
                 key={cat.id}
                 title={cat.title}
                 description={cat.subtitle}
-                href={`/category/${cat.slug}`}
+                href={categoryPath(cat.slug)}
                 size={tile.size}
                 tone={tile.tone}
                 className={tile.span}

@@ -10,6 +10,7 @@ import { WhyAndFaq } from "@/components/home/WhyAndFaq";
 import { HomeFaq } from "@/components/home/HomeFaq";
 import { HOME_FAQ } from "@/lib/home-faq";
 import { jsonLdScript } from "@/lib/utils/json-ld";
+import { categoryPath } from "@/lib/catalog/category-path";
 
 const OG_IMAGE = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/content/store-belgorod.jpg";
 export const metadata: Metadata = {
@@ -134,7 +135,6 @@ export default async function HomePage() {
           id: p.id,
           title: p.title,
           date: p.published_at ? new Date(p.published_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long" }) : "",
-          views: p.views ?? 0,
           category: p.category ?? "Гаджеты",
           image: p.cover_url ?? `https://picsum.photos/seed/${p.slug}/1200/800`,
           href: `/blog/${p.slug}`,
@@ -166,7 +166,7 @@ export default async function HomePage() {
             key={rail.slug}
             eyebrow="Категория"
             title={rail.title}
-            href={`/category/${rail.slug}`}
+            href={categoryPath(rail.slug)}
             products={rail.products}
             bg={i % 2 === 1 ? "surface" : undefined}
           />

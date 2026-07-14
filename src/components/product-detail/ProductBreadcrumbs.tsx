@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { getCategories } from "@/lib/products";
 import type { Product } from "@/lib/data/products";
+import { categoryPath } from "@/lib/catalog/category-path";
 
 type Props = { product: Product };
 
@@ -23,7 +24,7 @@ export async function ProductBreadcrumbs({ product }: Props) {
       {parent && (
         <>
           <ChevronRight className="size-3.5" aria-hidden />
-          <Link href={`/category/${parent.slug}`} className="hover:text-ink transition-colors">
+          <Link href={categoryPath(parent.slug)} className="hover:text-ink transition-colors">
             {parent.title}
           </Link>
         </>
@@ -31,7 +32,7 @@ export async function ProductBreadcrumbs({ product }: Props) {
       {cat && (
         <>
           <ChevronRight className="size-3.5" aria-hidden />
-          <Link href={`/category/${cat.slug}`} className="hover:text-ink transition-colors">
+          <Link href={categoryPath(cat.slug)} className="hover:text-ink transition-colors">
             {cat.title}
           </Link>
         </>

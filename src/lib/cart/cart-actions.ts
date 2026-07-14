@@ -4,13 +4,14 @@ import { cookies } from "next/headers";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { rowToProduct, type ProductRow } from "@/lib/supabase/types";
-import { MAX_QTY } from "./constants";
+import { MAX_ORDER_LINES, MAX_QTY } from "./constants";
 import type { CartItem } from "./types";
 
 const COOKIE = "pt_cart";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 180; // 180 дней
 
 type Db = ReturnType<typeof createSupabaseAdminClient>;
+const CART_PRODUCT_SELECT = "id,title,category_slug,model,color,memory,sim,image,gallery,price_cash,price_card,price_old,installment_from,installment_partner,badge,badges,options,condition,condition_text,battery,is_used,is_new,in_stock,stock,is_available,sku,brand";
 
 async function readCartId(): Promise<string | null> {
   const c = await cookies();
@@ -19,22 +20,25 @@ async function readCartId(): Promise<string | null> {
 
 /** Состав корзины: позиции из cart_items + актуальные товары из products. */
 async function itemsFor(db: Db, cartId: string): Promise<CartItem[]> {
-  const { data: rows } = await db
+  const { data: rows, error: rowsError } = await db
     .from("cart_items")
     .select("product_id,qty")
     .eq("cart_id", cartId)
     .order("added_at");
+  if (rowsError) throw rowsError;
   const lines = (rows ?? []) as { product_id: string; qty: number }[];
   if (lines.length === 0) return [];
   const ids = lines.map((l) => l.product_id);
-  const { data: prods } = await db
+  const { data: prods, error: productsError } = await db
     .from("products")
-    .select("*")
+    .select(CART_PRODUCT_SELECT)
     .in("id", ids)
     .is("deleted_at", null)
     .eq("status", "published");
+  if (productsError) throw productsError;
+  if (!prods) throw new Error("Не удалось обновить товары корзины");
   const byId = new Map(
-    ((prods ?? []) as ProductRow[]).map((p) => [p.id, rowToProduct(p)])
+    (prods as unknown as ProductRow[]).map((p) => [p.id, rowToProduct(p)])
   );
   return lines
     .map((l) => {
@@ -83,18 +87,39 @@ export async function getCart(): Promise<CartItem[]> {
 }
 
 export async function addToCart(productId: string, qty = 1): Promise<CartItem[]> {
+  const normalizedProductId = productId.trim();
+  if (!normalizedProductId || normalizedProductId.length > 200) throw new Error("Некорректный товар");
   const db = createSupabaseAdminClient();
   const cartId = await ensureCart(db);
-  const { data: existing } = await db
-    .from("cart_items")
-    .select("qty")
-    .eq("cart_id", cartId)
-    .eq("product_id", productId)
-    .maybeSingle();
-  const nextQty = Math.min(MAX_QTY, (existing?.qty ?? 0) + Math.max(1, qty));
+  const [
+    { data: existing, error: existingError },
+    { count: lineCount, error: countError },
+    { data: product, error: productError },
+    { data: availability, error: availabilityError },
+  ] = await Promise.all([
+    db.from("cart_items").select("qty").eq("cart_id", cartId).eq("product_id", normalizedProductId).maybeSingle(),
+    db.from("cart_items").select("product_id", { count: "exact", head: true }).eq("cart_id", cartId),
+    db.from("products").select("id,stock,in_stock,is_available").eq("id", normalizedProductId).eq("status", "published").is("deleted_at", null).maybeSingle(),
+    db.from("shop_settings").select("value").eq("key", "product_availability").maybeSingle(),
+  ]);
+  if (existingError || countError || productError || availabilityError) {
+    throw existingError ?? countError ?? productError ?? availabilityError;
+  }
+  if (!product || product.is_available === false) throw new Error("Товар больше недоступен");
+  if (!availability) throw new Error("Не удалось проверить наличие товара");
+  const allowZeroStock = ((availability?.value ?? {}) as { allow_zero_stock?: boolean }).allow_zero_stock !== false;
+  if (!allowZeroStock && ((product.stock != null && product.stock <= 0) || (product.stock == null && product.in_stock === false))) {
+    throw new Error("Товар закончился");
+  }
+  if (!existing && (lineCount ?? 0) >= MAX_ORDER_LINES) {
+    throw new Error(`В корзине может быть не больше ${MAX_ORDER_LINES} позиций`);
+  }
+  const requestedQty = Math.max(1, Math.min(MAX_QTY, Math.round(Number(qty)) || 1));
+  const stockLimit = !allowZeroStock && product.stock != null ? Math.max(1, product.stock) : MAX_QTY;
+  const nextQty = Math.min(MAX_QTY, stockLimit, (existing?.qty ?? 0) + requestedQty);
   const { error } = await db
     .from("cart_items")
-    .upsert({ cart_id: cartId, product_id: productId, qty: nextQty }, { onConflict: "cart_id,product_id" });
+    .upsert({ cart_id: cartId, product_id: normalizedProductId, qty: nextQty }, { onConflict: "cart_id,product_id" });
   if (error) throw error;
   await db.from("carts").update({ updated_at: new Date().toISOString(), status: "active", abandoned_at: null }).eq("id", cartId);
   await linkCart(db, cartId);
@@ -102,11 +127,30 @@ export async function addToCart(productId: string, qty = 1): Promise<CartItem[]>
 }
 
 export async function setCartQty(productId: string, qty: number): Promise<CartItem[]> {
+  const normalizedProductId = productId.trim();
+  if (!normalizedProductId || normalizedProductId.length > 200) throw new Error("Некорректный товар");
   const db = createSupabaseAdminClient();
   const id = await readCartId();
   if (!id) return [];
-  const clamped = Math.max(1, Math.min(MAX_QTY, Math.round(qty) || 1));
-  await db.from("cart_items").update({ qty: clamped }).eq("cart_id", id).eq("product_id", productId);
+  const [
+    { data: product, error: productError },
+    { data: availability, error: availabilityError },
+  ] = await Promise.all([
+    db.from("products").select("id,stock,in_stock,is_available").eq("id", normalizedProductId).eq("status", "published").is("deleted_at", null).maybeSingle(),
+    db.from("shop_settings").select("value").eq("key", "product_availability").maybeSingle(),
+  ]);
+  if (productError || availabilityError) throw productError ?? availabilityError;
+  if (!product || product.is_available === false) throw new Error("Товар больше недоступен");
+  if (!availability) throw new Error("Не удалось проверить наличие товара");
+
+  const allowZeroStock = ((availability.value ?? {}) as { allow_zero_stock?: boolean }).allow_zero_stock !== false;
+  if (!allowZeroStock && ((product.stock != null && product.stock <= 0) || (product.stock == null && product.in_stock === false))) {
+    throw new Error("Товар закончился");
+  }
+  const stockLimit = !allowZeroStock && product.stock != null ? Math.max(1, product.stock) : MAX_QTY;
+  const clamped = Math.max(1, Math.min(MAX_QTY, stockLimit, Math.round(Number(qty)) || 1));
+  const { error } = await db.from("cart_items").update({ qty: clamped }).eq("cart_id", id).eq("product_id", normalizedProductId);
+  if (error) throw error;
   return itemsFor(db, id);
 }
 
@@ -114,7 +158,8 @@ export async function removeFromCart(productId: string): Promise<CartItem[]> {
   const db = createSupabaseAdminClient();
   const id = await readCartId();
   if (!id) return [];
-  await db.from("cart_items").delete().eq("cart_id", id).eq("product_id", productId);
+  const { error } = await db.from("cart_items").delete().eq("cart_id", id).eq("product_id", productId);
+  if (error) throw error;
   return itemsFor(db, id);
 }
 
@@ -122,5 +167,6 @@ export async function clearCart(): Promise<void> {
   const db = createSupabaseAdminClient();
   const id = await readCartId();
   if (!id) return;
-  await db.from("cart_items").delete().eq("cart_id", id);
+  const { error } = await db.from("cart_items").delete().eq("cart_id", id);
+  if (error) throw error;
 }

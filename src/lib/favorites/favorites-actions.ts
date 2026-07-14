@@ -54,11 +54,18 @@ export async function getFavoriteProducts(_userKey?: string): Promise<Product[]>
   if (ids.length === 0) return [];
   const { data } = await db
     .from("products")
-    .select("*")
+    .select("id,title,category_slug,model,color,memory,sim,image,gallery,price_cash,price_card,price_old,installment_from,installment_partner,badge,badges,options,condition,condition_text,battery,is_used,is_new,in_stock,stock,is_available,sku,brand")
     .in("id", ids)
     .is("deleted_at", null)
     .eq("status", "published");
   const byId = new Map(((data ?? []) as ProductRow[]).map((p) => [p.id, rowToProduct(p)]));
   // сохраняем порядок добавления (ids — от новых к старым)
-  return ids.map((id) => byId.get(id)).filter((p): p is Product => !!p);
+  const ordered = ids.map((id) => byId.get(id)).filter((p): p is Product => !!p);
+  const { data: availability } = await db
+    .from("shop_settings")
+    .select("value")
+    .eq("key", "product_availability")
+    .maybeSingle();
+  const allowZeroStock = ((availability?.value ?? {}) as { allow_zero_stock?: boolean }).allow_zero_stock !== false;
+  return allowZeroStock ? ordered : ordered.filter((product) => product.stock == null || product.stock > 0);
 }

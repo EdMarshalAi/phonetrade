@@ -22,6 +22,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { ContactLinks } from "@/components/layout/ContactLinks";
 import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
+import { categoryPath } from "@/lib/catalog/category-path";
 
 const TOP_LINKS = [
   { href: "/about", label: "О компании" },
@@ -126,14 +127,14 @@ export function Header({
   const catItems: CategoryMenuItem[] =
     categoryTree && categoryTree.length > 0
       ? categoryTree.map((c) => ({
-          href: `/category/${c.slug}`,
+          href: categoryPath(c.slug),
           label: c.title,
           slug: c.slug as CategorySlug,
           iconUrl: c.icon_url ?? null,
-          children: c.children.map((ch) => ({ href: `/category/${ch.slug}`, label: ch.title })),
+          children: c.children.map((ch) => ({ href: categoryPath(ch.slug), label: ch.title })),
         }))
       : categories && categories.length > 0
-        ? categories.map((c) => ({ href: `/category/${c.slug}`, label: c.title, slug: c.slug as CategorySlug, iconUrl: c.icon_url ?? null }))
+        ? categories.map((c) => ({ href: categoryPath(c.slug), label: c.title, slug: c.slug as CategorySlug, iconUrl: c.icon_url ?? null }))
         : ALL_CATEGORIES;
   const topItems = topLinks && topLinks.length > 0 ? topLinks.map((t) => ({ href: t.href, label: t.title })) : TOP_LINKS;
   // Основное меню — из БД (admin → Навигация → Основное меню); фолбэк только если пусто.

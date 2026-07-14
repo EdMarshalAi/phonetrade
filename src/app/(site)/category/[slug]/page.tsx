@@ -4,11 +4,17 @@ import { ChevronDown } from "lucide-react";
 import type { FilterFacet, CategoryConfig, SortKey } from "@/lib/catalog/category-config";
 import { categoryFaq } from "@/lib/catalog/category-faq";
 import { extractFacetOptions } from "@/lib/catalog/filters";
-import { getProductsByCategory, getCategories, getProductCountsByCategory } from "@/lib/products";
+import {
+  getProductsByCategory,
+  getCategories,
+  getProductCountsByCategory,
+  getCategoryProductCount,
+} from "@/lib/products";
 import { getCategoryMeta } from "@/lib/content";
 import { CatalogShell } from "@/components/catalog/CatalogShell";
 import { jsonLdScript } from "@/lib/utils/json-ld";
 import { sanitizeRichHtml } from "@/lib/utils/sanitize-html";
+import { categoryPath } from "@/lib/catalog/category-path";
 
 // Единый список фасетов; конкретный набор берётся из настроек категории
 // (categories.available_filters) в админке. Хардкода по слагу больше нет.
@@ -20,7 +26,10 @@ type RouteParams = { slug: string };
 
 export async function generateMetadata({ params }: { params: Promise<RouteParams> }): Promise<Metadata> {
   const { slug } = await params;
-  const meta = await getCategoryMeta(slug);
+  const [meta, productCount] = await Promise.all([
+    getCategoryMeta(slug),
+    getCategoryProductCount(slug),
+  ]);
   if (!meta) return {};
   const canonical = `/category/${slug}`;
   // meta_title (если задан в админке) — абсолютный, чтобы не было двойного бренда;
@@ -37,6 +46,10 @@ export async function generateMetadata({ params }: { params: Promise<RouteParams
     title,
     description,
     alternates: { canonical },
+    // Пустую опубликованную категорию оставляем доступной пользователям, но не
+    // отправляем в индекс до появления товара. Ошибка подсчёта (null) не меняет
+    // индексную политику, поэтому временный сбой БД не создаст массовый noindex.
+    robots: productCount === 0 ? { index: false, follow: true } : undefined,
     // images явно: переопределение openGraph на странице глушит наследование картинки из layout.
     openGraph: { title: ogTitle, description, url: canonical, type: "website", images: [{ url: ogImage, width: 1400, height: 1400, alt: `${meta.title} — PhoneTrade Белгород` }] },
   };
@@ -80,20 +93,20 @@ export default async function CategoryPage({ params }: { params: Promise<RoutePa
       ? [
           {
             label: `Все ${railParent.title}`,
-            href: `/category/${railParent.slug}`,
+            href: categoryPath(railParent.slug),
             active: slug === railParent.slug,
             count: (counts[railParent.slug] ?? 0) + childTotal,
           },
           ...children.map((c) => ({
             label: c.title,
-            href: `/category/${c.slug}`,
+            href: categoryPath(c.slug),
             active: slug === c.slug,
             count: counts[c.slug] ?? 0,
           })),
         ]
       : [];
   const breadcrumbParent =
-    cat?.parentSlug && railParent ? { title: railParent.title, href: `/category/${railParent.slug}` } : null;
+    cat?.parentSlug && railParent ? { title: railParent.title, href: categoryPath(railParent.slug) } : null;
 
   const facetOptions = extractFacetOptions(products, config.facets);
 
