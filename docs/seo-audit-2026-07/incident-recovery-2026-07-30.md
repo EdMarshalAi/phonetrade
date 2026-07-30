@@ -419,3 +419,24 @@ generic iPhone начинает выходить из позиции 12, а Mac/
 - `npm run build` (Next.js 16.2.6) — pass;
 - production-кандидат локально прошёл SEO smoke для категорий, `/new`, `/used`,
   пагинации, canonical, ItemList, robots, sitemap и YML (199 offers).
+
+### Production deploy блока №2
+
+Коммит `30c422e1f326db96196b9fe40385ebe135f2a075` развёрнут через GitHub Actions
+Deploy #340. Успешно прошли:
+
+1. 23 SEO-regression теста, critical lint, typecheck и production build;
+2. SEO smoke изолированного кандидата;
+3. переключение live PM2;
+4. SEO smoke live-домена;
+5. активация release; rollback не потребовался.
+
+Независимый полный drift-gate после deploy подтвердил:
+
+- `/category/iphone`, `/new` и `/used` имеют рабочую crawlable-пагинацию;
+- страницы `/page/2` возвращают 200 и правильный self-canonical;
+- `/page/1` перенаправляется на основной URL, заведомо лишние номера дают 404;
+- robots и sitemap не изменили разрешающую политику;
+- 48 категорий из sitemap индексируемы;
+- Product schema трёх контрольных товаров корректна;
+- YML содержит 199 offers.
