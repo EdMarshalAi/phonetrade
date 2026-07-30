@@ -13,7 +13,10 @@ import { cn } from "@/lib/utils/cn";
 import { useCart } from "@/components/providers/CartProvider";
 import { useFavorites } from "@/components/providers/FavoritesProvider";
 import type { Product } from "@/lib/data/products";
-import { resolveProductAvailability } from "@/lib/product-commerce";
+import {
+  reconcileAvailabilityBadges,
+  resolveProductAvailability,
+} from "@/lib/product-commerce";
 
 type Props = {
   product: Product;
@@ -24,6 +27,7 @@ export function ProductCard({ product, className }: Props) {
   const { add } = useCart();
   const { display, options: optionDefs, allowZeroStock } = useCardSettings();
   const availability = resolveProductAvailability(product, allowZeroStock);
+  const displayBadges = reconcileAvailabilityBadges(product.badges, availability.kind);
   const ptype = product.isUsed ? "used" : "new";
   const cardOptions = optionDefs
     .filter((o) => display.options.includes(o.key) && ((o.applies_to ?? "both") === "both" || o.applies_to === ptype))
@@ -90,14 +94,14 @@ export function ProductCard({ product, className }: Props) {
       <div className="relative -mx-4 -mt-4 sm:-mx-5 sm:-mt-5 mb-4 bg-white border-b border-border/60 aspect-square overflow-hidden">
         {display.badges ? (
           <>
-            <ProductBadges badges={product.badges} position="tl" className="absolute top-3 left-3 z-20 max-w-[65%]" />
-            <ProductBadges badges={product.badges} position="tr" className="absolute top-3 right-3 z-20 max-w-[65%] justify-end" />
-            <ProductBadges badges={product.badges} position="bl" className="absolute bottom-3 left-3 z-20 max-w-[65%]" />
+            <ProductBadges badges={displayBadges} position="tl" className="absolute top-3 left-3 z-20 max-w-[65%]" />
+            <ProductBadges badges={displayBadges} position="tr" className="absolute top-3 right-3 z-20 max-w-[65%] justify-end" />
+            <ProductBadges badges={displayBadges} position="bl" className="absolute bottom-3 left-3 z-20 max-w-[65%]" />
           </>
         ) : null}
 
         <div className="absolute bottom-3 right-3 z-20 flex max-w-[65%] flex-col items-end gap-1.5">
-          {display.badges ? <ProductBadges badges={product.badges} position="br" className="justify-end" /> : null}
+          {display.badges ? <ProductBadges badges={displayBadges} position="br" className="justify-end" /> : null}
           {product.isUsed && (
             <span className="inline-flex items-center rounded-md bg-ink text-white text-[10px] font-semibold px-2 py-1 tracking-wide">
               Б/У

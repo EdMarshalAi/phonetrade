@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase/client";
+import { stripInjectedSeoBlocks } from "@/lib/seo/clean-content";
 import { getProductsByCategory } from "@/lib/products";
 import type { CategorySlug, Product } from "@/lib/data/products";
 import { categoryPath } from "@/lib/catalog/category-path";
@@ -132,7 +133,7 @@ export async function getCategoryMeta(slug: string): Promise<CategoryMeta | null
     description: (d.description as string | null) ?? null,
     subtitle: (d.subtitle as string | null) ?? null,
     icon_url: (d.icon_url as string | null) ?? null,
-    seo_text: (d.seo_text as string | null) ?? null,
+    seo_text: stripInjectedSeoBlocks(d.seo_text as string | null) || null,
     available_filters: Array.isArray(d.available_filters) ? (d.available_filters as string[]) : null,
     meta_title: (d.meta_title as string | null) ?? null,
     meta_description: (d.meta_description as string | null) ?? null,

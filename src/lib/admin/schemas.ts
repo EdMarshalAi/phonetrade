@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+const nullableNonnegativeInt = z.preprocess(
+  // z.coerce.number("") is 0. In the product form an empty stock input means
+  // “quantity is not tracked”, so preserve it as null instead of silently
+  // turning every edited product into an explicit zero-stock item.
+  (value) => value === "" || value === undefined ? null : value,
+  z.coerce.number().int().min(0).nullable()
+);
+
 /** Схема входа в админку. */
 export const loginSchema = z.object({
   email: z.string().trim().min(1, "Введите email").email("Некорректный email"),
@@ -79,8 +87,8 @@ export const productSchema = z.object({
   related_product_ids: z.array(z.string()).default([]),
   description_html: z.string().nullable().optional(),
   warranty_months: z.coerce.number().int().min(0).nullable().optional(),
-  stock: z.coerce.number().int().min(0).nullable().optional(),
-  min_stock: z.coerce.number().int().min(0).nullable().optional(),
+  stock: nullableNonnegativeInt,
+  min_stock: nullableNonnegativeInt,
   is_available: z.boolean().default(true),
   in_stock: z.boolean().default(true),
   status: z.enum(["draft", "published", "archived"]).default("published"),

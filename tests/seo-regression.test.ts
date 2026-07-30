@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
+  reconcileAvailabilityBadges,
   resolveProductAvailability,
   resolveProductBrand,
   syncProductSeoContent,
@@ -14,6 +15,9 @@ import type { CartItem } from "@/lib/cart/types";
 import type { CartDeliveryOption, CartPaymentMethod } from "@/lib/content";
 import { normalizePublishedCopy } from "@/lib/content";
 import { categoryPath } from "@/lib/catalog/category-path";
+import { GET as getRobots, ROBOTS_TEXT } from "@/app/robots.txt/route";
+import { productSchema } from "@/lib/admin/schemas";
+import { stripInjectedSeoBlocks } from "@/lib/seo/clean-content";
 
 const normalizeSpaces = (value: string) => value.replace(/[\s\u00a0\u202f]+/gu, " ");
 
@@ -50,6 +54,21 @@ test("cross-brand SEO copy is not labelled as Apple", () => {
   assert.match(normalizeSpaces(synced), /92 000 ₽/u);
 });
 
+test("marked keyword-stuffing append is removed without touching authored copy", () => {
+  const input = [
+    "<p>Полезное описание товара и его характеристик.</p>",
+    "<!--seo-kw-->",
+    "<h2>256 ГБ Чёрный — купить в Белгороде</h2>",
+    "<p>Купить айфон цена купить айфон Белгород.</p>",
+    "<!--/seo-kw-->",
+  ].join("\n");
+  assert.equal(
+    stripInjectedSeoBlocks(input),
+    "<p>Полезное описание товара и его характеристик.</p>"
+  );
+  assert.equal(stripInjectedSeoBlocks("<p>Редакторский текст</p>"), "<p>Редакторский текст</p>");
+});
+
 test("brand resolver never defaults unknown products to Apple", () => {
   assert.equal(resolveProductBrand({ title: "Dyson Airwrap HS08" }), "Dyson");
   assert.equal(resolveProductBrand({ title: "Hollyland Lark M2", brand: "Other" }), "Hollyland");
@@ -72,6 +91,28 @@ test("numeric stock is authoritative for schema, feed and ordering", () => {
 
   const legacy = resolveProductAvailability({ stock: null, inStock: true, isAvailable: true }, false);
   assert.equal(legacy.kind, "in-stock");
+});
+
+test("blank stock inputs stay unknown instead of becoming zero", () => {
+  assert.equal(productSchema.shape.stock.parse(""), null);
+  assert.equal(productSchema.shape.stock.parse(undefined), null);
+  assert.equal(productSchema.shape.stock.parse("0"), 0);
+  assert.equal(productSchema.shape.stock.parse("7"), 7);
+});
+
+test("availability badges cannot contradict calculated availability", () => {
+  assert.deepEqual(
+    reconcileAvailabilityBadges(["new", "check-availability"], "in-stock"),
+    ["new", "in-stock"]
+  );
+  assert.deepEqual(
+    reconcileAvailabilityBadges(["new", "in-stock"], "backorder"),
+    ["new", "check-availability"]
+  );
+  assert.deepEqual(
+    reconcileAvailabilityBadges(["new", "check-availability"], "out-of-stock"),
+    ["new"]
+  );
 });
 
 test("cart total includes delivery and cannot diverge between UI and server", () => {
@@ -161,7 +202,7 @@ test("canonical category path and published copy remove confirmed duplicates", (
 
 test("SEO crawl policy keeps confirmed regression guards", () => {
   const root = process.cwd();
-  const robots = readFileSync(resolve(root, "src/app/robots.txt"), "utf8");
+  const robots = ROBOTS_TEXT;
   const yandexSection = robots
     .split(/\r?\n\s*\r?\n/u)
     .find((section) => /^User-agent\s*:\s*Yandex\s*$/imu.test(section));
@@ -175,6 +216,10 @@ test("SEO crawl policy keeps confirmed regression guards", () => {
     assert.ok(cleanParams.has(param), `Yandex Clean-param must contain ${param}`);
   }
   assert.doesNotMatch(robots, /^Host:/mu);
+  const robotsResponse = getRobots();
+  assert.equal(robotsResponse.status, 200);
+  assert.match(robotsResponse.headers.get("content-type") ?? "", /^text\/plain\b/iu);
+  assert.doesNotMatch(robotsResponse.headers.get("cache-control") ?? "", /s-maxage=(?:[4-9]\d{3,}|\d{5,})/iu);
 
   const nextConfig = readFileSync(resolve(root, "next.config.ts"), "utf8");
   assert.match(nextConfig, /source:\s*["']\/category\/iphone-used["'][\s\S]*destination:\s*["']\/used["']/u);

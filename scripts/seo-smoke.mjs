@@ -30,14 +30,14 @@ const URLS = [
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Запрос с ретраями на 5xx — гасим транзиентные 502 при холодном ISR после деплоя. */
-async function fetchWithRetry(url, tries = 3) {
+async function fetchWithRetry(url, tries = 3, headers = {}) {
   let lastResponse;
   let lastError;
   for (let i = 0; i < tries; i++) {
     try {
       const res = await fetch(url, {
         redirect: "manual",
-        headers: { "User-Agent": "PhoneTrade-SEO-Smoke/1.0" },
+        headers: { "User-Agent": "PhoneTrade-SEO-Smoke/1.0", ...headers },
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
       if (res.status < 500) return res;
@@ -157,8 +157,18 @@ for (const path of ["/account", "/cart", "/auth/login", "/search?q=iphone"]) {
 
 // Robots: подтверждённые legacy/facet параметры и отсутствие устаревшего Host.
 try {
-  const res = await fetchWithRetry(`${BASE}/robots.txt`);
+  const res = await fetchWithRetry(
+    `${BASE}/robots.txt?seo-smoke=${Date.now()}`,
+    3,
+    { "User-Agent": "YandexBot/3.0", "Cache-Control": "no-cache" }
+  );
   const body = await res.text();
+  const contentType = res.headers.get("content-type") || "";
+  const cacheControl = res.headers.get("cache-control") || "";
+  const sharedMaxAge = Number.parseInt(
+    cacheControl.match(/\bs-maxage=(\d+)/i)?.[1] ?? "0",
+    10
+  );
   const yandexSections = body
     .split(/(?=^User-agent\s*:)/gmi)
     .filter((section) => /^User-agent\s*:\s*Yandex\s*$/mi.test(section));
@@ -170,6 +180,8 @@ try {
   const missing = ["phone", "teh", "aks", "w", "q", "tubl6", "min", "max", "battery"]
     .filter((param) => !cleanParamSet.has(param));
   if (res.status !== 200) fail("robots.txt", `HTTP ${res.status}`);
+  else if (!/^text\/plain\b/i.test(contentType)) fail("robots.txt", `Content-Type ${contentType || "отсутствует"}`);
+  else if (sharedMaxAge > 3600) fail("robots.txt", `опасный shared cache: ${cacheControl}`);
   else if (yandexSections.length === 0) fail("robots.txt", "нет группы User-agent: Yandex");
   else if (missing.length) fail("robots.txt", `нет Clean-param: ${missing.join(", ")}`);
   else if (/^Host:/mi.test(body)) fail("robots.txt", "осталась устаревшая Host directive");

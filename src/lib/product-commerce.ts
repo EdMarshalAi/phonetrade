@@ -2,6 +2,7 @@
  * Pure commerce helpers shared by the storefront, structured data and feeds.
  * Keep this module browser-safe: ProductBuyPanel and CartItemsSection import it.
  */
+import { stripInjectedSeoBlocks } from "@/lib/seo/clean-content";
 
 const RUB_PRICE_TOKEN =
   /(?:\d{4,9}|\d{1,3}(?:(?:[ \t\u00a0\u202f]|&nbsp;|&#160;|&#x0*a0;)\d{3})+)(?:[.,]\d{1,2})?\s*(?:₽|руб(?:л(?:ей|я)?)?\.?)/giu;
@@ -36,7 +37,7 @@ export function syncProductSeoContent(
   priceCash: number,
   product: ProductBrandInput
 ): string {
-  const synced = syncProductSeoText(text, priceCash);
+  const synced = syncProductSeoText(stripInjectedSeoBlocks(text), priceCash);
   const brand = resolveProductBrand(product);
   if (!synced || !brand || brand === "Apple") return synced;
   return synced.replace(/оригинал\s+Apple/giu, `оригинальный товар бренда ${brand}`);
@@ -99,6 +100,23 @@ export type ResolvedProductAvailability = {
     | "https://schema.org/BackOrder"
     | "https://schema.org/OutOfStock";
 };
+
+const AVAILABILITY_BADGES = new Set(["in-stock", "check-availability"]);
+
+/**
+ * Availability badges are legacy editorial data, while the current status is
+ * calculated from inventory. Reconcile them at render time so a card can never
+ * say “В наличии” and “Уточняйте наличие” simultaneously.
+ */
+export function reconcileAvailabilityBadges(
+  badges: string[] | null | undefined,
+  kind: ProductAvailabilityKind
+): string[] {
+  const result = (badges ?? []).filter((badge) => !AVAILABILITY_BADGES.has(badge));
+  if (kind === "in-stock") result.push("in-stock");
+  if (kind === "backorder") result.push("check-availability");
+  return result;
+}
 
 /**
  * Numeric stock is authoritative when present. The legacy inStock flag is used

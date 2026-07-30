@@ -13,6 +13,7 @@ import { productImages } from "@/lib/utils/product-images";
 import { jsonLdScript } from "@/lib/utils/json-ld";
 import { faqFromHtml, faqPageLd } from "@/lib/utils/faq-schema";
 import {
+  reconcileAvailabilityBadges,
   resolveProductAvailability,
   resolveProductBrand,
   syncProductSeoContent,
@@ -68,8 +69,10 @@ export default async function ProductPage({
   const syncedMetaDescription = syncProductSeoContent(product.metaDescription, product.priceCash, product);
   const syncedShortDescription = syncProductSeoContent(product.shortDescription, product.priceCash, product);
   const syncedDescriptionHtml = syncProductSeoContent(product.descriptionHtml, product.priceCash, product);
+  const availability = resolveProductAvailability(product, allowZeroStock);
   const renderedProduct = {
     ...product,
+    badges: reconcileAvailabilityBadges(product.badges, availability.kind),
     metaDescription: syncedMetaDescription || product.metaDescription,
     shortDescription: syncedShortDescription || product.shortDescription,
     descriptionHtml: syncedDescriptionHtml || product.descriptionHtml,
@@ -77,7 +80,6 @@ export default async function ProductPage({
 
   // Schema.org Product (JSON-LD) — расширенные сниппеты в поиске.
   const base = (process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru").replace(/\/$/, "");
-  const availability = resolveProductAvailability(product, allowZeroStock);
   const brandName = resolveProductBrand(product);
   const price = product.priceCash;
   const jsonLd = {
