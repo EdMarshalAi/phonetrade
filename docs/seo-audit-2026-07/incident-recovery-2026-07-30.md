@@ -2,7 +2,8 @@
 
 Дата расследования: 30.07.2026
 Приоритет: Яндекс, регион Белгород
-Статус: подтверждённые production-регрессии исправляются; массовое расширение контента заморожено.
+Статус: исправления развёрнуты и проверены на production; массовое расширение
+контента заморожено.
 
 ## Короткий вывод
 
@@ -252,6 +253,11 @@ Production-БД до recovery:
 `seo-recovery-2026-07-product-copy`. Повторный dry-run показывает
 `changed=0`, а контрольная выборка не содержит старых ошибочных форм.
 
+Новых миграций схемы Supabase для SEO-recovery не создавалось. Все три
+операции выше — ограниченные обновления существующих строк через service-role.
+Deploy pipeline штатно повторно применил существующую аддитивную миграцию
+`0022_storefront_order_transaction.sql`; этот файл данным релизом не менялся.
+
 ### Код
 
 1. Статический `src/app/robots.txt` заменён явным динамическим
@@ -287,13 +293,27 @@ Production-БД до recovery:
 - у контрольного товара видимый HTML и Product schema согласованно показывают
   `InStock`, противоречивого видимого бейджа нет.
 
-После production-deploy обязательны:
+### Production deploy
 
-1. `curl` обычным UA и `YandexBot`: robots HTTP 200 + `text/plain`;
-2. полный `SMOKE_BASE=https://phonetrade31.ru node scripts/seo-smoke.mjs`;
-3. проверка отсутствия `<!--seo-kw-->` в HTML категории и товара;
-4. проверка `InStock` и `available=true` на контрольном товаре;
-5. повторная проверка sitemap и ключевых категорий.
+Коммит `972ce6a96ed87ddd98e5b2ec777a9f3424cab8bb` развёрнут через GitHub Actions
+Deploy #339. Успешно прошли:
+
+1. тесты, lint, typecheck и production build;
+2. SEO smoke изолированного кандидата;
+3. переключение live PM2;
+4. SEO smoke live-домена;
+5. активация release; rollback не потребовался.
+
+Независимая проверка после deploy:
+
+- обычный UA и `YandexBot`: robots HTTP 200, `text/plain`, `s-maxage=300`;
+- Yandex `Clean-param` присутствует;
+- полный production drift-gate прошёл;
+- sitemap и 48 индексируемых категорий прошли проверку;
+- в HTML пяти категорий и контрольных товаров нет `seo-kw`;
+- у контрольного товара видимый статус и Product schema показывают `InStock`,
+  видимого «Уточняйте наличие» нет;
+- YML прошёл проверку, 199 offers.
 
 ## Что делать после deploy
 
