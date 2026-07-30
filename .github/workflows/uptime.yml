@@ -29,14 +29,12 @@ jobs:
         run: |
           cfg=$(curl -s "$SUPABASE_URL/rest/v1/integrations?key=eq.telegram&select=config" \
             -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY")
-          token=$(printf '%s' "$cfg" | python3 -c "import sys,json
-try:
-  d=json.load(sys.stdin); print(d[0]['config'].get('bot_token','') if d else '')
-except Exception: print('')")
-          chat=$(printf '%s' "$cfg" | python3 -c "import sys,json
-try:
-  d=json.load(sys.stdin); ids=(d[0]['config'].get('chat_ids') or ['']) if d else ['']; print(ids[0])
-except Exception: print('')")
+          token=$(printf '%s' "$cfg" | python3 -c \
+            "import sys,json; d=json.load(sys.stdin); print(d[0].get('config',{}).get('bot_token','') if d else '')" \
+            2>/dev/null || true)
+          chat=$(printf '%s' "$cfg" | python3 -c \
+            "import sys,json; d=json.load(sys.stdin); ids=(d[0].get('config',{}).get('chat_ids') or ['']) if d else ['']; print(ids[0])" \
+            2>/dev/null || true)
           if [ -n "$token" ] && [ -n "$chat" ]; then
             curl -s -X POST "https://api.telegram.org/bot$token/sendMessage" \
               -d chat_id="$chat" \
