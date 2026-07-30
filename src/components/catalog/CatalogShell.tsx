@@ -17,6 +17,11 @@ import { FilterDrawer } from "@/components/catalog/FilterDrawer";
 import { ProductGrid } from "@/components/catalog/ProductGrid";
 import { CatalogSeo } from "@/components/catalog/CatalogSeo";
 import type { Product } from "@/lib/data/products";
+import {
+  CATALOG_PAGE_SIZE,
+  slicePage,
+  totalPages,
+} from "@/lib/catalog/pagination";
 
 type Props = {
   config: CategoryConfig;
@@ -30,31 +35,51 @@ type Props = {
   breadcrumbParent?: { title: string; href: string } | null;
   /** Базовая сортировка категории (из админки). По умолчанию — дешёвые сначала. */
   defaultSort?: SortKey;
+  /** Канонический путь коллекции без фильтров и номера страницы. */
+  basePath: string;
+  /** Номер crawlable path-страницы. Фильтры всегда возвращают на страницу 1. */
+  currentPage?: number;
+  pageSize?: number;
 };
 
-const PAGE_SIZE = 12;
-
-export function CatalogShell({ config, products, facetOptions, seoHtml, tabs = [], breadcrumbParent = null, defaultSort = "price-asc" }: Props) {
+export function CatalogShell({
+  config,
+  products,
+  facetOptions,
+  seoHtml,
+  tabs = [],
+  breadcrumbParent = null,
+  defaultSort = "price-asc",
+  basePath,
+  currentPage = 1,
+  pageSize = CATALOG_PAGE_SIZE,
+}: Props) {
   const { filters, sort, setSort, toggleValue, reset, setFilters } =
-    useCatalogFilters(defaultSort);
+    useCatalogFilters(defaultSort, basePath);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
-  // Pagination kept in component state so a page reload always shows the
-  // first PAGE_SIZE products instead of all loaded ones from URL history.
-  const [shown, setShown] = React.useState(PAGE_SIZE);
+  // Отфильтрованный режим остаётся клиентским и сохраняет привычный load-more.
+  // Обычный каталог использует отдельные crawlable path-страницы.
+  const viewKey = JSON.stringify([filters, sort, currentPage, pageSize]);
+  const [shownState, setShownState] = React.useState(() => ({
+    key: viewKey,
+    count: pageSize,
+  }));
+  const shown =
+    shownState.key === viewKey ? shownState.count : pageSize;
 
   const filteredAndSorted = React.useMemo(() => {
     const filtered = applyFilters(products, filters);
     return applySort(filtered, sort);
   }, [products, filters, sort]);
 
-  // Whenever filters or sort change, restart from the first page.
-  React.useEffect(() => {
-    setShown(PAGE_SIZE);
-  }, [filters, sort]);
-
-  const visible = filteredAndSorted.slice(0, shown);
-  const hasMore = visible.length < filteredAndSorted.length;
   const activeCount = countActiveFilters(filters);
+  const isCanonicalView = activeCount === 0 && sort === defaultSort;
+  const pageCount = totalPages(filteredAndSorted.length, pageSize);
+  const visible = isCanonicalView
+    ? slicePage(filteredAndSorted, currentPage, pageSize)
+    : filteredAndSorted.slice(0, shown);
+  const hasMore =
+    !isCanonicalView && visible.length < filteredAndSorted.length;
 
   return (
     <>
@@ -118,17 +143,31 @@ export function CatalogShell({ config, products, facetOptions, seoHtml, tabs = [
             products={visible}
             total={filteredAndSorted.length}
             hasMore={hasMore}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             onLoadMore={() =>
-              setShown((s) =>
-                Math.min(s + PAGE_SIZE, filteredAndSorted.length)
-              )
+              setShownState((state) => ({
+                key: viewKey,
+                count: Math.min(
+                  (state.key === viewKey ? state.count : pageSize) +
+                    pageSize,
+                  filteredAndSorted.length
+                ),
+              }))
+            }
+            pagination={
+              isCanonicalView
+                ? {
+                    basePath,
+                    currentPage,
+                    totalPages: pageCount,
+                  }
+                : undefined
             }
           />
 
-          {seoHtml ? (
+          {currentPage === 1 && seoHtml ? (
             <CatalogSeo blocks={[{ html: seoHtml }]} />
-          ) : config.seo && config.seo.length > 0 ? (
+          ) : currentPage === 1 && config.seo && config.seo.length > 0 ? (
             <CatalogSeo blocks={config.seo} />
           ) : null}
         </div>

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { adminMutation } from "@/lib/admin/mutations";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { categorySchema, type CategoryInput } from "@/lib/admin/schemas";
+import { STOREFRONT_NAVIGATION_TAG } from "@/lib/cache-tags";
 
 const STAFF = ["admin", "manager", "content"] as const;
 
@@ -46,6 +47,7 @@ export async function createCategory(input: CategoryInput): Promise<{ error?: st
       entityId: parsed.data.slug,
       changes: parsed.data,
       revalidate: ["/", `/category/${parsed.data.slug}`],
+      revalidateTags: [STOREFRONT_NAVIGATION_TAG],
       run: async (db) => {
         const { error } = await db
           .from("categories")
@@ -70,6 +72,7 @@ export async function updateCategory(slug: string, input: CategoryInput): Promis
       entityId: slug,
       changes: parsed.data,
       revalidate: ["/", `/category/${slug}`],
+      revalidateTags: [STOREFRONT_NAVIGATION_TAG],
       run: async (db) => {
         const { error } = await db.from("categories").update(normalize(parsed.data)).eq("slug", slug);
         if (error) throw error;
@@ -98,6 +101,7 @@ export async function deleteCategory(slug: string): Promise<{ error?: string }> 
       entityType: "category",
       entityId: slug,
       revalidate: ["/"],
+      revalidateTags: [STOREFRONT_NAVIGATION_TAG],
       run: async (d) => {
         const { error } = await d.from("categories").delete().eq("slug", slug);
         if (error) throw error;

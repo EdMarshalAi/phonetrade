@@ -189,7 +189,7 @@ const POSTS: Post[] = [
 <p><strong>Чем iMac отличается от Mac mini?</strong> iMac — со встроенным экраном, Mac mini — отдельный блок под ваш монитор.</p>
 <p><strong>Какой Mac выбрать для работы дома?</strong> Для универсального рабочего места удобнее iMac; если монитор есть — Mac mini.</p>
 <p><strong>Можно ли заказать конкретную конфигурацию?</strong> Да, подберём по чипу и памяти — напишите нам.</p>
-<p>Смотрите ноутбуки и компьютеры Apple в разделе <a href="/category/mac">Mac</a>. Если нужен ноутбук, читайте гайд <a href="/blog/macbook-air-ili-pro-belgorod">MacBook Air или Pro</a>.</p>`,
+<p>Смотрите ноутбуки и компьютеры Apple в разделе <a href="/category/mac">Mac</a>. Если нужен ноутбук, читайте гайд <a href="/blog/macbook-air-ili-macbook-pro-2026">MacBook Air или Pro</a>.</p>`,
   },
 ];
 

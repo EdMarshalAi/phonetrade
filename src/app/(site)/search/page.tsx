@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Search as SearchIcon } from "lucide-react";
-import { searchProducts, getCategories } from "@/lib/products";
+import {
+  searchProducts,
+  getCategories,
+  getProductCountsByCategory,
+} from "@/lib/products";
 import { ProductCard } from "@/components/product/ProductCard";
 import { SearchTracker } from "@/components/catalog/SearchTracker";
 import { plural } from "@/lib/utils/plural";
@@ -96,7 +100,17 @@ function EmptyPrompt() {
 }
 
 async function NoResults({ query }: { query: string }) {
-  const categories = await getCategories();
+  const [categories, counts] = await Promise.all([
+    getCategories(),
+    getProductCountsByCategory().catch(() => null),
+  ]);
+  const visibleCategories = categories.filter((category) => {
+    if (counts === null) return true;
+    const childCount = categories
+      .filter((child) => child.parentSlug === category.slug)
+      .reduce((sum, child) => sum + (counts[child.slug] ?? 0), 0);
+    return (counts[category.slug] ?? 0) + childCount > 0;
+  });
   return (
     <div className="mt-10 flex flex-col items-center justify-center rounded-3xl border border-border/60 bg-white px-6 py-16 text-center">
       <span className="inline-flex size-12 items-center justify-center rounded-full bg-surface text-ink-muted">
@@ -107,7 +121,7 @@ async function NoResults({ query }: { query: string }) {
         Проверьте раскладку и опечатки или загляните в одну из категорий.
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
-        {categories.slice(0, 7).map((c) => (
+        {visibleCategories.slice(0, 7).map((c) => (
           <Link
             key={c.slug}
             href={categoryPath(c.slug)}

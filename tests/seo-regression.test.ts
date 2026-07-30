@@ -15,6 +15,15 @@ import type { CartItem } from "@/lib/cart/types";
 import type { CartDeliveryOption, CartPaymentMethod } from "@/lib/content";
 import { normalizePublishedCopy } from "@/lib/content";
 import { categoryPath } from "@/lib/catalog/category-path";
+import {
+  CATALOG_PAGE_SIZE,
+  hasCatalogViewParams,
+  pagePath,
+  parsePageNumber,
+  searchParamsString,
+  slicePage,
+  totalPages,
+} from "@/lib/catalog/pagination";
 import { GET as getRobots, ROBOTS_TEXT } from "@/app/robots.txt/route";
 import { productSchema } from "@/lib/admin/schemas";
 import { stripInjectedSeoBlocks } from "@/lib/seo/clean-content";
@@ -200,6 +209,49 @@ test("canonical category path and published copy remove confirmed duplicates", (
   );
 });
 
+test("catalog pagination uses stable path URLs and rejects ambiguous pages", () => {
+  assert.equal(pagePath("/category/iphone", 1), "/category/iphone");
+  assert.equal(pagePath("/category/iphone", 2), "/category/iphone/page/2");
+  assert.equal(pagePath("/new", 3), "/new/page/3");
+  assert.equal(pagePath("/used", 4), "/used/page/4");
+  assert.equal(pagePath("/", 2), "/page/2");
+
+  assert.equal(parsePageNumber("1"), 1);
+  assert.equal(parsePageNumber("42"), 42);
+  for (const value of ["0", "02", "-1", "1.5", "page-2", "9007199254740992"]) {
+    assert.equal(parsePageNumber(value), null);
+  }
+
+  assert.equal(totalPages(0), 0);
+  assert.equal(totalPages(CATALOG_PAGE_SIZE), 1);
+  assert.equal(totalPages(CATALOG_PAGE_SIZE + 1), 2);
+});
+
+test("catalog pagination slices cover products once and preserve global order", () => {
+  const products = Array.from({ length: 25 }, (_, index) => index + 1);
+  const pages = [1, 2, 3].map((page) =>
+    slicePage(products, page, CATALOG_PAGE_SIZE)
+  );
+
+  assert.deepEqual(pages[0], products.slice(0, 12));
+  assert.deepEqual(pages[1], products.slice(12, 24));
+  assert.deepEqual(pages[2], products.slice(24));
+  assert.deepEqual(pages.flat(), products);
+  assert.equal(new Set(pages.flat()).size, products.length);
+});
+
+test("catalog view parameters reset path pagination while tracking parameters do not", () => {
+  assert.equal(hasCatalogViewParams({ model: "iPhone 16" }), true);
+  assert.equal(hasCatalogViewParams({ sort: "price-desc" }), true);
+  assert.equal(hasCatalogViewParams({ min: "50000", max: "100000" }), true);
+  assert.equal(hasCatalogViewParams({ page: "2", utm_source: "yandex" }), false);
+  assert.equal(hasCatalogViewParams({}), false);
+  assert.equal(
+    searchParamsString({ model: "iPhone 16", color: ["black", "white"] }),
+    "model=iPhone+16&color=black&color=white"
+  );
+});
+
 test("SEO crawl policy keeps confirmed regression guards", () => {
   const root = process.cwd();
   const robots = ROBOTS_TEXT;
@@ -212,7 +264,7 @@ test("SEO crawl policy keeps confirmed regression guards", () => {
       .flatMap((match) => match[1].split("&"))
       .filter(Boolean)
   );
-  for (const param of ["phone", "teh", "aks", "w", "q", "tubl6", "min", "max", "battery"]) {
+  for (const param of ["phone", "teh", "aks", "w", "q", "tubl6", "min", "max", "battery", "page"]) {
     assert.ok(cleanParams.has(param), `Yandex Clean-param must contain ${param}`);
   }
   assert.doesNotMatch(robots, /^Host:/mu);

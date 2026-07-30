@@ -5,6 +5,7 @@ import {
   syncProductSeoContent,
   syncProductSeoText,
 } from "@/lib/product-commerce";
+import { normalizeProductSpecs } from "@/lib/product-specs";
 
 /** Строка таблицы public.products (snake_case). */
 export type ProductRow = {
@@ -17,7 +18,7 @@ export type ProductRow = {
   sim: string | null;
   image: string;
   gallery: string[] | null;
-  specs: Product["specs"] | null;
+  specs: unknown;
   description: Product["description"] | null;
   highlights: string[] | null;
   price_cash: number;
@@ -76,7 +77,7 @@ export function rowToProduct(r: ProductRow): Product {
     sim: (r.sim as Sim | null) ?? undefined,
     image: r.image,
     gallery: r.gallery ?? undefined,
-    specs: r.specs ?? undefined,
+    specs: normalizeProductSpecs(r.specs),
     description: r.description ?? undefined,
     highlights: r.highlights ?? undefined,
     priceCash: r.price_cash,

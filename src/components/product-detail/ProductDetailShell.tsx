@@ -8,6 +8,7 @@ import { ProductBuyPanel } from "@/components/product-detail/ProductBuyPanel";
 import { ProductTrust } from "@/components/product-detail/ProductTrust";
 import { ProductRelated } from "@/components/product-detail/ProductRelated";
 import { ProductDescription } from "@/components/product-detail/ProductDescription";
+import { ProductSpecs } from "@/components/product-detail/ProductSpecs";
 import { sanitizeRichHtml } from "@/lib/utils/sanitize-html";
 import { categoryPath } from "@/lib/catalog/category-path";
 
@@ -42,6 +43,15 @@ export function ProductDetailShell({ product, related, variants, productBlocks, 
           <div className="mt-10 md:mt-14">
             <ProductTrust blocks={productBlocks} />
           </div>
+
+          {product.specs && product.specs.length > 0 ? (
+            <section
+              aria-label="Характеристики товара"
+              className="mt-10 rounded-3xl border border-border/60 bg-white p-7 md:mt-14 md:p-12"
+            >
+              <ProductSpecs specs={product.specs} />
+            </section>
+          ) : null}
 
           {/* Перелинковка на money-страницы (T23): ремонт, Trade-in, категория, Б/У */}
           <nav aria-label="Полезное" className="mt-8 flex flex-wrap gap-2 text-[13px]">

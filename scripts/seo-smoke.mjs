@@ -87,6 +87,31 @@ function hasNoindex(html, headers) {
     .some((tag) => /^(robots|googlebot|yandex)$/i.test(attribute(tag, "name")) && /\bnoindex\b/i.test(attribute(tag, "content")));
 }
 
+function jsonLdNodes(html) {
+  const nodes = [];
+  const scripts = [...html.matchAll(
+    /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+  )];
+  for (const match of scripts) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      nodes.push(...(Array.isArray(parsed) ? parsed : [parsed]));
+    } catch {
+      // Невалидный посторонний JSON-LD не должен скрыть проверяемые схемы.
+    }
+  }
+  return nodes;
+}
+
+function linkHref(html, rel) {
+  const tag = [...html.matchAll(/<link\b[^>]*>/gi)]
+    .map((match) => match[0])
+    .find((candidate) =>
+      attribute(candidate, "rel").toLowerCase().split(/\s+/).includes(rel)
+    );
+  return tag ? attribute(tag, "href") : "";
+}
+
 let failed = 0;
 for (const path of URLS) {
   const url = `${BASE}${path}`;
@@ -155,6 +180,90 @@ for (const path of ["/account", "/cart", "/auth/login", "/search?q=iphone"]) {
   }
 }
 
+// Crawlable path-пагинация: настоящие ссылки, self-canonical, уникальные
+// ItemList-срезы и честные 404 за пределами коллекции.
+async function checkPagination(basePath) {
+  try {
+    const page2Path = `${basePath}/page/2`;
+    const [baseRes, page2Res, page1Res, overflowRes] = await Promise.all([
+      fetchWithRetry(`${BASE}${basePath}`),
+      fetchWithRetry(`${BASE}${page2Path}`),
+      fetchWithRetry(`${BASE}${basePath}/page/1`),
+      fetchWithRetry(`${BASE}${basePath}/page/9999`),
+    ]);
+    const [baseHtml, page2Html] = await Promise.all([
+      baseRes.text(),
+      page2Res.text(),
+    ]);
+    const baseList = jsonLdNodes(baseHtml).find(
+      (node) => node?.["@type"] === "ItemList"
+    );
+    const page2Nodes = jsonLdNodes(page2Html);
+    const page2List = page2Nodes.find(
+      (node) => node?.["@type"] === "ItemList"
+    );
+    const baseItems = Array.isArray(baseList?.itemListElement)
+      ? baseList.itemListElement
+      : [];
+    const page2Items = Array.isArray(page2List?.itemListElement)
+      ? page2List.itemListElement
+      : [];
+    const baseUrls = new Set(baseItems.map((item) => item?.url).filter(Boolean));
+    const page2Urls = page2Items.map((item) => item?.url).filter(Boolean);
+    const basePositions = baseItems.map((item) => Number(item?.position));
+    const page2Positions = page2Items.map((item) => Number(item?.position));
+    const page1Location = page1Res.headers.get("location") || "";
+    const page1Target = page1Location
+      ? new URL(page1Location, BASE).pathname
+      : "";
+    const page2CanonicalIssue = canonicalProblem(page2Html, page2Path);
+    const baseNext = linkHref(baseHtml, "next");
+    const page2Previous = linkHref(page2Html, "prev");
+    const paginationHref = `href="${page2Path}"`;
+    const problems = [];
+
+    if (baseRes.status !== 200) problems.push(`base HTTP ${baseRes.status}`);
+    if (page2Res.status !== 200) problems.push(`page/2 HTTP ${page2Res.status}`);
+    if (page2CanonicalIssue) problems.push(page2CanonicalIssue);
+    if (hasNoindex(page2Html, page2Res.headers)) problems.push("page/2 содержит noindex");
+    if (![301, 308].includes(page1Res.status) || page1Target !== basePath) {
+      problems.push(`page/1=${page1Res.status} → ${page1Location || "—"}`);
+    }
+    if (overflowRes.status !== 404) problems.push(`page/9999 HTTP ${overflowRes.status}`);
+    if (!baseHtml.includes(paginationHref)) problems.push("нет обычной HTML-ссылки на page/2");
+    if (!baseNext || new URL(baseNext, BASE).pathname !== page2Path) {
+      problems.push("нет metadata rel=next на первой странице");
+    }
+    if (!page2Previous || new URL(page2Previous, BASE).pathname !== basePath) {
+      problems.push("нет metadata rel=prev на второй странице");
+    }
+    if (baseItems.length !== 12 || page2Items.length !== 12) {
+      problems.push(`ItemList sizes=${baseItems.length}/${page2Items.length}`);
+    }
+    if (basePositions.join(",") !== Array.from({ length: 12 }, (_, index) => index + 1).join(",")) {
+      problems.push("неверные позиции ItemList page/1");
+    }
+    if (page2Positions.join(",") !== Array.from({ length: 12 }, (_, index) => index + 13).join(",")) {
+      problems.push("неверные позиции ItemList page/2");
+    }
+    if (page2Urls.some((url) => baseUrls.has(url))) {
+      problems.push("товарные URL пересекаются между page/1 и page/2");
+    }
+    if (page2Nodes.some((node) => node?.["@type"] === "FAQPage")) {
+      problems.push("FAQPage продублирован на page/2");
+    }
+
+    if (problems.length) fail(`pagination ${basePath}`, problems.join("; "));
+    else pass(`pagination ${basePath}`);
+  } catch (e) {
+    fail(`pagination ${basePath}`, e.message);
+  }
+}
+
+for (const basePath of ["/category/iphone", "/new", "/used"]) {
+  await checkPagination(basePath);
+}
+
 // Robots: подтверждённые legacy/facet параметры и отсутствие устаревшего Host.
 try {
   const res = await fetchWithRetry(
@@ -221,6 +330,9 @@ try {
     "/category/iphone-used",
   ]);
   const leaked = validLocs.map((url) => url.pathname).filter((path) => forbidden.has(path));
+  const paginated = validLocs
+    .map((url) => url.pathname)
+    .filter((path) => /\/page\/\d+$/u.test(path));
   const productBlocks = [...xml.matchAll(/<url>[\s\S]*?<\/url>/g)]
     .map((m) => m[0])
     .filter((block) => /<loc>[^<]*\/product\//.test(block));
@@ -232,6 +344,7 @@ try {
   else if (unique.size !== locs.length) fail("sitemap.xml", "есть дубли URL");
   else if (tradeInCount !== 1) fail("sitemap.xml", `/trade-in встречается ${tradeInCount} раз`);
   else if (leaked.length) fail("sitemap.xml", `лишние URL: ${leaked.join(", ")}`);
+  else if (paginated.length) fail("sitemap.xml", `пагинация не должна быть в sitemap: ${paginated.slice(0, 3).join(", ")}`);
   else if (sitemapProductUrls.length < MIN_SITEMAP_PRODUCTS) fail("sitemap.xml", `товарных URL ${sitemapProductUrls.length}, минимум ${MIN_SITEMAP_PRODUCTS}`);
   else if (sitemapCategoryUrls.length < MIN_SITEMAP_CATEGORIES) fail("sitemap.xml", `URL категорий ${sitemapCategoryUrls.length}, минимум ${MIN_SITEMAP_CATEGORIES}`);
   else if (productBlocks.some((block) => /<lastmod>/i.test(block))) fail("sitemap.xml", "товарный lastmod снова привязан к цене");
@@ -273,16 +386,7 @@ for (const sitemapProductUrl of sampledProductUrls) {
     const productPath = new URL(sitemapProductUrl).pathname;
     const res = await fetchWithRetry(`${BASE}${productPath}`);
     const html = await res.text();
-    const scripts = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
-    const nodes = [];
-    for (const match of scripts) {
-      try {
-        const parsed = JSON.parse(match[1]);
-        nodes.push(...(Array.isArray(parsed) ? parsed : [parsed]));
-      } catch {
-        // Другой JSON-LD не должен скрыть проверяемый Product.
-      }
-    }
+    const nodes = jsonLdNodes(html);
     const product = nodes.find((node) => node?.["@type"] === "Product" && node?.offers?.price);
     const meta = metaContent(html, "description");
     const prices = [...meta.matchAll(/(?:\d{4,9}|\d{1,3}(?:[\s\u00a0\u202f]|&nbsp;|&#160;|&#x0*a0;)*\d{3})\s*₽/giu)]

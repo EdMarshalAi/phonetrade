@@ -1,17 +1,25 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Plus } from "lucide-react";
 import { ProductCard } from "@/components/product/ProductCard";
+import { PaginationNav } from "@/components/catalog/PaginationNav";
 import type { Product } from "@/lib/data/products";
+import { pagePath } from "@/lib/catalog/pagination";
 import { cn } from "@/lib/utils/cn";
 
 type Props = {
   products: Product[];
   total: number;
-  hasMore: boolean;
+  hasMore?: boolean;
   pageSize: number;
-  onLoadMore: () => void;
+  onLoadMore?: () => void;
+  pagination?: {
+    basePath: string;
+    currentPage: number;
+    totalPages: number;
+  };
 };
 
 function pluralizeRu(n: number, [a, b, c]: [string, string, string]): string {
@@ -28,6 +36,7 @@ export function ProductGrid({
   hasMore,
   pageSize,
   onLoadMore,
+  pagination,
 }: Props) {
   if (products.length === 0) {
     return (
@@ -42,10 +51,21 @@ export function ProductGrid({
     );
   }
 
-  const percent = total === 0 ? 0 : Math.round((products.length / total) * 100);
-  const remaining = Math.max(0, total - products.length);
+  const rangeStart = pagination
+    ? (pagination.currentPage - 1) * pageSize + 1
+    : 1;
+  const rangeEnd = Math.min(
+    total,
+    pagination ? rangeStart + products.length - 1 : products.length
+  );
+  const percent = total === 0 ? 0 : Math.round((rangeEnd / total) * 100);
+  const remaining = Math.max(0, total - rangeEnd);
   const nextChunk = Math.min(pageSize, remaining);
   const productWord = pluralizeRu(total, ["товара", "товаров", "товаров"]);
+  const nextPage =
+    pagination && pagination.currentPage < pagination.totalPages
+      ? pagination.currentPage + 1
+      : null;
 
   return (
     <>
@@ -56,7 +76,25 @@ export function ProductGrid({
       </div>
 
       <div className="mt-10 md:mt-14 flex flex-col md:flex-row items-stretch md:items-center gap-5 md:gap-6">
-        {hasMore ? (
+        {nextPage && pagination ? (
+          <Link
+            href={pagePath(pagination.basePath, nextPage)}
+            rel="next"
+            prefetch={false}
+            className={cn(
+              "group inline-flex items-center justify-center gap-3 h-12 pl-7 pr-2 rounded-full shrink-0",
+              "bg-ink text-white text-sm font-medium",
+              "transition-all duration-300 ease-[var(--ease-apple)]",
+              "hover:shadow-[0_18px_40px_-14px_rgba(0,0,0,0.35)] hover:-translate-y-0.5"
+            )}
+          >
+            Показать ещё
+            <span className="inline-flex items-center gap-1 h-9 px-3 rounded-full bg-white/15 text-[12px] font-semibold tabular-nums">
+              <Plus className="size-3.5" strokeWidth={2.5} aria-hidden />
+              {nextChunk}
+            </span>
+          </Link>
+        ) : hasMore && onLoadMore ? (
           <button
             type="button"
             onClick={onLoadMore}
@@ -82,10 +120,21 @@ export function ProductGrid({
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline justify-between gap-3 mb-2 text-[13px]">
             <span className="text-ink-muted">
-              Показано{" "}
-              <span className="font-semibold text-ink tabular-nums">
-                {products.length}
-              </span>{" "}
+              {rangeStart > 1 ? (
+                <>
+                  Показаны{" "}
+                  <span className="font-semibold text-ink tabular-nums">
+                    {rangeStart}–{rangeEnd}
+                  </span>{" "}
+                </>
+              ) : (
+                <>
+                  Показано{" "}
+                  <span className="font-semibold text-ink tabular-nums">
+                    {rangeEnd}
+                  </span>{" "}
+                </>
+              )}
               из{" "}
               <span className="font-semibold text-ink tabular-nums">{total}</span>{" "}
               {productWord}
@@ -98,7 +147,7 @@ export function ProductGrid({
             aria-valuenow={percent}
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-label={`Показано ${products.length} из ${total}`}
+            aria-label={`Показано до ${rangeEnd} из ${total}`}
           >
             <div
               className="absolute inset-y-0 left-0 rounded-full bg-ink transition-[width] duration-500 ease-[var(--ease-apple)]"
@@ -107,6 +156,14 @@ export function ProductGrid({
           </div>
         </div>
       </div>
+
+      {pagination ? (
+        <PaginationNav
+          basePath={pagination.basePath}
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+        />
+      ) : null}
     </>
   );
 }

@@ -3,6 +3,8 @@ import { stripInjectedSeoBlocks } from "@/lib/seo/clean-content";
 import { getProductsByCategory } from "@/lib/products";
 import type { CategorySlug, Product } from "@/lib/data/products";
 import { categoryPath } from "@/lib/catalog/category-path";
+import { unstable_cache } from "next/cache";
+import { STOREFRONT_NAVIGATION_TAG } from "@/lib/cache-tags";
 
 export interface HomeCategoryRail {
   slug: string;
@@ -71,24 +73,101 @@ export interface NavCategoryNode extends NavCategory {
   children: { slug: string; title: string }[];
 }
 
-/** Дерево навигации: верхний уровень + дочерние серии (для вложенного меню). */
+type NavCategoryRow = {
+  slug: string;
+  title: string;
+  icon_url: string | null;
+  parent_slug: string | null;
+};
+
+const getCachedNavCategoryTree = unstable_cache(
+  async (): Promise<NavCategoryNode[]> => {
+    if (!supabase) return [];
+
+    const [{ data, error }, { data: productRows, error: productError }] =
+      await Promise.all([
+        supabase
+          .from("categories")
+          .select("slug,title,icon_url,sort,parent_slug")
+          .eq("is_published", true)
+          .neq("slug", "trade-in")
+          .order("sort", { ascending: true }),
+        supabase
+          .from("products")
+          .select("category_slug")
+          .eq("status", "published")
+          .is("deleted_at", null)
+          .limit(10000),
+      ]);
+
+    if (error) throw error;
+    const all = (data ?? []) as NavCategoryRow[];
+
+    // При временной ошибке счётчика оставляем прежнее меню (fail-open).
+    // Успешный пустой ответ, напротив, означает реально пустой каталог:
+    // noindex-категория не должна получать сайт-wide ссылки.
+    const counts = productError
+      ? null
+      : ((productRows ?? []) as { category_slug: string | null }[]).reduce(
+          (acc, row) => {
+            if (row.category_slug) {
+              acc.set(row.category_slug, (acc.get(row.category_slug) ?? 0) + 1);
+            }
+            return acc;
+          },
+          new Map<string, number>()
+        );
+
+    return all
+      .filter((category) => !category.parent_slug)
+      .map((parent) => {
+        const children = all.filter(
+          (category) =>
+            category.parent_slug === parent.slug &&
+            (counts === null || (counts.get(category.slug) ?? 0) > 0)
+        );
+        return {
+          slug: parent.slug,
+          title: parent.title,
+          icon_url: parent.icon_url ?? null,
+          children: children.map((child) => ({
+            slug: child.slug,
+            title: child.title,
+          })),
+          visible:
+            counts === null ||
+            (counts.get(parent.slug) ?? 0) > 0 ||
+            children.length > 0,
+        };
+      })
+      .filter((category) => category.visible)
+      .map((category) => ({
+        slug: category.slug,
+        title: category.title,
+        icon_url: category.icon_url,
+        children: category.children,
+      }));
+  },
+  ["storefront-navigation-v1"],
+  {
+    tags: [STOREFRONT_NAVIGATION_TAG],
+    revalidate: 300,
+  }
+);
+
+/**
+ * Дерево навигации: верхний уровень + непустые дочерние серии.
+ * Пятиминутный Data Cache убирает два общих Supabase-чтения с каждого запроса.
+ */
 export async function getNavCategoryTree(): Promise<NavCategoryNode[]> {
   if (!supabase) return [];
-  const { data } = await supabase
-    .from("categories")
-    .select("slug,title,icon_url,sort,parent_slug")
-    .eq("is_published", true)
-    .neq("slug", "trade-in")
-    .order("sort", { ascending: true });
-  const all = (data ?? []) as { slug: string; title: string; icon_url: string | null; parent_slug: string | null }[];
-  return all
-    .filter((c) => !c.parent_slug)
-    .map((p) => ({
-      slug: p.slug,
-      title: p.title,
-      icon_url: p.icon_url ?? null,
-      children: all.filter((c) => c.parent_slug === p.slug).map((c) => ({ slug: c.slug, title: c.title })),
-    }));
+  try {
+    return await getCachedNavCategoryTree();
+  } catch {
+    // Шапка должна перейти на встроенный список категорий, а не уронить всю
+    // витрину из-за временной ошибки публичного чтения Supabase.
+    return [];
+  }
 }
 
 /** Категории для меню/шапки (с иконкой), без trade-in. */

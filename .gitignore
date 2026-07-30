@@ -42,6 +42,7 @@ yarn-error.log*
 /.playwright-mcp/
 /.screenshots/
 /skills-lock.json
+/supabase/.temp/
 
 # typescript
 *.tsbuildinfo

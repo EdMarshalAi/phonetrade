@@ -1,171 +1,41 @@
-import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ChevronDown } from "lucide-react";
-import type { FilterFacet, CategoryConfig, SortKey } from "@/lib/catalog/category-config";
-import { categoryFaq } from "@/lib/catalog/category-faq";
-import { extractFacetOptions } from "@/lib/catalog/filters";
 import {
-  getProductsByCategory,
-  getCategories,
-  getProductCountsByCategory,
-  getCategoryProductCount,
-} from "@/lib/products";
-import { getCategoryMeta } from "@/lib/content";
-import { CatalogShell } from "@/components/catalog/CatalogShell";
-import { jsonLdScript } from "@/lib/utils/json-ld";
-import { sanitizeRichHtml } from "@/lib/utils/sanitize-html";
-import { categoryPath } from "@/lib/catalog/category-path";
-
-// Единый список фасетов; конкретный набор берётся из настроек категории
-// (categories.available_filters) в админке. Хардкода по слагу больше нет.
-const ALL_FACETS: FilterFacet[] = ["model", "memory", "color", "sim", "condition", "battery"];
-const QUICK_FACETS: FilterFacet[] = ["color", "memory"];
-const KNOWN_FACETS = new Set<string>(ALL_FACETS);
+  CategoryListing,
+  categoryListingMetadata,
+} from "./listing";
+import {
+  hasCatalogViewParams,
+  type RouteSearchParams,
+} from "@/lib/catalog/pagination";
 
 type RouteParams = { slug: string };
 
-export async function generateMetadata({ params }: { params: Promise<RouteParams> }): Promise<Metadata> {
+type Props = {
+  params: Promise<RouteParams>;
+  searchParams: Promise<RouteSearchParams>;
+};
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: Props): Promise<Metadata> {
   const { slug } = await params;
-  const [meta, productCount] = await Promise.all([
-    getCategoryMeta(slug),
-    getCategoryProductCount(slug),
-  ]);
-  if (!meta) return {};
-  const canonical = `/category/${slug}`;
-  // meta_title (если задан в админке) — абсолютный, чтобы не было двойного бренда;
-  // иначе коммерческий фолбэк с городом + шаблонный «· PhoneTrade».
-  const fallbackTitle = `${meta.title} в Белгороде — купить с гарантией`;
-  const title: Metadata["title"] = meta.meta_title?.trim() ? { absolute: meta.meta_title.trim() } : fallbackTitle;
-  const description =
-    meta.meta_description?.trim() ||
-    meta.description?.trim() ||
-    `${meta.title} в Белгороде: купить с гарантией, доставка по городу и самовывоз, Trade-in и рассрочка. PhoneTrade — ул. Попова, 36.`;
-  const ogTitle = meta.meta_title?.trim() || `${fallbackTitle} · PhoneTrade`;
-  const ogImage = "https://giwehapapi.beget.app/storage/v1/object/public/product-images/content/store-belgorod.jpg";
-  return {
-    title,
-    description,
-    alternates: { canonical },
-    // Пустую опубликованную категорию оставляем доступной пользователям, но не
-    // отправляем в индекс до появления товара. Ошибка подсчёта (null) не меняет
-    // индексную политику, поэтому временный сбой БД не создаст массовый noindex.
-    robots: productCount === 0 ? { index: false, follow: true } : undefined,
-    // images явно: переопределение openGraph на странице глушит наследование картинки из layout.
-    openGraph: { title: ogTitle, description, url: canonical, type: "website", images: [{ url: ogImage, width: 1400, height: 1400, alt: `${meta.title} — PhoneTrade Белгород` }] },
-  };
+  const query = await searchParams;
+  return categoryListingMetadata({
+    slug,
+    currentPage: 1,
+    isFaceted: hasCatalogViewParams(query),
+  });
 }
 
-export default async function CategoryPage({ params }: { params: Promise<RouteParams> }) {
+export default async function CategoryPage({ params, searchParams }: Props) {
   const { slug } = await params;
-
-  const [meta, allCategories, products, counts] = await Promise.all([
-    getCategoryMeta(slug),
-    getCategories().catch(() => []),
-    getProductsByCategory(slug as CategoryConfig["slug"]),
-    getProductCountsByCategory().catch(() => ({} as Record<string, number>)),
-  ]);
-
-  const cat = allCategories.find((c) => c.slug === slug);
-  if (!meta && !cat) notFound();
-
-  const title = meta?.title || cat?.title || slug;
-  const description = meta?.description || cat?.subtitle || `${title} — с гарантией PhoneTrade в Белгороде.`;
-
-  // Фасеты строго из админки (categories.available_filters). Нет настройки → нет фильтров.
-  const facets: FilterFacet[] = ((meta?.available_filters ?? []).filter((f) => KNOWN_FACETS.has(f)) as FilterFacet[]);
-
-  const config: CategoryConfig = {
-    slug: slug as CategoryConfig["slug"],
-    title,
-    description,
-    facets,
-    quickFacets: QUICK_FACETS.filter((f) => facets.includes(f)),
-    sortOptions: ["popular", "price-asc", "price-desc", "new"],
-  };
-
-  // Единая навигация по подкатегориям из БД (parentSlug) с количеством товаров.
-  const railParentSlug = cat?.parentSlug ?? slug;
-  const railParent = allCategories.find((c) => c.slug === railParentSlug);
-  const children = allCategories.filter((c) => c.parentSlug === railParentSlug);
-  const childTotal = children.reduce((s, c) => s + (counts[c.slug] ?? 0), 0);
-  const tabs =
-    children.length > 0 && railParent
-      ? [
-          {
-            label: `Все ${railParent.title}`,
-            href: categoryPath(railParent.slug),
-            active: slug === railParent.slug,
-            count: (counts[railParent.slug] ?? 0) + childTotal,
-          },
-          ...children.map((c) => ({
-            label: c.title,
-            href: categoryPath(c.slug),
-            active: slug === c.slug,
-            count: counts[c.slug] ?? 0,
-          })),
-        ]
-      : [];
-  const breadcrumbParent =
-    cat?.parentSlug && railParent ? { title: railParent.title, href: categoryPath(railParent.slug) } : null;
-
-  const facetOptions = extractFacetOptions(products, config.facets);
-
-  // BreadcrumbList для сниппета
-  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://phonetrade31.ru";
-  const crumbs = [
-    { name: "Главная", url: `${base}/` },
-    ...(breadcrumbParent ? [{ name: breadcrumbParent.title, url: `${base}${breadcrumbParent.href}` }] : []),
-    { name: title, url: `${base}/category/${slug}` },
-  ];
-  const breadcrumbLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: crumbs.map((c, i) => ({ "@type": "ListItem", position: i + 1, name: c.name, item: c.url })),
-  };
-  const itemListLd = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    name: `${title} в Белгороде`,
-    numberOfItems: products.length,
-    itemListElement: products.slice(0, 50).map((p, i) => ({ "@type": "ListItem", position: i + 1, url: `${base}/product/${p.id}`, name: p.title, ...(p.image ? { image: p.image } : {}) })),
-  };
-  // FAQ по категории (видимый блок ниже + FAQPage — из одного источника).
-  const faq = categoryFaq(title);
-  const faqLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    inLanguage: "ru",
-    mainEntity: faq.map((f) => ({ "@type": "Question", name: f.q, inLanguage: "ru", acceptedAnswer: { "@type": "Answer", text: f.a } })),
-  };
-
+  const query = await searchParams;
   return (
-    <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript([breadcrumbLd, itemListLd, faqLd]) }} />
-      <CatalogShell
-        config={config}
-        products={products}
-        facetOptions={facetOptions}
-        seoHtml={meta?.seo_text ? sanitizeRichHtml(meta.seo_text) : null}
-        tabs={tabs}
-        breadcrumbParent={breadcrumbParent}
-        defaultSort={(meta?.default_sort as SortKey) ?? "price-asc"}
-      />
-      <section className="container-page pb-16 md:pb-24">
-        <div className="mx-auto max-w-3xl">
-          <h2 className="text-2xl font-semibold tracking-tight text-ink md:text-3xl">Частые вопросы</h2>
-          <div className="mt-6 divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/60 bg-white">
-            {faq.map((f) => (
-              <details key={f.q} className="group px-5 py-4">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-medium text-ink">
-                  {f.q}
-                  <ChevronDown className="size-4 shrink-0 text-ink-subtle transition-transform group-open:rotate-180" />
-                </summary>
-                <p className="mt-2 text-[14px] leading-relaxed text-ink-muted">{f.a}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-    </>
+    <CategoryListing
+      slug={slug}
+      currentPage={1}
+      isFaceted={hasCatalogViewParams(query)}
+    />
   );
 }

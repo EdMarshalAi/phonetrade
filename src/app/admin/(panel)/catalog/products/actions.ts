@@ -7,6 +7,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { productSchema, type ProductInput } from "@/lib/admin/schemas";
 import { slugify } from "@/lib/admin/slug";
 import { calculatePrices, type PricingSettings } from "@/lib/pricing/calculate";
+import { STOREFRONT_NAVIGATION_TAG } from "@/lib/cache-tags";
 
 const STAFF = ["admin", "manager", "content"] as const;
 
@@ -149,6 +150,7 @@ export async function createProduct(input: ProductInput): Promise<{ error?: stri
       entityId: id,
       changes: parsed.data,
       revalidate: ["/", "/catalog", `/category/${parsed.data.category_slug}`, `/product/${id}`],
+      revalidateTags: [STOREFRONT_NAVIGATION_TAG],
       run: async (db) => {
         const row = toRow({ ...parsed.data, slug });
         // Галерея из формы: дедуп + без главного фото (правило: gallery БЕЗ главного).
@@ -181,6 +183,7 @@ export async function updateProduct(id: string, input: ProductInput): Promise<{ 
       entityId: id,
       changes: parsed.data,
       revalidate: ["/", "/catalog", `/category/${parsed.data.category_slug}`, `/product/${id}`],
+      revalidateTags: [STOREFRONT_NAVIGATION_TAG],
       run: async (db) => {
         // Реконсиляция фото: главное фото товара редактируется в двух местах —
         // в форме (поле «Главное фото») и в табе «Галерея» («Сделать главным»).
@@ -265,6 +268,7 @@ export async function updateProductStatus(id: string, status: string): Promise<{
       entityId: id,
       changes: { status },
       revalidate: ["/", "/catalog", `/product/${id}`],
+      revalidateTags: [STOREFRONT_NAVIGATION_TAG],
       run: async (db) => {
         const { error } = await db.from("products").update({ status, updated_at: new Date().toISOString() }).eq("id", id);
         if (error) throw error;
@@ -284,6 +288,7 @@ export async function deleteProduct(id: string): Promise<{ error?: string }> {
       entityType: "product",
       entityId: id,
       revalidate: ["/"],
+      revalidateTags: [STOREFRONT_NAVIGATION_TAG],
       run: async (db) => {
         const { error } = await db
           .from("products")

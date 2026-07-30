@@ -81,10 +81,14 @@ function writeFiltersToParams(
   return sp;
 }
 
-export function useCatalogFilters(defaultSort: SortKey = "popular") {
+export function useCatalogFilters(
+  defaultSort: SortKey = "popular",
+  basePath?: string
+) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const targetPath = basePath ?? pathname;
 
   const filters = React.useMemo(
     () => parseFilters(new URLSearchParams(searchParams.toString())),
@@ -98,9 +102,11 @@ export function useCatalogFilters(defaultSort: SortKey = "popular") {
   const replaceUrl = React.useCallback(
     (next: URLSearchParams) => {
       const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      router.replace(qs ? `${targetPath}?${qs}` : targetPath, {
+        scroll: false,
+      });
     },
-    [router, pathname]
+    [router, targetPath]
   );
 
   const setFilters = React.useCallback(
